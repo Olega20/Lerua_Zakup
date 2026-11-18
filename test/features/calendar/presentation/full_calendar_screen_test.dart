@@ -7,7 +7,7 @@ void main() {
 
   Future<void> pumpCalendar(WidgetTester tester) async {
     await tester.pumpWidget(
-      const MaterialApp(home: FullCalendarScreen(now: now)),
+      MaterialApp(home: FullCalendarScreen(now: now)),
     );
   }
 

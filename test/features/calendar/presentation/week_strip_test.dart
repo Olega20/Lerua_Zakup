@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/features/calendar/presentation/week_strip.dart';
 
 void main() {
-  const now = DateTime(2026, 11, 19);
+  final now = DateTime(2026, 11, 19);
 
   Widget buildSubject({
     DateTime? selectedDate,
