@@ -55,7 +55,7 @@ void main() {
     final service = SnackbarService();
     await tester.pumpWidget(
       Listener(
-        onPointerDown: (_) => service.dismiss,
+        onPointerDown: (_) => service.dismiss(),
         child: MaterialApp(
           home: Builder(
             builder: (context) => Scaffold(
