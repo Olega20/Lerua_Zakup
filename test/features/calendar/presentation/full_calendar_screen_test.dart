@@ -45,7 +45,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Декабрь'), findsOneWidget);
-    expect(find.byKey(const ValueKey('calendar-date-2026-11-19')), findsOneWidget);
+    await tester.drag(find.byKey(const ValueKey('calendar-month-grid')), const Offset(400, 0));
+    await tester.pumpAndSettle();
+    expect(find.text('Ноябрь'), findsOneWidget);
     expect(find.byKey(const ValueKey('calendar-date-2026-11-19')), findsOneWidget);
   });
 }
