@@ -17,6 +17,6 @@ class SnackbarService {
   }
 
   void dismiss() {
-    _messenger?.hideCurrentSnackBar();
+    _messenger?.removeCurrentSnackBar();
   }
 }
