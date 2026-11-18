@@ -16,9 +16,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   final SnackbarService _snackbarService = SnackbarService();
 
   @override
-  Widget build(BuildContext context) => GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: _snackbarService.dismiss,
+  Widget build(BuildContext context) => Listener(
+        onPointerDown: (_) => _snackbarService.dismiss,
         child: MaterialApp(
         title: 'Lerua Zakup',
         debugShowCheckedModeBanner: false,

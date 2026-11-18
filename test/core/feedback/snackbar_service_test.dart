@@ -54,9 +54,8 @@ void main() {
   testWidgets('dismisses the snackbar after a tap anywhere on the screen', (tester) async {
     final service = SnackbarService();
     await tester.pumpWidget(
-      GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: service.dismiss,
+      Listener(
+        onPointerDown: (_) => service.dismiss,
         child: MaterialApp(
           home: Builder(
             builder: (context) => Scaffold(

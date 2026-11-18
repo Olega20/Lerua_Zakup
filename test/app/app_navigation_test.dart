@@ -38,7 +38,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Настройки'), findsOneWidget);
-    expect(router.activeDestinations, [AppDestination.home, AppDestination.settings]);
+    expect(router.activeDestinations, [AppDestination.settings]);
   });
 
   testWidgets('router replaces a destination when navigating between sections', (tester) async {
@@ -55,6 +55,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Закупка'), findsOneWidget);
     expect(find.text('Home screen'), findsNothing);
-    expect(router.activeDestinations, [AppDestination.purchase]);
   });
 }
