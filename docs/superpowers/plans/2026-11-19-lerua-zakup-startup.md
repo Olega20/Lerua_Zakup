@@ -307,6 +307,8 @@ Expected: analyzer has no errors, all tests pass, and both APK builds succeed. A
 - [ ] **Step 5: Verify on the target Android device when available**: fresh install, permission grant/denial, theme changes, secure token save/delete/reset, calendar navigation, system date/time changes, offline/online transition, app update preserving settings, and uninstall removing app data.
 - [ ] **Step 6: Record actual test/build/device results** in the release checklist; do not claim unperformed checks.
 - [ ] **Step 7: Commit** `test: verify offline startup release behavior`.
+- [ ] **Step 8: Build the final release APK locally only after clean analysis and passing tests; verify the APK file and version metadata.**
+- [ ] **Step 9: Publish the APK as a GitHub Release asset** in `Olega20/Lerua_Zakup` and provide the direct GitHub download link to the user.
 
 ---
 
@@ -314,6 +316,8 @@ Expected: analyzer has no errors, all tests pass, and both APK builds succeed. A
 
 - The plan is executed one task at a time. The user reviews and accepts each completed task before the next task begins, as required by the project workflow.
 - Every task ends with its own GitHub commit and a verified fetch of changed files.
-- All source changes are made through GitHub; local Windows environment is used only for pull, analysis, tests, builds, installation, and logs.
+- All source changes are made through GitHub; local Windows environment is used only to pull/update the repository, run analysis and tests, build APKs, install builds, and collect logs. Never write or manually edit source code on the computer.
+- For every task: author/modify source through GitHub, pull the latest commit to `D:\\src\\Lerua_Zakup`, run the planned tests and analysis locally, read the complete relevant output, fix failures through GitHub, pull again, and repeat until clean. Do not proceed to the next task until the user has reviewed and accepted the current task.
+- Final release gate: after clean analysis and passing tests, build the release APK locally, verify the artifact, publish it as a downloadable asset in a GitHub Release for this repository, and give the user the GitHub download URL. Do not commit a generated APK into the source tree unless GitHub Releases are unavailable and the user approves an alternative.
 - If a task reveals that an approved requirement is ambiguous or technically unsupported, stop at that task boundary, explain the issue, and request a decision before changing scope.
 - No implementation starts until the user approves this plan and chooses an execution method.
