@@ -57,6 +57,7 @@ class _FullCalendarScreenState extends State<FullCalendarScreen> {
           ]),
         ),
         GestureDetector(
+          behavior: HitTestBehavior.opaque,
           key: const ValueKey('calendar-month-grid'),
           onHorizontalDragStart: (_) => _horizontalDrag = 0,
           onHorizontalDragUpdate: (details) => _horizontalDrag += details.delta.dx,
