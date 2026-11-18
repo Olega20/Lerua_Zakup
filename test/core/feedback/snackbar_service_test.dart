@@ -54,16 +54,17 @@ void main() {
   testWidgets('dismisses the snackbar after a tap anywhere on the screen', (tester) async {
     final service = SnackbarService();
     await tester.pumpWidget(
-      Listener(
-        behavior: HitTestBehavior.translucent,
-        onPointerDown: (_) => service.dismiss(),
-        child: MaterialApp(
-          home: Builder(
-            builder: (context) => Scaffold(
-              body: TextButton(
-                onPressed: () => service.show(context, 'Закрыть касанием'),
-                child: const Text('Показать'),
-              ),
+      MaterialApp(
+        builder: (context, child) => Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) => service.dismiss(),
+          child: child ?? const SizedBox.shrink(),
+        ),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () => service.show(context, 'Закрыть касанием'),
+              child: const Text('Показать'),
             ),
           ),
         ),
