@@ -11,6 +11,7 @@ class FullCalendarScreen extends StatefulWidget {
 class _FullCalendarScreenState extends State<FullCalendarScreen> {
   late DateTime _selectedDate;
   late DateTime _visibleMonth;
+  double _horizontalDrag = 0;
 
   @override
   void initState() {
@@ -57,9 +58,11 @@ class _FullCalendarScreenState extends State<FullCalendarScreen> {
         ),
         GestureDetector(
           key: const ValueKey('calendar-month-grid'),
-          onHorizontalDragEnd: (details) {
-            final velocity = details.primaryVelocity ?? 0;
-            if (velocity.abs() >= 100) _changeMonth(velocity < 0 ? 1 : -1);
+          onHorizontalDragStart: (_) => _horizontalDrag = 0,
+          onHorizontalDragUpdate: (details) => _horizontalDrag += details.delta.dx,
+          onHorizontalDragEnd: (_) {
+            if (_horizontalDrag.abs() >= 50) _changeMonth(_horizontalDrag < 0 ? 1 : -1);
+            _horizontalDrag = 0;
           },
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
