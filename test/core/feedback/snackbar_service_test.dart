@@ -74,7 +74,7 @@ void main() {
     await tester.tap(find.text('Показать'));
     await tester.pump();
     expect(find.text('Закрыть касанием'), findsOneWidget);
-    await tester.tapAt(const Offset(20, 20));
+    await tester.tapAt(const Offset(400, 300));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Закрыть касанием'), findsNothing);
