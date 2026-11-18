@@ -18,7 +18,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   @override
   Widget build(BuildContext context) => Listener(
         behavior: HitTestBehavior.translucent,
-        onPointerDown: (_) => _snackbarService.dismiss,
+        onPointerDown: (_) => _snackbarService.dismiss(),
         child: MaterialApp(
         title: 'Lerua Zakup',
         debugShowCheckedModeBanner: false,
