@@ -315,8 +315,9 @@ Expected: analyzer has no errors, all tests pass, and both APK builds succeed. A
 ## Plan Execution Rules
 
 - The plan is executed one task at a time. The user reviews and accepts each completed task before the next task begins, as required by the project workflow.
-- Every task ends with its own GitHub commit and a verified fetch of changed files.
-- All source changes are made through GitHub; local Windows environment is used only to pull/update the repository, run analysis and tests, build APKs, install builds, and collect logs. Never write or manually edit source code on the computer.
+- Every task ends with its own commit pushed to GitHub and a verified fetch of changed files. The initial generated scaffold is also committed and pushed before further work.
+- Initial Flutter scaffold generation is the sole exception to GitHub-only source editing: the user explicitly permits running `flutter create` on the computer to generate initial files. Commit that complete scaffold immediately and push it to GitHub; do not manually edit the generated source locally.
+- After the initial scaffold commit, all source-code changes are made through GitHub; local Windows environment is used only to pull/update the repository, run analysis and tests, build APKs, install builds, and collect logs. Never write or manually edit source code on the computer.
 - For every task: author/modify source through GitHub, pull the latest commit to `D:\\src\\Lerua_Zakup`, run the planned tests and analysis locally, read the complete relevant output, fix failures through GitHub, pull again, and repeat until clean. Do not proceed to the next task until the user has reviewed and accepted the current task.
 - Final release gate: after clean analysis and passing tests, build the release APK locally, verify the artifact, publish it as a downloadable asset in a GitHub Release for this repository, and give the user the GitHub download URL. Do not commit a generated APK into the source tree unless GitHub Releases are unavailable and the user approves an alternative.
 - If a task reveals that an approved requirement is ambiguous or technically unsupported, stop at that task boundary, explain the issue, and request a decision before changing scope.
