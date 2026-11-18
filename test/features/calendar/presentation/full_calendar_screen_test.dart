@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/features/calendar/presentation/full_calendar_screen.dart';
 
 void main() {
-  const now = DateTime(2026, 11, 19);
+  final now = DateTime(2026, 11, 19);
 
   Future<void> pumpCalendar(WidgetTester tester) async {
     await tester.pumpWidget(
