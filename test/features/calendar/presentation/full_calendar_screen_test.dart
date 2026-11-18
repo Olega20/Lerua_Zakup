@@ -25,7 +25,7 @@ void main() {
     for (final label in ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.byKey(const ValueKey('calendar-week-row')), findsNWidgets(5));
+    expect(find.byWidgetPredicate((widget) => widget.key is ValueKey<String> && (widget.key! as ValueKey<String>).value.startsWith('calendar-week-row-')), findsNWidgets(5));
   });
 
   testWidgets('selecting an adjacent-month date selects it and changes month', (tester) async {

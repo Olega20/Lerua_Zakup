@@ -64,9 +64,9 @@ class _FullCalendarScreenState extends State<FullCalendarScreen> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              for (final week in rows)
-                Row(key: const ValueKey('calendar-week-row'), children: [
-                  for (final day in week)
+              for (var rowIndex = 0; rowIndex < rows.length; rowIndex++)
+                Row(key: ValueKey('calendar-week-row-$rowIndex'), children: [
+                  for (final day in rows[rowIndex])
                     Expanded(child: _CalendarDay(
                       date: day, selectedDate: _selectedDate, today: CalendarDate.today(widget.now),
                       visibleMonth: _visibleMonth, onTap: () => _selectDate(day),
@@ -95,7 +95,7 @@ class _CalendarDay extends StatelessWidget {
     final isCurrentMonth = date.month == visibleMonth.month && date.year == visibleMonth.year;
     final isWeekend = date.weekday >= DateTime.saturday;
     final dateKey = 'calendar-date-${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-    return AspectRatio(aspectRatio: 1.25, child: Padding(
+    return AspectRatio(aspectRatio: 1.6, child: Padding(
       padding: const EdgeInsets.all(2),
       child: InkWell(
         key: ValueKey(dateKey), borderRadius: BorderRadius.circular(24), onTap: onTap,
