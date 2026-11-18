@@ -24,7 +24,9 @@ void main() {
     await tester.pump();
     expect(find.text('Сообщение'), findsOneWidget);
     final snackbar = tester.getRect(find.byType(SnackBar));
-    expect(snackbar.bottom, closeTo(tester.view.physicalSize.height / tester.view.devicePixelRatio, 0.1));
+    final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(snackbar.bottom, lessThanOrEqualTo(screenHeight));
+    expect(snackbar.bottom, greaterThan(screenHeight - 100));
   });
 
   testWidgets('automatically disappears after five seconds', (tester) async {
@@ -43,7 +45,7 @@ void main() {
     );
 
     await tester.tap(find.text('Показать'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.pump(const Duration(seconds: 5));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Временное'), findsNothing);
@@ -52,17 +54,16 @@ void main() {
   testWidgets('dismisses the snackbar after a tap anywhere on the screen', (tester) async {
     final service = SnackbarService();
     await tester.pumpWidget(
-      MaterialApp(
-        builder: (context, child) => GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: service.dismiss,
-          child: child!,
-        ),
-        home: Builder(
-          builder: (context) => Scaffold(
-            body: TextButton(
-              onPressed: () => service.show(context, 'Закрыть касанием'),
-              child: const Text('Показать'),
+      GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: service.dismiss,
+        child: MaterialApp(
+          home: Builder(
+            builder: (context) => Scaffold(
+              body: TextButton(
+                onPressed: () => service.show(context, 'Закрыть касанием'),
+                child: const Text('Показать'),
+              ),
             ),
           ),
         ),

@@ -58,9 +58,7 @@ class AppRouter {
 
   void replace(AppDestination destination) {
     if (_stack.last == destination) return;
-    if (_stack.length > 1) {
-      _stack.removeLast();
-    }
+    _stack.removeLast();
     _stack.add(destination);
     navigatorKey.currentState
         ?.pushReplacementNamed<void, void>('/${destination.name}', arguments: destination)

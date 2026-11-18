@@ -16,7 +16,10 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   final SnackbarService _snackbarService = SnackbarService();
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
+  Widget build(BuildContext context) => GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: _snackbarService.dismiss,
+        child: MaterialApp(
         title: 'Lerua Zakup',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
@@ -25,10 +28,6 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
         navigatorKey: _router.navigatorKey,
         onGenerateRoute: _router.onGenerateRoute,
         home: const _InitialHomeScreen(),
-        builder: (context, child) => GestureDetector(
-          behavior: HitTestBehavior.translucent,
-          onTap: _snackbarService.dismiss,
-          child: child ?? const SizedBox.shrink(),
         ),
       );
 }
