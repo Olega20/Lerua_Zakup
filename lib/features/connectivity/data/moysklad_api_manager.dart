@@ -38,7 +38,6 @@ class MoySkladApiManager {
   bool _foreground = true;
   bool _started = false;
   bool _checkAgain = false;
-  Duration? _rateLimitDelay;
   DateTime? _retryNotBefore;
 
   static Timer _defaultPeriodicTimer(
@@ -99,15 +98,17 @@ class MoySkladApiManager {
     _generation++;
     _retryNotBefore = null;
     _setState(
-      _online
-          ? ApiConnectionState.unavailable
-          : ApiConnectionState.offline,
+      _online ? ApiConnectionState.unavailable : ApiConnectionState.offline,
     );
   }
 
   void setForeground(bool foreground) {
     if (_foreground == foreground) return;
     _foreground = foreground;
+    if (!foreground) {
+      _generation++;
+      if (_online) _setState(ApiConnectionState.unavailable);
+    }
     _updateTimer();
     if (foreground &&
         _online &&
@@ -168,13 +169,11 @@ class MoySkladApiManager {
       if (!_isCurrent(generation)) return;
       _lastCheckAt = _clock();
       if (result.status == ApiCheckStatus.rateLimited) {
-        _rateLimitDelay = result.retryAfter ?? checkInterval;
-        _retryNotBefore = _clock().add(_rateLimitDelay!);
+        _retryNotBefore = _clock().add(result.retryAfter ?? checkInterval);
         _setState(ApiConnectionState.unavailable);
         return;
       }
       _retryNotBefore = null;
-      _rateLimitDelay = null;
       _setState(
         result.isConnected
             ? ApiConnectionState.connected
@@ -192,6 +191,7 @@ class MoySkladApiManager {
       generation == _generation && _online && _foreground;
 
   Future<void> dispose() async {
+    _generation++;
     _timer?.cancel();
     _timer = null;
     await _internetSubscription?.cancel();

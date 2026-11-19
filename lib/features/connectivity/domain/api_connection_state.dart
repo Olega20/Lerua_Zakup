@@ -1,6 +1,1 @@
-enum ApiConnectionState {
-  offline,
-  checking,
-  connected,
-  unavailable,
-}
+enum ApiConnectionState { offline, checking, connected, unavailable }

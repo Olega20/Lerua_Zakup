@@ -146,21 +146,23 @@ void main() {
       expect(manager.currentState, ApiConnectionState.unavailable);
     });
 
-    test('creates a five minute foreground timer and cancels in background',
-        () async {
-      await manager.start();
-      internet.add(true);
-      await Future<void>.delayed(Duration.zero);
-      expect(timers, isNotEmpty);
-      expect(timers.last.isActive, isTrue);
-      manager.setForeground(false);
-      expect(timers.last.isActive, isFalse);
-      final calls = transport.calls;
-      manager.setForeground(true);
-      await Future<void>.delayed(Duration.zero);
-      await Future<void>.delayed(Duration.zero);
-      expect(transport.calls, calls + 1);
-    });
+    test(
+      'creates a five minute foreground timer and cancels in background',
+      () async {
+        await manager.start();
+        internet.add(true);
+        await Future<void>.delayed(Duration.zero);
+        expect(timers, isNotEmpty);
+        expect(timers.last.isActive, isTrue);
+        manager.setForeground(false);
+        expect(timers.last.isActive, isFalse);
+        final calls = transport.calls;
+        manager.setForeground(true);
+        await Future<void>.delayed(Duration.zero);
+        await Future<void>.delayed(Duration.zero);
+        expect(transport.calls, calls + 1);
+      },
+    );
 
     test('single-flights concurrent triggers', () async {
       final completer = Completer<MoySkladHttpResponse>();
