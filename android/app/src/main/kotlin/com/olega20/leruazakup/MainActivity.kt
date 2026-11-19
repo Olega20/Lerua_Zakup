@@ -7,20 +7,43 @@ import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
 import android.media.RingtoneManager
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.os.StatFs
+import java.io.File
 import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.EventChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "lerua_zakup/notifications"
+    private val platformChannelName = "lerua_zakup/platform"
+    private val connectivityChannelName = "lerua_zakup/connectivity"
     private val permissionRequestCode = 4107
     private var permissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, platformChannelName)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getAvailableStorageBytes" -> {
+                        try {
+                            result.success(StatFs(filesDir.absolutePath).availableBytes)
+                        } catch (error: Exception) {
+                            result.error("storage_unavailable", error.message, null)
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        EventChannel(flutterEngine.dartExecutor.binaryMessenger, connectivityChannelName)
+            .setStreamHandler(ConnectivityStreamHandler())
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
             .setMethodCallHandler { call, result ->
                 when (call.method) {
@@ -32,6 +55,57 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+    }
+
+    private inner class ConnectivityStreamHandler : EventChannel.StreamHandler {
+        private var callback: ConnectivityManager.NetworkCallback? = null
+        private var sink: EventChannel.EventSink? = null
+
+        override fun onListen(arguments: Any?, events: EventChannel.EventSink) {
+            onCancel(null)
+            sink = events
+            val manager = getSystemService(ConnectivityManager::class.java)
+            val networkCallback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) = emitCurrentStatus(manager)
+                override fun onLost(network: Network) = emitCurrentStatus(manager)
+                override fun onCapabilitiesChanged(
+                    network: Network,
+                    capabilities: NetworkCapabilities
+                ) = emitCurrentStatus(manager)
+            }
+            callback = networkCallback
+            try {
+                manager.registerDefaultNetworkCallback(networkCallback)
+                emitCurrentStatus(manager)
+            } catch (error: Exception) {
+                events.error("connectivity_unavailable", error.message, null)
+            }
+        }
+
+        private fun emitCurrentStatus(manager: ConnectivityManager) {
+            val network = manager.activeNetwork
+            val capabilities = network?.let { manager.getNetworkCapabilities(it) }
+            val hasValidatedInternet = capabilities?.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_INTERNET
+            ) == true && capabilities.hasCapability(
+                NetworkCapabilities.NET_CAPABILITY_VALIDATED
+            )
+            runOnUiThread { sink?.success(hasValidatedInternet) }
+        }
+
+        override fun onCancel(arguments: Any?) {
+            val current = callback
+            if (current != null) {
+                val manager = getSystemService(ConnectivityManager::class.java)
+                try {
+                    manager.unregisterNetworkCallback(current)
+                } catch (_: Exception) {
+                    // The callback may already have been unregistered by Android.
+                }
+            }
+            callback = null
+            sink = null
+        }
     }
 
     private fun createNotificationChannels() {
