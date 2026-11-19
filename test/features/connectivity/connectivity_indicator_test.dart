@@ -30,40 +30,43 @@ void main() {
     );
   });
 
-  testWidgets('uses yellow while checking and immediately changes to red offline', (
-    tester,
-  ) async {
-    final statuses = StreamController<ApiConnectionState>.broadcast();
-    addTearDown(statuses.close);
+  testWidgets(
+    'uses yellow while checking and immediately changes to red offline',
+    (tester) async {
+      final statuses = StreamController<ApiConnectionState>.broadcast();
+      addTearDown(statuses.close);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(body: ConnectivityIndicator(statuses: statuses.stream)),
-      ),
-    );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ConnectivityIndicator(statuses: statuses.stream),
+          ),
+        ),
+      );
 
-    statuses.add(ApiConnectionState.unavailable);
-    await tester.pump();
-    expect(
-      tester
-          .widget<Container>(
-            find.byKey(const ValueKey('connectivity-indicator')),
-          )
-          .color,
-      Colors.amber,
-    );
+      statuses.add(ApiConnectionState.unavailable);
+      await tester.pump();
+      expect(
+        tester
+            .widget<Container>(
+              find.byKey(const ValueKey('connectivity-indicator')),
+            )
+            .color,
+        Colors.amber,
+      );
 
-    statuses.add(ApiConnectionState.offline);
-    await tester.pumpAndSettle();
-    expect(
-      tester
-          .widget<Container>(
-            find.byKey(const ValueKey('connectivity-indicator')),
-          )
-          .color,
-      Colors.red,
-    );
-  });
+      statuses.add(ApiConnectionState.offline);
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<Container>(
+              find.byKey(const ValueKey('connectivity-indicator')),
+            )
+            .color,
+        Colors.red,
+      );
+    },
+  );
 
   testWidgets('shows green only after successful API confirmation', (
     tester,
@@ -86,7 +89,11 @@ void main() {
     statuses.add(ApiConnectionState.connected);
     await tester.pump();
     expect(
-      tester.widget<Container>(find.byKey(const ValueKey('connectivity-indicator'))).color,
+      tester
+          .widget<Container>(
+            find.byKey(const ValueKey('connectivity-indicator')),
+          )
+          .color,
       Colors.green,
     );
   });
