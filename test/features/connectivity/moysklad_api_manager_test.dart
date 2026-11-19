@@ -54,15 +54,16 @@ void main() {
     late FakeMoySkladTransport transport;
     late List<FakePeriodicTimer> timers;
     late MoySkladApiManager manager;
+    late DateTime now;
 
     setUp(() {
+      now = DateTime(2026, 11, 19);
       internet = StreamController<bool>.broadcast();
       tokenStore = FakeSecureTokenStore()..token = 'token';
       transport = FakeMoySkladTransport(
         () async => const MoySkladHttpResponse(statusCode: 200, body: '{}'),
       );
       timers = [];
-      var now = DateTime(2026, 11, 19);
       manager = MoySkladApiManager(
         tokenStore: tokenStore,
         apiClient: MoySkladApiClient(transport: transport),
@@ -108,6 +109,7 @@ void main() {
         tokenStore: tokenStore,
         apiClient: MoySkladApiClient(transport: transport),
         internet: internet.stream,
+        clock: () => now,
         periodicTimer: (duration, callback) {
           final timer = FakePeriodicTimer(callback);
           timers.add(timer);
