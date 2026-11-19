@@ -196,7 +196,6 @@ void main() {
       expect(transport.calls, 2);
     });
 
-
     test('records safe connection events without exposing the token', () async {
       final events = <WarehouseLogEntry>[];
       final eventManager = MoySkladApiManager(
