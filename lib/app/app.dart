@@ -228,7 +228,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         if (mounted) setState(() => _themeMode = mode);
       },
       onTokenSaved: () {
-        // Connectivity/API checking is connected in Task 7.
+        // API reachability checks are intentionally excluded from this offline release.
       },
       child: Listener(
         behavior: HitTestBehavior.translucent,

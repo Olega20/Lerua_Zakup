@@ -10,9 +10,8 @@ import android.media.RingtoneManager
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import android.os.StatFs
-import java.io.File
 import android.os.Build
+import android.os.StatFs
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -85,11 +84,9 @@ class MainActivity : FlutterActivity() {
         private fun emitCurrentStatus(manager: ConnectivityManager) {
             val network = manager.activeNetwork
             val capabilities = network?.let { manager.getNetworkCapabilities(it) }
-            val hasValidatedInternet = capabilities?.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_INTERNET
-            ) == true && capabilities.hasCapability(
-                NetworkCapabilities.NET_CAPABILITY_VALIDATED
-            )
+            val hasValidatedInternet = capabilities != null &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             runOnUiThread { sink?.success(hasValidatedInternet) }
         }
 
