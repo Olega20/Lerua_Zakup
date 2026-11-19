@@ -5,17 +5,21 @@ Application ID: `com.olega20.leruazakup`
 
 ## Automated verification
 
-- [x] Full Flutter unit/widget suite: 92 tests passed after Task 7.
+- [x] Full Flutter unit/widget suite: 94 tests passed after Task 8 host smoke coverage.
 - [x] Dart formatting check: no files changed.
 - [x] `flutter analyze`: no issues found.
 - [x] Android debug APK build completed successfully after Task 7.
-- [ ] Final full-suite run after Task 8 integration smoke test.
-- [ ] Final release APK build and artifact inspection.
+- [x] Final full-suite run after Task 8 host smoke test: 94 tests passed.
+- [x] Debug APK built (211,946,468 bytes).
+- [x] Release APK built (50,389,444 bytes; 48.1 MiB).
+- [x] Release package verified: `com.olega20.leruazakup`, version `1.0.0` / code `1`.
+- [x] APK v2 signature verified; signer is Android Debug certificate (not a production signing key).
+- [x] Release SHA-256: `2728D593B253FF94DF598016F44C20FCE74D37A396BF003B87EADDF0BC4110E1`.
 - [ ] GitHub Release publication.
 
 ## Device verification — intentionally deferred
 
-The user requested that all physical-device checks be performed after the complete offline scaffold is assembled. No Android device was connected during the current automated verification.
+The user requested that all physical-device checks be performed after the complete offline scaffold is assembled. No Android device or emulator was available during the current automated verification. The user asked to defer physical-device checks until the complete offline scaffold is assembled.
 
 - [ ] Fresh install and first launch.
 - [ ] Notification permission grant and denial behavior.

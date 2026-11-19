@@ -298,10 +298,10 @@ Expected: all tests pass; code inspection confirms no MySklad HTTP requests or A
 **Interfaces:**
 - Integrates all completed modules through the app composition root; no feature module reaches into another feature's private implementation.
 
-- [ ] **Step 1: Write end-to-end smoke tests** for fresh launch to Home, navigation to Settings and back, calendar open/select/back, theme persistence, placeholder Snackbars, and connectivity strip.
-- [ ] **Step 2: Run the integration tests** and record any failures before changes.
-- [ ] **Step 3: Fix only integration defects** while preserving approved requirements; add regression tests for each fix.
-- [ ] **Step 4: Run full quality checks**
+- [x] **Step 1: Write end-to-end smoke tests** for fresh launch to Home, navigation to Settings and back, calendar open/select/back, theme persistence, placeholder Snackbars, and connectivity strip.
+- [x] **Step 2: Run the integration tests** and record any failures before changes. The host smoke test passed; `flutter test integration_test` was attempted but the environment has no connected Android device or installed emulator, so Android-run integration execution is deferred.
+- [x] **Step 3: Fix only integration defects** while preserving approved requirements; add regression tests for each fix.
+- [x] **Step 4: Run full quality checks**
 ```powershell
 flutter analyze
 flutter test
@@ -311,10 +311,12 @@ flutter build apk --release
 ```
 Expected: analyzer has no errors, all tests pass, and both APK builds succeed. Any warnings or unsupported integration-test environment limitations must be reported, not hidden.
 - [ ] **Step 5: Verify on the target Android device when available**: fresh install, permission grant/denial, theme changes, secure token save/delete/reset, calendar navigation, system date/time changes, offline/online transition, app update preserving settings, and uninstall removing app data.
-- [ ] **Step 6: Record actual test/build/device results** in the release checklist; do not claim unperformed checks.
-- [ ] **Step 7: Commit** `test: verify offline startup release behavior`.
-- [ ] **Step 8: Build the final release APK locally only after clean analysis and passing tests; verify the APK file and version metadata.**
+- [x] **Step 6: Record actual test/build/device results** in the release checklist; do not claim unperformed checks.
+- [x] **Step 7: Commit** `test: verify offline startup release behavior`.
+- [x] **Step 8: Build the final release APK locally only after clean analysis and passing tests; verify the APK file and version metadata.** Release APK built (48.1 MiB), package ID/version verified, APK v2 signature verified. The release is signed with the generated Android debug keystore because a production signing key has not been configured; suitable for internal installation/testing, not Play Store publication.
 - [ ] **Step 9: Publish the APK as a GitHub Release asset** in `Olega20/Lerua_Zakup` and provide the direct GitHub download link to the user.
+
+**Task 8 verification note:** Full host test suite: 94 tests passed. `flutter analyze`: no issues. Formatting check passed. Debug and release APK builds succeeded. `flutter test integration_test` could not run because no supported Android device is connected and no Android emulator is installed. Step 5 physical-device checks remain intentionally deferred at the user's request.
 
 ---
 
