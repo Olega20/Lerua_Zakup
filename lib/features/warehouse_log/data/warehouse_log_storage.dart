@@ -1,6 +1,6 @@
-import 'package:path/path.dart' as p;
 import 'package:sqflite/sqflite.dart' as sqflite;
 
+import '../../../core/storage/app_database.dart';
 import '../domain/warehouse_log_entry.dart';
 
 abstract interface class WarehouseLogStorage {
@@ -10,51 +10,23 @@ abstract interface class WarehouseLogStorage {
 }
 
 class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
-  SqfliteWarehouseLogStorage({this.databaseFactory, this.databasePath});
+  SqfliteWarehouseLogStorage({
+    this.databaseFactory,
+    this.databasePath,
+    AppDatabase? appDatabase,
+  }) : _appDatabase = appDatabase ??
+            AppDatabase(databaseFactory: databaseFactory, databasePath: databasePath);
 
   final sqflite.DatabaseFactory? databaseFactory;
   final String? databasePath;
-
-  sqflite.DatabaseFactory get _factory =>
-      databaseFactory ?? sqflite.databaseFactory;
-  Future<sqflite.Database>? _database;
-
-  Future<sqflite.Database> get _db => _database ??= _open();
-
-  Future<sqflite.Database> _open() async {
-    final path =
-        databasePath ??
-        p.join(await _factory.getDatabasesPath(), 'warehouse_log.db');
-    return _factory.openDatabase(
-      path,
-      options: sqflite.OpenDatabaseOptions(
-        version: 1,
-        onCreate: (database, version) async {
-          await database.execute('''
-            CREATE TABLE warehouse_log (
-              id INTEGER PRIMARY KEY AUTOINCREMENT,
-              timestamp INTEGER NOT NULL,
-              level TEXT NOT NULL,
-              event_type TEXT NOT NULL,
-              description TEXT NOT NULL,
-              http_status_code INTEGER,
-              api_error_code TEXT
-            )
-          ''');
-          await database.execute(
-            'CREATE INDEX warehouse_log_timestamp_idx '
-            'ON warehouse_log(timestamp DESC, id DESC)',
-          );
-        },
-      ),
-    );
-  }
+  final AppDatabase _appDatabase;
+  Future<sqflite.Database> get _db => _appDatabase.database;
 
   @override
   Future<void> insert(WarehouseLogEntry entry, {required int limit}) async {
-    final database = await _db;
-    await database.transaction((transaction) async {
-      await transaction.insert('warehouse_log', {
+    final db = await _db;
+    await db.transaction((txn) async {
+      await txn.insert('warehouse_log', {
         'timestamp': entry.timestamp.millisecondsSinceEpoch,
         'level': entry.level.name,
         'event_type': entry.type.name,
@@ -62,7 +34,7 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
         'http_status_code': entry.httpStatusCode,
         'api_error_code': _safeApiCode(entry.apiErrorCode),
       });
-      await transaction.rawDelete(
+      await txn.rawDelete(
         'DELETE FROM warehouse_log WHERE id NOT IN '
         '(SELECT id FROM warehouse_log ORDER BY id DESC LIMIT ?)',
         [limit],
@@ -72,8 +44,8 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
 
   @override
   Future<List<WarehouseLogEntry>> latest({required int limit}) async {
-    final database = await _db;
-    final rows = await database.query(
+    final db = await _db;
+    final rows = await db.query(
       'warehouse_log',
       orderBy: 'timestamp DESC, id DESC',
       limit: limit,
@@ -83,27 +55,21 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
 
   @override
   Future<void> clear() async {
-    final database = await _db;
-    await database.delete('warehouse_log');
+    final db = await _db;
+    await db.delete('warehouse_log');
   }
 
-  Future<void> close() async {
-    final databaseFuture = _database;
-    _database = null;
-    if (databaseFuture != null) {
-      await (await databaseFuture).close();
-    }
-  }
+  Future<void> close() => _appDatabase.close();
 
   WarehouseLogEntry _fromRow(Map<String, Object?> row) => WarehouseLogEntry(
-    id: row['id'] as int,
-    timestamp: DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int),
-    level: WarehouseLogLevel.values.byName(row['level'] as String),
-    type: WarehouseLogEventType.values.byName(row['event_type'] as String),
-    description: row['description'] as String,
-    httpStatusCode: row['http_status_code'] as int?,
-    apiErrorCode: row['api_error_code'] as String?,
-  );
+        id: row['id'] as int,
+        timestamp: DateTime.fromMillisecondsSinceEpoch(row['timestamp'] as int),
+        level: WarehouseLogLevel.values.byName(row['level'] as String),
+        type: WarehouseLogEventType.values.byName(row['event_type'] as String),
+        description: row['description'] as String,
+        httpStatusCode: row['http_status_code'] as int?,
+        apiErrorCode: row['api_error_code'] as String?,
+      );
 
   String? _safeApiCode(String? value) {
     if (value == null || value.isEmpty) return null;
