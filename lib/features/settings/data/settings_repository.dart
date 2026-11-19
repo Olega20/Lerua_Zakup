@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_theme.dart';
 import '../../../core/storage/preferences_store.dart';
 import '../../../core/storage/secure_token_store.dart';
 
@@ -23,6 +24,18 @@ class SettingsRepository {
   }
 
   Future<void> saveTheme(ThemeMode mode) => _preferencesStore.writeTheme(mode);
+
+  Future<Color> loadSeedColor() async {
+    try {
+      final argb = await _preferencesStore.readSeedColor();
+      return argb == null ? AppTheme.defaultSeedColor : Color(argb);
+    } catch (_) {
+      return AppTheme.defaultSeedColor;
+    }
+  }
+
+  Future<void> saveSeedColor(Color color) =>
+      _preferencesStore.writeSeedColor(color.toARGB32());
 
   Future<String?> loadToken() async {
     try {

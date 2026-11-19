@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class _SmokePreferencesStore implements PreferencesStore {
   ThemeMode? theme;
+  int? seedColor;
 
   @override
   Future<ThemeMode?> readTheme() async => theme;
@@ -16,7 +17,16 @@ class _SmokePreferencesStore implements PreferencesStore {
   Future<void> writeTheme(ThemeMode mode) async => theme = mode;
 
   @override
-  Future<void> clearUserPreferences() async => theme = null;
+  Future<int?> readSeedColor() async => seedColor;
+
+  @override
+  Future<void> writeSeedColor(int argb) async => seedColor = argb;
+
+  @override
+  Future<void> clearUserPreferences() async {
+    theme = null;
+    seedColor = null;
+  }
 }
 
 class _SmokeSecureTokenStore implements SecureTokenStore {

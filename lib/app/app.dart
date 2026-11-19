@@ -61,6 +61,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       );
 
   ThemeMode _themeMode = ThemeMode.light;
+  Color _seedColor = AppTheme.defaultSeedColor;
   String _appVersion = '1.0.0+1';
 
   @override
@@ -72,7 +73,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       if (mounted) _checkStorageCapacity();
     });
     _initializeNotifications();
-    _restoreTheme();
+    _restoreSettings();
     if (widget.appVersionOverride != null) {
       _appVersion = widget.appVersionOverride!;
     } else {
@@ -156,10 +157,14 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     super.dispose();
   }
 
-  Future<void> _restoreTheme() async {
+  Future<void> _restoreSettings() async {
     final mode = await _settingsRepository.loadTheme();
+    final seedColor = await _settingsRepository.loadSeedColor();
     if (mounted) {
-      setState(() => _themeMode = mode);
+      setState(() {
+        _themeMode = mode;
+        _seedColor = seedColor;
+      });
     }
   }
 
@@ -194,6 +199,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         repository: dependencies.repository,
         appVersion: dependencies.appVersion,
         onThemeChanged: dependencies.onThemeChanged,
+        onSeedColorChanged: dependencies.onSeedColorChanged,
         onTokenSaved: dependencies.onTokenSaved,
       ),
     );
@@ -204,8 +210,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     title: 'Lerua Zakup',
     restorationScopeId: 'lerua_zakup_app',
     debugShowCheckedModeBanner: false,
-    theme: AppTheme.light,
-    darkTheme: AppTheme.dark,
+    theme: AppTheme.light(seedColor: _seedColor),
+    darkTheme: AppTheme.dark(seedColor: _seedColor),
     themeMode: _themeMode,
     navigatorKey: _router.navigatorKey,
     scaffoldMessengerKey: _snackbarService.messengerKey,
@@ -233,6 +239,9 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       onThemeChanged: (mode) {
         if (mounted) setState(() => _themeMode = mode);
       },
+      onSeedColorChanged: (color) {
+        if (mounted) setState(() => _seedColor = color);
+      },
       onTokenSaved: () {
         // API reachability checks are intentionally excluded from this offline release.
       },
@@ -250,6 +259,7 @@ class _AppDependencies extends InheritedWidget {
     required this.repository,
     required this.appVersion,
     required this.onThemeChanged,
+    required this.onSeedColorChanged,
     required this.onTokenSaved,
     required super.child,
   });
@@ -257,6 +267,7 @@ class _AppDependencies extends InheritedWidget {
   final SettingsRepository repository;
   final String appVersion;
   final ValueChanged<ThemeMode> onThemeChanged;
+  final ValueChanged<Color> onSeedColorChanged;
   final VoidCallback onTokenSaved;
 
   static _AppDependencies of(BuildContext context) {

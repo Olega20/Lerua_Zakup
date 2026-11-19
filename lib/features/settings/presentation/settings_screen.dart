@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../app/app_theme.dart';
 import '../../../core/feedback/snackbar_service.dart';
 import '../data/settings_repository.dart';
+import 'color_picker_dialog.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -9,12 +11,14 @@ class SettingsScreen extends StatefulWidget {
     required this.repository,
     required this.appVersion,
     required this.onThemeChanged,
+    this.onSeedColorChanged,
     this.onTokenSaved,
   });
 
   final SettingsRepository repository;
   final String appVersion;
   final ValueChanged<ThemeMode> onThemeChanged;
+  final ValueChanged<Color>? onSeedColorChanged;
   final VoidCallback? onTokenSaved;
 
   @override
@@ -25,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _tokenController = TextEditingController();
   final SnackbarService _snackbar = SnackbarService();
   ThemeMode _themeMode = ThemeMode.light;
+  Color _seedColor = AppTheme.defaultSeedColor;
   bool _hasToken = false;
   bool _loading = true;
   bool _saving = false;
@@ -39,9 +44,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _load() async {
     final theme = await widget.repository.loadTheme();
     final token = await widget.repository.loadToken();
+    final seedColor = await widget.repository.loadSeedColor();
     if (!mounted) return;
     setState(() {
       _themeMode = theme;
+      _seedColor = seedColor;
       _hasToken = token != null && token.isNotEmpty;
       if (_hasToken) _tokenController.text = '••••••••';
       _loading = false;
@@ -74,6 +81,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
       ),
     );
+  }
+
+  Future<void> _pickSeedColor() async {
+    final initialColor = _seedColor;
+    final selectedColor = await showDialog<Color>(
+      context: context,
+      builder: (dialogContext) => ColorPickerDialog(
+        initialColor: initialColor,
+        onPreviewChanged: (color) {
+          if (!mounted) return;
+          setState(() => _seedColor = color);
+          widget.onSeedColorChanged?.call(color);
+        },
+      ),
+    );
+    if (!mounted) return;
+    if (selectedColor == null) {
+      setState(() => _seedColor = initialColor);
+      widget.onSeedColorChanged?.call(initialColor);
+      return;
+    }
+    try {
+      await widget.repository.saveSeedColor(selectedColor);
+      if (!mounted) return;
+      setState(() => _seedColor = selectedColor);
+      widget.onSeedColorChanged?.call(selectedColor);
+    } catch (_) {
+      setState(() => _seedColor = initialColor);
+      widget.onSeedColorChanged?.call(initialColor);
+      _message('Не удалось сохранить основной цвет');
+    }
   }
 
   Future<void> _changeTheme(ThemeMode mode) async {
@@ -164,7 +202,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _resetSettings() async {
     final confirmed = await _confirm(
       'Сбросить настройки?',
-      'Тема оформления и другие пользовательские настройки будут сброшены.',
+      'Тема оформления, основной цвет и другие пользовательские настройки будут сброшены.',
       confirmLabel: 'Сбросить',
     );
     if (!confirmed || !mounted) return;
@@ -185,6 +223,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
       setState(() {
         _themeMode = ThemeMode.light;
+        _seedColor = AppTheme.defaultSeedColor;
         if (deleteToken) {
           _hasToken = false;
           _tokenController.clear();
@@ -194,6 +233,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _tokenDirty = false;
       });
       widget.onThemeChanged(ThemeMode.light);
+      widget.onSeedColorChanged?.call(AppTheme.defaultSeedColor);
       _message('Настройки сброшены');
     } catch (_) {
       _message('Не удалось сбросить настройки');
@@ -243,7 +283,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _themeButton(ThemeMode.system, 'Системная'),
                     ],
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 20),
+                  ListTile(
+                    key: const ValueKey('primary-color-setting'),
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Основной цвет'),
+                    subtitle: Text(
+                      '#'+_seedColor.toARGB32().toRadixString(16).substring(2).toUpperCase(),
+                    ),
+                    trailing: Container(
+                      width: 30,
+                      height: 30,
+                      decoration: BoxDecoration(
+                        color: _seedColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outline,
+                        ),
+                      ),
+                    ),
+                    onTap: _pickSeedColor,
+                  ),
+                  const SizedBox(height: 20),
                   Text(
                     'API-токен',
                     style: Theme.of(context).textTheme.titleMedium,

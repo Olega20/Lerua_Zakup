@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lerua_zakup/app/app_theme.dart';
 import 'package:lerua_zakup/core/storage/preferences_store.dart';
 import 'package:lerua_zakup/core/storage/secure_token_store.dart';
 import 'package:lerua_zakup/features/settings/data/settings_repository.dart';
@@ -7,6 +8,7 @@ import 'package:lerua_zakup/features/settings/presentation/settings_screen.dart'
 
 class TestPreferencesStore implements PreferencesStore {
   ThemeMode? theme;
+  int? seedColor;
   bool failWrite = false;
 
   @override
@@ -19,7 +21,16 @@ class TestPreferencesStore implements PreferencesStore {
   }
 
   @override
-  Future<void> clearUserPreferences() async => theme = null;
+  Future<int?> readSeedColor() async => seedColor;
+
+  @override
+  Future<void> writeSeedColor(int argb) async => seedColor = argb;
+
+  @override
+  Future<void> clearUserPreferences() async {
+    theme = null;
+    seedColor = null;
+  }
 }
 
 class TestSecureStore implements SecureTokenStore {
@@ -60,6 +71,7 @@ void main() {
       repository: repository,
       appVersion: '1.0.0+1',
       onThemeChanged: themeChanges.add,
+      onSeedColorChanged: (_) {},
     ),
   );
 
@@ -76,6 +88,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(preferences.theme, ThemeMode.dark);
     expect(themeChanges, [ThemeMode.dark]);
+  });
+
+  testWidgets('opens the HSV color selector and persists the confirmed color', (tester) async {
+    final colorChanges = <Color>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SettingsScreen(
+          repository: repository,
+          appVersion: '1.0.0+1',
+          onThemeChanged: themeChanges.add,
+          onSeedColorChanged: colorChanges.add,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('primary-color-setting')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('hue-wheel')), findsOneWidget);
+    expect(find.byKey(const ValueKey('saturation-value-picker')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('apply-primary-color')));
+    await tester.pumpAndSettle();
+    expect(preferences.seedColor, AppTheme.defaultSeedColor.toARGB32());
+    expect(colorChanges, isNotEmpty);
   });
 
   testWidgets('token input is always obscured and has no reveal control', (

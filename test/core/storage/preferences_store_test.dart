@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class FakePreferencesStore implements PreferencesStore {
   ThemeMode? storedTheme;
+  int? storedSeedColor;
   bool shouldThrow = false;
   bool cleared = false;
 
@@ -21,9 +22,16 @@ class FakePreferencesStore implements PreferencesStore {
   }
 
   @override
+  Future<int?> readSeedColor() async => storedSeedColor;
+
+  @override
+  Future<void> writeSeedColor(int argb) async => storedSeedColor = argb;
+
+  @override
   Future<void> clearUserPreferences() async {
     if (shouldThrow) throw StateError('clear failed');
     storedTheme = null;
+    storedSeedColor = null;
     cleared = true;
   }
 }
@@ -42,6 +50,12 @@ void main() {
     }
   });
 
+  test('persists the selected seed color', () async {
+    final store = FakePreferencesStore();
+    await store.writeSeedColor(0xFF008577);
+    expect(await store.readSeedColor(), 0xFF008577);
+  });
+
   test('clears user preferences on reset', () async {
     final store = FakePreferencesStore()..storedTheme = ThemeMode.dark;
     await store.clearUserPreferences();
@@ -54,6 +68,7 @@ void main() {
     () async {
       SharedPreferences.setMockInitialValues({
         'theme_mode': 'dark',
+        'seed_color': 0xFF008577,
         'notification_permission_requested': true,
         'low_storage_warning_last_shown': 123456,
       });
@@ -63,6 +78,7 @@ void main() {
 
       final preferences = await SharedPreferences.getInstance();
       expect(preferences.getString('theme_mode'), isNull);
+      expect(preferences.getInt('seed_color'), isNull);
       expect(preferences.getBool('notification_permission_requested'), isTrue);
       expect(preferences.getInt('low_storage_warning_last_shown'), 123456);
     },

@@ -6,6 +6,7 @@ import 'package:lerua_zakup/features/settings/data/settings_repository.dart';
 
 class MemoryPreferencesStore implements PreferencesStore {
   ThemeMode? theme;
+  int? seedColor;
   bool failRead = false;
   bool failWrite = false;
   bool failClear = false;
@@ -23,9 +24,16 @@ class MemoryPreferencesStore implements PreferencesStore {
   }
 
   @override
+  Future<int?> readSeedColor() async => seedColor;
+
+  @override
+  Future<void> writeSeedColor(int argb) async => seedColor = argb;
+
+  @override
   Future<void> clearUserPreferences() async {
     if (failClear) throw StateError('preferences clear failed');
     theme = null;
+    seedColor = null;
   }
 }
 
@@ -74,6 +82,16 @@ void main() {
     expect(await repository.loadTheme(), ThemeMode.system);
   });
 
+  test('persists and loads a custom seed color', () async {
+    const color = Color(0xFF008577);
+    await repository.saveSeedColor(color);
+    expect(await repository.loadSeedColor(), color);
+  });
+
+  test('falls back to green when seed color is missing', () async {
+    expect(await repository.loadSeedColor(), const Color(0xFF2E7D32));
+  });
+
   test('persists theme selection', () async {
     await repository.saveTheme(ThemeMode.dark);
     expect(preferences.theme, ThemeMode.dark);
@@ -114,9 +132,11 @@ void main() {
     'reset preserves token unless its separate confirmation was given',
     () async {
       preferences.theme = ThemeMode.dark;
+      preferences.seedColor = 0xFF008577;
       secure.token = 'keep-me';
       await repository.resetSettings(confirmTokenDeletion: false);
       expect(preferences.theme, isNull);
+      expect(preferences.seedColor, isNull);
       expect(secure.token, 'keep-me');
     },
   );
