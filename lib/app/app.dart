@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/feedback/snackbar_service.dart';
@@ -18,10 +19,12 @@ class LeruaZakupApp extends StatefulWidget {
     super.key,
     this.settingsRepository,
     this.appVersionOverride,
+    this.onExitRequested,
   });
 
   final SettingsRepository? settingsRepository;
   final String? appVersionOverride;
+  final VoidCallback? onExitRequested;
 
   @override
   State<LeruaZakupApp> createState() => _LeruaZakupAppState();
@@ -30,6 +33,7 @@ class LeruaZakupApp extends StatefulWidget {
 class _LeruaZakupAppState extends State<LeruaZakupApp> {
   final AppRouter _router = AppRouter();
   final SnackbarService _snackbarService = SnackbarService();
+  final HomeBackController _homeBackController = HomeBackController();
   late final AppLifecycleController _lifecycle = AppLifecycleController(
     systemUi: FlutterSystemUiController(),
   );
@@ -54,6 +58,49 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
     } else {
       _loadVersion();
     }
+  }
+
+  void _exitApp() {
+    final callback = widget.onExitRequested;
+    if (callback != null) {
+      callback();
+    } else {
+      SystemNavigator.pop();
+    }
+  }
+
+  Future<void> _handleHomeBack(BuildContext context) async {
+    final action = _homeBackController.handleBack(DateTime.now());
+    if (action == HomeBackAction.exit) {
+      _exitApp();
+      return;
+    }
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _exitApp();
+        },
+        child: AlertDialog(
+          title: const Text('Выйти?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Отмена'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(dialogContext);
+                _exitApp();
+              },
+              child: const Text('Выйти'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _initializeNotifications() async {
@@ -126,13 +173,19 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
     themeMode: _themeMode,
     navigatorKey: _router.navigatorKey,
     home: Builder(
-      builder: (context) => Scaffold(
-        body: HomeScreen(
-          now: DateTime.now(),
-          onOpenCalendar: () => _openCalendar(context),
-          onOpenSettings: () => _openSettings(context),
-          onShowPlaceholder: (message) =>
-              _snackbarService.show(context, message),
+      builder: (context) => PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (!didPop) _handleHomeBack(context);
+        },
+        child: Scaffold(
+          body: HomeScreen(
+            now: DateTime.now(),
+            onOpenCalendar: () => _openCalendar(context),
+            onOpenSettings: () => _openSettings(context),
+            onShowPlaceholder: (message) =>
+                _snackbarService.show(context, message),
+          ),
         ),
       ),
     ),

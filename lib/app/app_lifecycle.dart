@@ -59,3 +59,23 @@ class AppLifecycleController with WidgetsBindingObserver {
     }
   }
 }
+
+
+enum HomeBackAction { showExitConfirmation, exit }
+
+class HomeBackController {
+  DateTime? _firstBackAt;
+  static const repeatWindow = Duration(seconds: 2);
+
+  HomeBackAction handleBack(DateTime now) {
+    final firstBackAt = _firstBackAt;
+    if (firstBackAt != null &&
+        !now.isBefore(firstBackAt) &&
+        now.difference(firstBackAt) <= repeatWindow) {
+      _firstBackAt = null;
+      return HomeBackAction.exit;
+    }
+    _firstBackAt = now;
+    return HomeBackAction.showExitConfirmation;
+  }
+}
