@@ -10,10 +10,7 @@ abstract interface class WarehouseLogStorage {
 }
 
 class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
-  SqfliteWarehouseLogStorage({
-    this.databaseFactory,
-    this.databasePath,
-  });
+  SqfliteWarehouseLogStorage({this.databaseFactory, this.databasePath});
 
   final sqflite.DatabaseFactory? databaseFactory;
   final String? databasePath;
