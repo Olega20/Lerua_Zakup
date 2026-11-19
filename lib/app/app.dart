@@ -99,17 +99,12 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
     Navigator.restorablePush<void>(context, _settingsRoute);
   }
 
-  static Route<void> _calendarRoute(
-    BuildContext context,
-    Object? arguments,
-  ) => MaterialPageRoute<void>(
-    builder: (_) => FullCalendarScreen(now: DateTime.now()),
-  );
+  static Route<void> _calendarRoute(BuildContext context, Object? arguments) =>
+      MaterialPageRoute<void>(
+        builder: (_) => FullCalendarScreen(now: DateTime.now()),
+      );
 
-  static Route<void> _settingsRoute(
-    BuildContext context,
-    Object? arguments,
-  ) {
+  static Route<void> _settingsRoute(BuildContext context, Object? arguments) {
     final dependencies = _AppDependencies.of(context);
     return MaterialPageRoute<void>(
       builder: (_) => SettingsScreen(
@@ -174,8 +169,8 @@ class _AppDependencies extends InheritedWidget {
   final VoidCallback onTokenSaved;
 
   static _AppDependencies of(BuildContext context) {
-    final dependencies =
-        context.dependOnInheritedWidgetOfExactType<_AppDependencies>();
+    final dependencies = context
+        .dependOnInheritedWidgetOfExactType<_AppDependencies>();
     assert(dependencies != null, 'App dependencies are unavailable');
     return dependencies!;
   }
