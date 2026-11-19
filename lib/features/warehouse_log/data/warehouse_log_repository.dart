@@ -30,8 +30,7 @@ class WarehouseLogRepository {
     limit: maxEntries,
   );
 
-  Future<List<WarehouseLogEntry>> latest() =>
-      storage.latest(limit: maxEntries);
+  Future<List<WarehouseLogEntry>> latest() => storage.latest(limit: maxEntries);
 
   Future<void> clear() => storage.clear();
 
