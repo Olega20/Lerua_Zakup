@@ -15,7 +15,8 @@ Application ID: `com.olega20.leruazakup`
 - [x] Release package verified: `com.olega20.leruazakup`, version `1.0.0` / code `1`.
 - [x] APK v2 signature verified; signer is Android Debug certificate (not a production signing key).
 - [x] Release SHA-256: `2728D593B253FF94DF598016F44C20FCE74D37A396BF003B87EADDF0BC4110E1`.
-- [ ] GitHub Release publication.
+- [x] GitHub Release published: [v1.0.0-offline](https://github.com/Olega20/Lerua_Zakup/releases/tag/v1.0.0-offline).
+- [x] APK asset uploaded and verified: [app-release.apk](https://github.com/Olega20/Lerua_Zakup/releases/download/v1.0.0-offline/app-release.apk).
 
 ## Device verification — intentionally deferred
 

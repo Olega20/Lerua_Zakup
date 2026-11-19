@@ -15,6 +15,12 @@ Lerua Zakup is an Android application built with Flutter. The first offline scaf
 
 The current offline release does **not** send requests to MoySklad. The indicator never turns green until API reachability is implemented and confirmed.
 
+## Download
+
+[Download Lerua Zakup 1.0.0 offline APK](https://github.com/Olega20/Lerua_Zakup/releases/download/v1.0.0-offline/app-release.apk)
+
+This prerelease APK is signed with the Android debug certificate for internal installation and testing. It is not a Play Store production-signed build. Physical-device verification is pending.
+
 ## Requirements
 
 - Flutter 3.47.6 (stable)

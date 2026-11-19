@@ -314,7 +314,7 @@ Expected: analyzer has no errors, all tests pass, and both APK builds succeed. A
 - [x] **Step 6: Record actual test/build/device results** in the release checklist; do not claim unperformed checks.
 - [x] **Step 7: Commit** `test: verify offline startup release behavior`.
 - [x] **Step 8: Build the final release APK locally only after clean analysis and passing tests; verify the APK file and version metadata.** Release APK built (48.1 MiB), package ID/version verified, APK v2 signature verified. The release is signed with the generated Android debug keystore because a production signing key has not been configured; suitable for internal installation/testing, not Play Store publication.
-- [ ] **Step 9: Publish the APK as a GitHub Release asset** in `Olega20/Lerua_Zakup` and provide the direct GitHub download link to the user.
+- [x] **Step 9: Publish the APK as a GitHub Release asset** in `Olega20/Lerua_Zakup` and provide the direct GitHub download link to the user. Published prerelease: https://github.com/Olega20/Lerua_Zakup/releases/tag/v1.0.0-offline. APK: https://github.com/Olega20/Lerua_Zakup/releases/download/v1.0.0-offline/app-release.apk.
 
 **Task 8 verification note:** Full host test suite: 94 tests passed. `flutter analyze`: no issues. Formatting check passed. Debug and release APK builds succeeded. `flutter test integration_test` could not run because no supported Android device is connected and no Android emulator is installed. Step 5 physical-device checks remain intentionally deferred at the user's request.
 
