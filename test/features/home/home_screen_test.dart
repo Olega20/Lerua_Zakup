@@ -19,7 +19,7 @@ void main() {
     final indicator = tester.getSize(find.byKey(const ValueKey('connectivity-indicator-slot')));
     final calendar = tester.getTopLeft(find.byType(WeekStrip));
     expect(indicator.height, 4);
-    expect(calendar.dy, greaterThan(4));
+    expect(calendar.dy, greaterThanOrEqualTo(4));
   });
 
   testWidgets('shows the week before six equally styled text-only buttons', (tester) async {

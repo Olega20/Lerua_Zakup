@@ -37,7 +37,7 @@ void main() {
     expect(find.textContaining('2026'), findsNothing);
     expect(find.text('Нет операций за этот день'), findsOneWidget);
 
-    await tester.pageBack();
+    await tester.tap(find.byTooltip('Назад'));
     await tester.pumpAndSettle();
     expect(find.text('Закупка'), findsOneWidget);
   });
