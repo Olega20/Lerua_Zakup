@@ -58,6 +58,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _snackbar.show(context, message);
   }
 
+  Widget _themeButton(ThemeMode mode, String label) {
+    final selected = _themeMode == mode;
+    return Expanded(
+      child: Padding(
+        padding: const EdgeInsets.only(right: 6),
+        child: selected
+            ? FilledButton(
+                onPressed: () => _changeTheme(mode),
+                child: Text(label),
+              )
+            : OutlinedButton(
+                onPressed: () => _changeTheme(mode),
+                child: Text(label),
+              ),
+      ),
+    );
+  }
+
   Future<void> _changeTheme(ThemeMode mode) async {
     try {
       await widget.repository.saveTheme(mode);
@@ -215,24 +233,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const SizedBox(height: 10),
-                  SegmentedButton<ThemeMode>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ThemeMode.light,
-                        label: Text('Светлая'),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.dark,
-                        label: Text('Тёмная'),
-                      ),
-                      ButtonSegment(
-                        value: ThemeMode.system,
-                        label: Text('Системная'),
-                      ),
+                  Row(
+                    children: [
+                      _themeButton(ThemeMode.light, 'Светлая'),
+                      _themeButton(ThemeMode.dark, 'Тёмная'),
+                      _themeButton(ThemeMode.system, 'Системная'),
                     ],
-                    selected: {_themeMode},
-                    onSelectionChanged: (selection) =>
-                        _changeTheme(selection.first),
                   ),
                   const SizedBox(height: 28),
                   Text(
