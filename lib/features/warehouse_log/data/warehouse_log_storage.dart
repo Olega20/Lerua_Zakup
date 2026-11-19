@@ -30,7 +30,7 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
         'timestamp': entry.timestamp.millisecondsSinceEpoch,
         'level': entry.level.name,
         'event_type': entry.type.name,
-        'description': entry.description,
+        'description': sanitizeDiagnosticText(entry.description),
         'http_status_code': entry.httpStatusCode,
         'api_error_code': _safeApiCode(entry.apiErrorCode),
         'component': entry.component == null ? null : sanitizeDiagnosticText(entry.component!),
