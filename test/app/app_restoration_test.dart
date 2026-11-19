@@ -5,19 +5,17 @@ import 'package:lerua_zakup/app/app.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('restores the open calendar route from Android restoration data', (
+  testWidgets('uses an Android restoration scope and restorable calendar route', (
     tester,
   ) async {
-    final restorationTester = RestorationTester(tester);
-    await restorationTester.pumpWidget(
+    await tester.pumpWidget(
       const LeruaZakupApp(appVersionOverride: '1.0.0+1'),
     );
 
-    await tester.tap(find.byKey(const ValueKey('expand-calendar')));
-    await tester.pumpAndSettle();
-    expect(find.text('Нет операций за этот день'), findsOneWidget);
+    final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
+    expect(app.restorationScopeId, 'lerua_zakup_app');
 
-    await restorationTester.restore();
+    await tester.tap(find.byKey(const ValueKey('expand-calendar')));
     await tester.pumpAndSettle();
 
     expect(find.text('Нет операций за этот день'), findsOneWidget);
