@@ -225,7 +225,7 @@ class MoySkladApiManager {
             ? ApiConnectionState.connected
             : ApiConnectionState.unavailable,
       );
-    } catch (_) {
+    } catch (error) {
       if (_isCurrent(generation)) {
         _lastCheckAt = _clock();
         await _recordFailure(error);
