@@ -33,7 +33,7 @@ void main() {
   testWidgets('uses yellow while checking and immediately changes to red offline', (
     tester,
   ) async {
-    final statuses = StreamController<ConnectivityStatus>.broadcast();
+    final statuses = StreamController<ApiConnectionState>.broadcast();
     addTearDown(statuses.close);
 
     await tester.pumpWidget(
@@ -68,7 +68,7 @@ void main() {
   testWidgets('shows green only after successful API confirmation', (
     tester,
   ) async {
-    final statuses = StreamController<ConnectivityStatus>.broadcast();
+    final statuses = StreamController<ApiConnectionState>.broadcast();
     addTearDown(statuses.close);
 
     await tester.pumpWidget(
@@ -77,7 +77,7 @@ void main() {
       ),
     );
 
-    statuses.add(ConnectivityStatus.online);
+    statuses.add(ApiConnectionState.unavailable);
     await tester.pump();
     final color = tester
         .widget<Container>(find.byKey(const ValueKey('connectivity-indicator')))
