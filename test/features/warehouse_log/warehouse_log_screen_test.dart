@@ -58,7 +58,8 @@ void main() {
     await tester.tap(find.text('Ошибка авторизации'));
     await tester.pumpAndSettle();
 
-    expect(find.text('HTTP: 401', skipOffstage: false), findsOneWidget);
+    final details = tester.widget<SelectableText>(find.byType(SelectableText));
+    expect(details.data, contains('HTTP: 401'));
     expect(find.text('Копировать'), findsOneWidget);
     expect(find.text('Закрыть'), findsOneWidget);
   });
