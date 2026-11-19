@@ -4,6 +4,7 @@ import '../../../core/storage/secure_token_store.dart';
 import '../domain/api_check_result.dart';
 import '../domain/api_connection_state.dart';
 import '../../warehouse_log/domain/warehouse_log_entry.dart';
+import '../../warehouse_log/domain/warehouse_error_classifier.dart';
 import 'moysklad_api_client.dart';
 
 class MoySkladApiManager {
@@ -227,11 +228,7 @@ class MoySkladApiManager {
     } catch (_) {
       if (_isCurrent(generation)) {
         _lastCheckAt = _clock();
-        await _recordEvent(
-          WarehouseLogLevel.error,
-          WarehouseLogEventType.apiUnavailable,
-          'Не удалось выполнить проверку API',
-        );
+        await _recordFailure(error);
         _setState(ApiConnectionState.unavailable);
       }
     }
@@ -281,6 +278,26 @@ class MoySkladApiManager {
       'Не удалось получить успешный ответ API',
     ),
   };
+
+  Future<void> _recordFailure(Object error) async {
+    final sink = onEvent;
+    if (sink == null) return;
+    final diagnostic = const WarehouseErrorClassifier().describe(error);
+    try {
+      await sink(WarehouseLogEntry(
+        timestamp: _clock(),
+        level: WarehouseLogLevel.error,
+        type: diagnostic.type,
+        description: diagnostic.message,
+        component: 'MoySklad API Manager',
+        errorCode: diagnostic.code,
+        recommendedAction: diagnostic.recommendedAction,
+        technicalDetails: diagnostic.technicalDetails,
+      ));
+    } catch (_) {
+      // A failed diagnostic write must not hide the original connectivity error.
+    }
+  }
 
   Future<void> _recordEvent(
     WarehouseLogLevel level,
