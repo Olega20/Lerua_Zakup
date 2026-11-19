@@ -69,7 +69,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     _lifecycle.initialize();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _storageWarningController.check();
+      if (mounted) _checkStorageCapacity();
     });
     _initializeNotifications();
     _restoreTheme();
@@ -83,7 +83,15 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      _storageWarningController.check();
+      _checkStorageCapacity();
+    }
+  }
+
+  Future<void> _checkStorageCapacity() async {
+    try {
+      await _storageWarningController.check();
+    } catch (_) {
+      // Storage warnings are best-effort and must never interrupt app use.
     }
   }
 
