@@ -9,6 +9,8 @@ import '../features/home/presentation/home_screen.dart';
 import '../features/settings/data/settings_repository.dart';
 import '../features/settings/presentation/settings_screen.dart';
 import 'app_router.dart';
+import 'app_lifecycle.dart';
+import '../core/notifications/notification_service.dart';
 import 'app_theme.dart';
 
 class LeruaZakupApp extends StatefulWidget {
@@ -28,6 +30,9 @@ class LeruaZakupApp extends StatefulWidget {
 class _LeruaZakupAppState extends State<LeruaZakupApp> {
   final AppRouter _router = AppRouter();
   final SnackbarService _snackbarService = SnackbarService();
+  late final AppLifecycleController _lifecycle = AppLifecycleController(
+    systemUi: FlutterSystemUiController(),
+  );
   late final SettingsRepository _settingsRepository =
       widget.settingsRepository ??
       SettingsRepository(
@@ -41,12 +46,31 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   @override
   void initState() {
     super.initState();
+    _lifecycle.initialize();
+    _initializeNotifications();
     _restoreTheme();
     if (widget.appVersionOverride != null) {
       _appVersion = widget.appVersionOverride!;
     } else {
       _loadVersion();
     }
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      await NotificationService(
+        platform: MethodChannelNotificationPlatform(),
+        store: SharedPreferencesNotificationPermissionStore(),
+      ).initializeAndRequestPermission();
+    } catch (_) {
+      // Notification permission is optional; app startup must continue.
+    }
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<void> _restoreTheme() async {
@@ -95,6 +119,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   @override
   Widget build(BuildContext context) => MaterialApp(
     title: 'Lerua Zakup',
+    restorationScopeId: 'lerua_zakup_app',
     debugShowCheckedModeBanner: false,
     theme: AppTheme.light,
     darkTheme: AppTheme.dark,
