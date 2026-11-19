@@ -11,6 +11,8 @@ import '../features/calendar/presentation/full_calendar_screen.dart';
 import '../features/home/presentation/home_screen.dart';
 import '../features/settings/data/settings_repository.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/warehouse_log/data/warehouse_log_repository.dart';
+import '../features/warehouse_log/data/warehouse_log_storage.dart';
 import 'app_router.dart';
 import 'app_lifecycle.dart';
 import '../core/notifications/notification_service.dart';
@@ -51,6 +53,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   );
   late final Stream<ApiConnectionState> _connectivityStatuses =
       _apiManager.states;
+  late final WarehouseLogRepository _warehouseLogRepository =
+      WarehouseLogRepository(storage: SqfliteWarehouseLogStorage());
   late final StorageWarningController _storageWarningController =
       StorageWarningController(
         capacityService: StorageCapacityService(),
@@ -214,6 +218,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         onSeedColorChanged: dependencies.onSeedColorChanged,
         onTokenSaved: dependencies.onTokenSaved,
         onTokenDeleted: dependencies.onTokenDeleted,
+        warehouseLogRepository: dependencies.warehouseLogRepository,
       ),
     );
   }
@@ -248,6 +253,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     ),
     builder: (context, child) => _AppDependencies(
       repository: _settingsRepository,
+      warehouseLogRepository: _warehouseLogRepository,
       appVersion: _appVersion,
       onThemeChanged: (mode) {
         if (mounted) setState(() => _themeMode = mode);
@@ -269,6 +275,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
 class _AppDependencies extends InheritedWidget {
   const _AppDependencies({
     required this.repository,
+    required this.warehouseLogRepository,
     required this.appVersion,
     required this.onThemeChanged,
     required this.onSeedColorChanged,
@@ -278,6 +285,7 @@ class _AppDependencies extends InheritedWidget {
   });
 
   final SettingsRepository repository;
+  final WarehouseLogRepository warehouseLogRepository;
   final String appVersion;
   final ValueChanged<ThemeMode> onThemeChanged;
   final ValueChanged<Color> onSeedColorChanged;

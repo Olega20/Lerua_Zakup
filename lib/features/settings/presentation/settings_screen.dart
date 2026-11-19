@@ -4,6 +4,8 @@ import '../../../app/app_theme.dart';
 import '../../../core/feedback/snackbar_service.dart';
 import '../data/settings_repository.dart';
 import 'color_picker_dialog.dart';
+import '../../warehouse_log/data/warehouse_log_repository.dart';
+import '../../warehouse_log/presentation/warehouse_log_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -14,6 +16,7 @@ class SettingsScreen extends StatefulWidget {
     this.onSeedColorChanged,
     this.onTokenSaved,
     this.onTokenDeleted,
+    this.warehouseLogRepository,
   });
 
   final SettingsRepository repository;
@@ -22,6 +25,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<Color>? onSeedColorChanged;
   final VoidCallback? onTokenSaved;
   final VoidCallback? onTokenDeleted;
+  final WarehouseLogRepository? warehouseLogRepository;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -343,7 +347,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Журнал склада'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _message('Функция находится в разработке'),
+                    onTap: () {
+                      final repository = widget.warehouseLogRepository;
+                      if (repository == null) {
+                        _message('Журнал временно недоступен');
+                        return;
+                      }
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => WarehouseLogScreen(
+                            repository: repository,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(
