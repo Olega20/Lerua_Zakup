@@ -32,9 +32,8 @@ class AppDatabase {
     if ((await target.query('app_settings', where: 'key = ?', whereArgs: [marker])).isNotEmpty) return;
     final oldPath = p.join(await _factory.getDatabasesPath(), 'warehouse_log.db');
     if (await _factory.databaseExists(oldPath)) {
-      sqflite.Database? old;
+      final old = await _factory.openDatabase(oldPath);
       try {
-        old = await _factory.openDatabase(oldPath);
         final exists = await old.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='warehouse_log'");
         if (exists.isNotEmpty) {
           final rows = await old.query('warehouse_log');
@@ -48,7 +47,7 @@ class AppDatabase {
             }
           });
         }
-      } finally { await old?.close(); }
+      } finally { await old.close(); }
     }
     await target.insert('app_settings', {'key': marker, 'value': '1', 'updated_at': DateTime.now().millisecondsSinceEpoch});
   }
