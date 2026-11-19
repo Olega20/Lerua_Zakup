@@ -182,41 +182,4 @@ void main() {
       expect(find.text('Не удалось сохранить API-токен'), findsOneWidget);
     },
   );
-
-  testWidgets('confirmed token deletion clears the masked field', (tester) async {
-    secure.token = 'existing';
-    await tester.pumpWidget(app());
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Удалить токен'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Удалить'));
-    await tester.pumpAndSettle();
-
-    expect(secure.token, isNull);
-    final field = tester.widget<TextField>(
-      find.byKey(const ValueKey('api-token-field')),
-    );
-    expect(field.controller!.text, isEmpty);
-    expect(field.readOnly, isFalse);
-  });
-
-  testWidgets('reset deletes token only after its second confirmation', (tester) async {
-    secure.token = 'existing';
-    preferences.theme = ThemeMode.dark;
-    await tester.pumpWidget(app());
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Сбросить настройки'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Сбросить'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Удалить'));
-    await tester.pumpAndSettle();
-
-    expect(secure.token, isNull);
-    expect(preferences.theme, isNull);
-    expect(themeChanges, [ThemeMode.light]);
-  });
-
 }

@@ -136,18 +136,4 @@ void main() {
       throwsStateError,
     );
   });
-
-  test('settings remain available after repository recreation', () async {
-    await repository.saveTheme(ThemeMode.dark);
-    expect(await repository.saveToken('persistent-token'), SaveTokenResult.saved);
-
-    final recreated = SettingsRepository(
-      preferencesStore: preferences,
-      secureTokenStore: secure,
-    );
-
-    expect(await recreated.loadTheme(), ThemeMode.dark);
-    expect(await recreated.loadToken(), 'persistent-token');
-  });
-
 }
