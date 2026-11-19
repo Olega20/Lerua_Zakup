@@ -73,18 +73,22 @@ class MoySkladApiManager {
     if (!online) {
       _retryNotBefore = null;
       _setState(ApiConnectionState.offline);
-      unawaited(_recordEvent(
-        WarehouseLogLevel.warning,
-        WarehouseLogEventType.internetLost,
-        'Подтверждённое интернет-соединение потеряно',
-      ));
+      unawaited(
+        _recordEvent(
+          WarehouseLogLevel.warning,
+          WarehouseLogEventType.internetLost,
+          'Подтверждённое интернет-соединение потеряно',
+        ),
+      );
     } else {
       _setState(ApiConnectionState.unavailable);
-      unawaited(_recordEvent(
-        WarehouseLogLevel.info,
-        WarehouseLogEventType.internetRestored,
-        'Подтверждённое интернет-соединение восстановлено',
-      ));
+      unawaited(
+        _recordEvent(
+          WarehouseLogLevel.info,
+          WarehouseLogEventType.internetRestored,
+          'Подтверждённое интернет-соединение восстановлено',
+        ),
+      );
       unawaited(checkNow());
     }
     _updateTimer();
@@ -112,11 +116,13 @@ class MoySkladApiManager {
 
   void onTokenDeleted() {
     _generation++;
-    unawaited(_recordEvent(
-      WarehouseLogLevel.info,
-      WarehouseLogEventType.tokenDeleted,
-      'Access Token удалён',
-    ));
+    unawaited(
+      _recordEvent(
+        WarehouseLogLevel.info,
+        WarehouseLogEventType.tokenDeleted,
+        'Access Token удалён',
+      ),
+    );
     _retryNotBefore = null;
     _setState(
       _online ? ApiConnectionState.unavailable : ApiConnectionState.offline,
