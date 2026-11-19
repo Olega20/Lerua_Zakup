@@ -69,7 +69,7 @@ void main() {
   });
 
   test('falls back to System when theme is absent or unreadable', () async {
-    expect(await repository.loadTheme(), ThemeMode.system);
+    expect(await repository.loadTheme(), ThemeMode.light);
     preferences.failRead = true;
     expect(await repository.loadTheme(), ThemeMode.system);
   });

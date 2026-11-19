@@ -24,7 +24,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _tokenController = TextEditingController();
   final SnackbarService _snackbar = SnackbarService();
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.light;
   bool _hasToken = false;
   bool _loading = true;
   bool _saving = false;
@@ -166,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
       if (!mounted) return;
       setState(() {
-        _themeMode = ThemeMode.system;
+        _themeMode = ThemeMode.light;
         if (deleteToken) {
           _hasToken = false;
           _tokenController.clear();
@@ -175,7 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
         _tokenDirty = false;
       });
-      widget.onThemeChanged(ThemeMode.system);
+      widget.onThemeChanged(ThemeMode.light);
       _message('Настройки сброшены');
     } catch (_) {
       _message('Не удалось сбросить настройки');

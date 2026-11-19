@@ -17,7 +17,7 @@ class SettingsRepository {
 
   Future<ThemeMode> loadTheme() async {
     try {
-      return await _preferencesStore.readTheme() ?? ThemeMode.system;
+      return await _preferencesStore.readTheme() ?? ThemeMode.light;
     } catch (_) {
       return ThemeMode.system;
     }

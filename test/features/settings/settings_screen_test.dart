@@ -121,6 +121,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Сбросить настройки'));
     await tester.pumpAndSettle();
+    expect(find.text('Сбросить настройки?'), findsOneWidget);
+    await tester.tap(find.text('Сбросить'));
+    await tester.pumpAndSettle();
     expect(find.text('Удалить сохранённый API-токен?'), findsOneWidget);
     await tester.tap(find.text('Оставить токен'));
     await tester.pumpAndSettle();
