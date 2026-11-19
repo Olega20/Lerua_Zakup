@@ -34,7 +34,7 @@ class AppDatabase {
     if (await _factory.databaseExists(oldPath)) {
       sqflite.Database? old;
       try {
-        old = await _factory.openDatabase(oldPath, readOnly: true);
+        old = await _factory.openDatabase(oldPath);
         final exists = await old.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='warehouse_log'");
         if (exists.isNotEmpty) {
           final rows = await old.query('warehouse_log');
