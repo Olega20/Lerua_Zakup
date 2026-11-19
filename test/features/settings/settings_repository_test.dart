@@ -131,7 +131,10 @@ void main() {
 
   test('settings remain available after repository recreation', () async {
     await repository.saveTheme(ThemeMode.dark);
-    expect(await repository.saveToken('persistent-token'), SaveTokenResult.saved);
+    expect(
+      await repository.saveToken('persistent-token'),
+      SaveTokenResult.saved,
+    );
 
     final recreated = SettingsRepository(
       preferencesStore: preferences,
