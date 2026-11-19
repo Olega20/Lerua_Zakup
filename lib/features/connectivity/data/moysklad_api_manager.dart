@@ -47,6 +47,8 @@ class MoySkladApiManager {
 
   ApiConnectionState get currentState => _state;
 
+  bool get isOnline => _online;
+
   Stream<ApiConnectionState> get states =>
       Stream<ApiConnectionState>.multi((controller) {
         controller.add(_state);

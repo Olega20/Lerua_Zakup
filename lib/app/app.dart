@@ -104,6 +104,16 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     }
   }
 
+  Future<void> _handleTokenSaved() async {
+    await _apiManager.onTokenSaved();
+    if (!mounted || !_apiManager.isOnline) return;
+    if (_apiManager.currentState != ApiConnectionState.connected) {
+      _snackbarService.showGlobal(
+        'Не удалось подтвердить подключение к МойСклад. Подробности в Журнале склада',
+      );
+    }
+  }
+
   Future<void> _checkStorageCapacity() async {
     try {
       await _storageWarningController.check();
@@ -262,7 +272,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       onSeedColorChanged: (color) {
         if (mounted) setState(() => _seedColor = color);
       },
-      onTokenSaved: () => unawaited(_apiManager.onTokenSaved()),
+      onTokenSaved: () => unawaited(_handleTokenSaved()),
       onTokenDeleted: _apiManager.onTokenDeleted,
       child: Listener(
         behavior: HitTestBehavior.translucent,
