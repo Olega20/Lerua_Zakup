@@ -12,7 +12,10 @@ import 'app_router.dart';
 import 'app_theme.dart';
 
 class LeruaZakupApp extends StatefulWidget {
-  const LeruaZakupApp({super.key});
+  const LeruaZakupApp({super.key, this.settingsRepository, this.appVersionOverride});
+
+  final SettingsRepository? settingsRepository;
+  final String? appVersionOverride;
 
   @override
   State<LeruaZakupApp> createState() => _LeruaZakupAppState();
@@ -21,10 +24,12 @@ class LeruaZakupApp extends StatefulWidget {
 class _LeruaZakupAppState extends State<LeruaZakupApp> {
   final AppRouter _router = AppRouter();
   final SnackbarService _snackbarService = SnackbarService();
-  late final SettingsRepository _settingsRepository = SettingsRepository(
-    preferencesStore: SharedPreferencesStore(),
-    secureTokenStore: FlutterSecureTokenStore(),
-  );
+  late final SettingsRepository _settingsRepository =
+      widget.settingsRepository ??
+      SettingsRepository(
+        preferencesStore: SharedPreferencesStore(),
+        secureTokenStore: FlutterSecureTokenStore(),
+      );
 
   ThemeMode _themeMode = ThemeMode.light;
   String _appVersion = '1.0.0+1';
@@ -33,7 +38,11 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   void initState() {
     super.initState();
     _restoreTheme();
-    _loadVersion();
+    if (widget.appVersionOverride != null) {
+      _appVersion = widget.appVersionOverride!;
+    } else {
+      _loadVersion();
+    }
   }
 
   Future<void> _restoreTheme() async {
