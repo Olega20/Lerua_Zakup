@@ -65,6 +65,7 @@ void main() {
 
   testWidgets('shows three separate theme buttons and applies selection', (tester) async {
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     expect(find.text('Светлая'), findsOneWidget);
     expect(find.text('Тёмная'), findsOneWidget);
     expect(find.text('Системная'), findsOneWidget);
@@ -77,6 +78,7 @@ void main() {
 
   testWidgets('token input is always obscured and has no reveal control', (tester) async {
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
     expect(field.obscureText, isTrue);
     expect(find.byIcon(Icons.visibility), findsNothing);
@@ -85,6 +87,7 @@ void main() {
 
   testWidgets('saves token masked and leaves field populated with mask', (tester) async {
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('api-token-field')), 'secret token');
     await tester.tap(find.text('Сохранить'));
     await tester.pumpAndSettle();
@@ -97,6 +100,7 @@ void main() {
 
   testWidgets('empty token is not saved', (tester) async {
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Сохранить'));
     await tester.pumpAndSettle();
     expect(secure.token, isNull);
@@ -106,6 +110,7 @@ void main() {
   testWidgets('deleting token requires confirmation', (tester) async {
     secure.token = 'existing';
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Удалить токен'));
     await tester.pumpAndSettle();
@@ -118,6 +123,7 @@ void main() {
   testWidgets('reset asks separately before deleting token', (tester) async {
     secure.token = 'existing';
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     await tester.pumpAndSettle();
     await tester.tap(find.text('Сбросить настройки'));
     await tester.pumpAndSettle();
@@ -133,12 +139,14 @@ void main() {
 
   testWidgets('shows version in Settings', (tester) async {
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     expect(find.text('Версия 1.0.0+1'), findsOneWidget);
   });
 
   testWidgets('secure storage failure keeps entered token in the masked field', (tester) async {
     secure.failWrite = true;
     await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const ValueKey('api-token-field')), 'private');
     await tester.tap(find.text('Сохранить'));
     await tester.pumpAndSettle();
