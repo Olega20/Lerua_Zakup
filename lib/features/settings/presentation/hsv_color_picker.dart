@@ -47,7 +47,11 @@ class _HsvColorPickerState extends State<HsvColorPicker> {
   @override
   Widget build(BuildContext context) {
     final color = _hsvColor.toColor();
-    final hex = color.toARGB32().toRadixString(16).padLeft(8, '0').toUpperCase();
+    final hex = color
+        .toARGB32()
+        .toRadixString(16)
+        .padLeft(8, '0')
+        .toUpperCase();
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -61,7 +65,8 @@ class _HsvColorPickerState extends State<HsvColorPicker> {
                 key: const ValueKey('hue-wheel'),
                 behavior: HitTestBehavior.opaque,
                 onPanDown: (details) => _updateHue(details.localPosition, size),
-                onPanUpdate: (details) => _updateHue(details.localPosition, size),
+                onPanUpdate: (details) =>
+                    _updateHue(details.localPosition, size),
                 child: CustomPaint(
                   painter: _HueWheelPainter(hue: _hsvColor.hue),
                   size: size,
@@ -86,8 +91,12 @@ class _HsvColorPickerState extends State<HsvColorPicker> {
                     _updateSaturationValue(details.localPosition, size),
                 child: CustomPaint(
                   painter: _SaturationValuePainter(
-                    hueColor: HSVColor.fromAHSV(1, _hsvColor.hue, 1, 1)
-                        .toColor(),
+                    hueColor: HSVColor.fromAHSV(
+                      1,
+                      _hsvColor.hue,
+                      1,
+                      1,
+                    ).toColor(),
                     saturation: _hsvColor.saturation,
                     value: _hsvColor.value,
                   ),
@@ -162,8 +171,7 @@ class _HueWheelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_HueWheelPainter oldDelegate) =>
-      oldDelegate.hue != hue;
+  bool shouldRepaint(_HueWheelPainter oldDelegate) => oldDelegate.hue != hue;
 }
 
 class _SaturationValuePainter extends CustomPainter {
@@ -202,10 +210,7 @@ class _SaturationValuePainter extends CustomPainter {
     );
     canvas.restore();
 
-    final marker = Offset(
-      saturation * size.width,
-      (1 - value) * size.height,
-    );
+    final marker = Offset(saturation * size.width, (1 - value) * size.height);
     canvas.drawCircle(marker, 9, Paint()..color = Colors.white);
     canvas.drawCircle(
       marker,

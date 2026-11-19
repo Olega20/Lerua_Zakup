@@ -90,7 +90,9 @@ void main() {
     expect(themeChanges, [ThemeMode.dark]);
   });
 
-  testWidgets('opens the HSV color selector and persists the confirmed color', (tester) async {
+  testWidgets('opens the HSV color selector and persists the confirmed color', (
+    tester,
+  ) async {
     final colorChanges = <Color>[];
     await tester.pumpWidget(
       MaterialApp(
@@ -106,7 +108,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('primary-color-setting')));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('hue-wheel')), findsOneWidget);
-    expect(find.byKey(const ValueKey('saturation-value-picker')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('saturation-value-picker')),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const ValueKey('apply-primary-color')));
     await tester.pumpAndSettle();
     expect(preferences.seedColor, AppTheme.defaultSeedColor.toARGB32());

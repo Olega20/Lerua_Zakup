@@ -8,7 +8,10 @@ void main() {
     final theme = AppTheme.light(seedColor: seed);
     expect(theme.brightness, Brightness.light);
     expect(theme.useMaterial3, isTrue);
-    expect(theme.colorScheme.primary, isNot(AppTheme.light().colorScheme.primary));
+    expect(
+      theme.colorScheme.primary,
+      isNot(AppTheme.light().colorScheme.primary),
+    );
   });
 
   test('provides a dark Material 3 theme from the same selected seed', () {
@@ -16,7 +19,10 @@ void main() {
     final theme = AppTheme.dark(seedColor: seed);
     expect(theme.brightness, Brightness.dark);
     expect(theme.useMaterial3, isTrue);
-    expect(theme.colorScheme.primary, isNot(AppTheme.dark().colorScheme.primary));
+    expect(
+      theme.colorScheme.primary,
+      isNot(AppTheme.dark().colorScheme.primary),
+    );
   });
 
   test('uses green as the default seed color', () {
