@@ -42,7 +42,10 @@ void main() {
 
     expect(find.text('Закупка'), findsOneWidget);
     expect(find.text('Настройки'), findsOneWidget);
-    expect(find.byKey(const ValueKey('connectivity-indicator')), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('connectivity-indicator')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Закупка'));
     await tester.pump();
