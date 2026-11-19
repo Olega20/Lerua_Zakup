@@ -11,15 +11,15 @@ abstract interface class WarehouseLogStorage {
 
 class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
   SqfliteWarehouseLogStorage({
-    sqflite.DatabaseFactory? databaseFactory,
+    this.databaseFactory,
     this.databasePath,
-  }) : _databaseFactory = databaseFactory;
+  });
 
-  final sqflite.DatabaseFactory? _databaseFactory;
+  final sqflite.DatabaseFactory? databaseFactory;
   final String? databasePath;
 
   sqflite.DatabaseFactory get _factory =>
-      _databaseFactory ?? sqflite.databaseFactory;
+      databaseFactory ?? sqflite.databaseFactory;
   Future<sqflite.Database>? _database;
 
   Future<sqflite.Database> get _db => _database ??= _open();
