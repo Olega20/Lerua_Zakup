@@ -78,29 +78,28 @@ void main() {
     }
   });
 
-  testWidgets(
-    'Settings opens the diagnostic warehouse journal',
-    (tester) async {
-      await tester.pumpWidget(
-        LeruaZakupApp(
-          settingsRepository: _testRepository(),
-          warehouseLogRepository: WarehouseLogRepository(
-            storage: _TestWarehouseLogStorage(),
-          ),
-          appVersionOverride: '1.0.0+1',
+  testWidgets('Settings opens the diagnostic warehouse journal', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      LeruaZakupApp(
+        settingsRepository: _testRepository(),
+        warehouseLogRepository: WarehouseLogRepository(
+          storage: _TestWarehouseLogStorage(),
         ),
-      );
+        appVersionOverride: '1.0.0+1',
+      ),
+    );
 
-      await tester.tap(find.text('Настройки'));
-      await tester.pumpAndSettle();
+    await tester.tap(find.text('Настройки'));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Настройки'), findsOneWidget);
-      expect(find.text('Журнал склада'), findsOneWidget);
-      await tester.tap(find.text('Журнал склада'));
-      await tester.pumpAndSettle();
-      expect(find.text('Журнал пока пуст'), findsOneWidget);
-    },
-  );
+    expect(find.text('Настройки'), findsOneWidget);
+    expect(find.text('Журнал склада'), findsOneWidget);
+    await tester.tap(find.text('Журнал склада'));
+    await tester.pumpAndSettle();
+    expect(find.text('Журнал пока пуст'), findsOneWidget);
+  });
 
   testWidgets('calendar button opens full calendar and back returns to Home', (
     tester,
