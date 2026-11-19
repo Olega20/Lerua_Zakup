@@ -13,10 +13,13 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
   SqfliteWarehouseLogStorage({
     sqflite.DatabaseFactory? databaseFactory,
     this.databasePath,
-  }) : _factory = databaseFactory ?? sqflite.databaseFactory;
+  }) : _databaseFactory = databaseFactory;
 
-  final sqflite.DatabaseFactory _factory;
+  final sqflite.DatabaseFactory? _databaseFactory;
   final String? databasePath;
+
+  sqflite.DatabaseFactory get _factory =>
+      _databaseFactory ?? sqflite.databaseFactory;
   Future<sqflite.Database>? _database;
 
   Future<sqflite.Database> get _db => _database ??= _open();
