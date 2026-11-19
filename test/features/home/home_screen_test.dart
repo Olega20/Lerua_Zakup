@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/features/home/presentation/home_screen.dart';
+import 'package:lerua_zakup/features/calendar/presentation/week_strip.dart';
 
 void main() {
   final now = DateTime(2026, 11, 19);
@@ -37,15 +38,15 @@ void main() {
     for (final label in labels) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.byType(Icon), findsNothing);
+    expect(find.byIcon(Icons.expand_more), findsOneWidget);
     final weekTop = tester.getTopLeft(find.byType(WeekStrip)).dy;
     final firstButtonTop = tester.getTopLeft(find.text('Закупка')).dy;
     expect(firstButtonTop, greaterThan(weekTop));
   });
 
   testWidgets('distributes all six buttons evenly in the remaining space', (tester) async {
-    await tester.view.setPhysicalSize(const Size(400, 800));
-    await tester.view.setDevicePixelRatio(1);
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
