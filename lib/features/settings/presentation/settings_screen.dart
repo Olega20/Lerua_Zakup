@@ -289,7 +289,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Основной цвет'),
                     subtitle: Text(
-                      '#'+_seedColor.toARGB32().toRadixString(16).substring(2).toUpperCase(),
+                      '#${_seedColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}',
                     ),
                     trailing: Container(
                       width: 30,

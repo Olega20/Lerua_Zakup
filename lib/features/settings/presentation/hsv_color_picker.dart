@@ -114,7 +114,7 @@ class _HsvColorPickerState extends State<HsvColorPicker> {
             ),
             const SizedBox(width: 10),
             Text(
-              '#'+hex.substring(2),
+              '#${hex.substring(2)}',
               key: const ValueKey('selected-color-hex'),
               style: Theme.of(context).textTheme.labelLarge,
             ),

@@ -11,6 +11,10 @@ class _Preferences implements PreferencesStore {
   @override
   Future<void> writeTheme(ThemeMode mode) async {}
   @override
+  Future<int?> readSeedColor() async => null;
+  @override
+  Future<void> writeSeedColor(int argb) async {}
+  @override
   Future<void> clearUserPreferences() async {}
 }
 
