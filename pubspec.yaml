@@ -1,5 +1,5 @@
 name: lerua_zakup
-description: "A new Flutter project."
+description: "Lerua Zakup Android application."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -10,6 +10,8 @@ dependencies:
   flutter:
     sdk: flutter
   cupertino_icons: ^1.0.8
+  shared_preferences: ^2.5.3
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:
