@@ -51,14 +51,17 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
 
   Future<void> _restoreTheme() async {
     final mode = await _settingsRepository.loadTheme();
-    if (mounted) setState(() => _themeMode = mode);
+    if (mounted) {
+      setState(() => _themeMode = mode);
+    }
   }
 
   Future<void> _loadVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      if (mounted)
+      if (mounted) {
         setState(() => _appVersion = '${info.version}+${info.buildNumber}');
+      }
     } catch (_) {
       // Keep the version from pubspec when platform metadata is unavailable.
     }

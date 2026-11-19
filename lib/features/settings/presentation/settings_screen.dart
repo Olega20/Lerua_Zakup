@@ -216,7 +216,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop || !_tokenDirty) return;
         final leave = await _handleBack();
-        if (leave && mounted) Navigator.of(context).pop();
+        if (!mounted) return;
+        if (leave) {
+          Navigator.of(this.context).pop();
+        }
       },
       child: Scaffold(
         appBar: AppBar(
