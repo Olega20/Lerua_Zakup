@@ -16,6 +16,7 @@ import '../core/platform/storage_capacity_service.dart';
 import '../core/platform/storage_warning_controller.dart';
 import '../features/connectivity/data/connectivity_monitor.dart';
 import '../features/connectivity/data/platform_connectivity_source.dart';
+import '../features/connectivity/domain/connectivity_status.dart';
 import 'app_theme.dart';
 
 class LeruaZakupApp extends StatefulWidget {
