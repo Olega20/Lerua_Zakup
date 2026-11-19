@@ -72,6 +72,32 @@ void main() {
       expect(entry.toSafeText(), isNot(contains('secret-token')));
     });
 
+    test('persists structured error details and redacts credentials', () async {
+      await repository.append(WarehouseLogEntry(
+        timestamp: DateTime(2026, 11, 20),
+        level: WarehouseLogLevel.error,
+        type: WarehouseLogEventType.apiTaskFailed,
+        description: 'Request failed token=secret-value',
+        component: 'MoySklad API Manager',
+        errorCode: 'HTTP_503',
+        recommendedAction: 'Проверьте соединение',
+        technicalDetails: 'Authorization: Bearer abc.def',
+        correlationId: 'corr-1',
+        operationId: 'op-1',
+        taskId: 'task-1',
+        attemptNumber: 2,
+      ));
+
+      final entry = (await repository.latest()).single;
+      expect(entry.component, 'MoySklad API Manager');
+      expect(entry.errorCode, 'HTTP_503');
+      expect(entry.attemptNumber, 2);
+      expect(entry.toSafeText(), contains('Что сделать:'));
+      expect(entry.toSafeText(), contains('corr-1'));
+      expect(entry.toSafeText(), isNot(contains('secret-value')));
+      expect(entry.toSafeText(), isNot(contains('abc.def')));
+    });
+
     test('clears all stored records', () async {
       await repository.record(
         level: WarehouseLogLevel.warning,
