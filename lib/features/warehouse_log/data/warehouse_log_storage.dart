@@ -33,6 +33,14 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
         'description': entry.description,
         'http_status_code': entry.httpStatusCode,
         'api_error_code': _safeApiCode(entry.apiErrorCode),
+        'component': entry.component == null ? null : sanitizeDiagnosticText(entry.component!),
+        'error_code': entry.errorCode == null ? null : _safeApiCode(entry.errorCode),
+        'recommended_action': entry.recommendedAction == null ? null : sanitizeDiagnosticText(entry.recommendedAction!),
+        'technical_details': entry.technicalDetails == null ? null : sanitizeDiagnosticText(entry.technicalDetails!),
+        'correlation_id': entry.correlationId,
+        'operation_id': entry.operationId,
+        'task_id': entry.taskId,
+        'attempt_number': entry.attemptNumber,
       });
       await txn.rawDelete(
         'DELETE FROM warehouse_log WHERE id NOT IN '
@@ -69,6 +77,14 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
         description: row['description'] as String,
         httpStatusCode: row['http_status_code'] as int?,
         apiErrorCode: row['api_error_code'] as String?,
+        component: row['component'] as String?,
+        errorCode: row['error_code'] as String?,
+        recommendedAction: row['recommended_action'] as String?,
+        technicalDetails: row['technical_details'] as String?,
+        correlationId: row['correlation_id'] as String?,
+        operationId: row['operation_id'] as String?,
+        taskId: row['task_id'] as String?,
+        attemptNumber: row['attempt_number'] as int?,
       );
 
   String? _safeApiCode(String? value) {
