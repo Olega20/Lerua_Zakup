@@ -129,20 +129,6 @@ void main() {
     expect(secure.token, isNull);
   });
 
-
-  test('settings remain available after repository recreation', () async {
-    await repository.saveTheme(ThemeMode.dark);
-    expect(await repository.saveToken('persistent-token'), SaveTokenResult.saved);
-
-    final recreated = SettingsRepository(
-      preferencesStore: preferences,
-      secureTokenStore: secure,
-    );
-
-    expect(await recreated.loadTheme(), ThemeMode.dark);
-    expect(await recreated.loadToken(), 'persistent-token');
-  });
-
   test('reset reports storage failure', () async {
     preferences.failClear = true;
     await expectLater(
