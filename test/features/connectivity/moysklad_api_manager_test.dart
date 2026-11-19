@@ -5,6 +5,7 @@ import 'package:lerua_zakup/core/storage/secure_token_store.dart';
 import 'package:lerua_zakup/features/connectivity/data/moysklad_api_client.dart';
 import 'package:lerua_zakup/features/connectivity/data/moysklad_api_manager.dart';
 import 'package:lerua_zakup/features/connectivity/domain/api_connection_state.dart';
+import 'package:lerua_zakup/features/warehouse_log/domain/warehouse_log_entry.dart';
 
 class FakeSecureTokenStore implements SecureTokenStore {
   String? token;
@@ -193,6 +194,48 @@ void main() {
       );
       await second;
       expect(transport.calls, 2);
+    });
+
+
+    test('records safe connection events without exposing the token', () async {
+      final events = <WarehouseLogEntry>[];
+      final eventManager = MoySkladApiManager(
+        tokenStore: tokenStore..token = 'sensitive-token-value',
+        apiClient: MoySkladApiClient(transport: transport),
+        internet: internet.stream,
+        onEvent: (entry) async => events.add(entry),
+        periodicTimer: (duration, callback) {
+          final timer = FakePeriodicTimer(callback);
+          timers.add(timer);
+          return timer;
+        },
+      );
+      await eventManager.start();
+      internet.add(true);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        events.map((entry) => entry.type),
+        containsAll([
+          WarehouseLogEventType.internetRestored,
+          WarehouseLogEventType.checkStarted,
+          WarehouseLogEventType.checkSucceeded,
+        ]),
+      );
+      expect(
+        events.map((entry) => entry.toSafeText()).join('\n'),
+        isNot(contains('sensitive-token-value')),
+      );
+
+      internet.add(false);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        events.map((entry) => entry.type),
+        contains(WarehouseLogEventType.internetLost),
+      );
+      await eventManager.dispose();
     });
 
     test('rate limit prevents checks until retry window elapses', () async {
