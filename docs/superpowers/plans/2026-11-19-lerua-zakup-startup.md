@@ -257,7 +257,7 @@ Expected: tests pass and Android debug APK builds.
 - [x] **Step 9: Commit** `feat: add Android lifecycle and notification foundation`.
 
 
-**Manual verification note:** Step 8 remains open because no Android device was connected to ADB during this task. The Android debug APK builds successfully; immersive gesture behavior, the system permission dialog, and process/task restoration still require verification on the user's phone.
+**Manual verification note:** Step 8 remains open because no Android device was connected to ADB during this task (`adb devices -l` returned an empty device list). The Android debug APK builds successfully; immersive gesture behavior, the system permission dialog, and process/task restoration still require verification on the user's phone. Flutter restoration IDs now cover the Home selected day and the full calendar's selected date/visible month. Home also implements the agreed exit dialog and the two-second second-Back exit.
 
 ## Task 7: Connectivity indicator and low-storage warning
 
