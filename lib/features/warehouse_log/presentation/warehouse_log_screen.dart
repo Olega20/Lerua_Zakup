@@ -85,9 +85,7 @@ class _WarehouseLogScreenState extends State<WarehouseLogScreen> {
         actions: [
           TextButton(
             onPressed: () async {
-              await Clipboard.setData(
-                ClipboardData(text: entry.toSafeText()),
-              );
+              await Clipboard.setData(ClipboardData(text: entry.toSafeText()));
               if (dialogContext.mounted) Navigator.pop(dialogContext);
               _message('Диагностика скопирована');
             },

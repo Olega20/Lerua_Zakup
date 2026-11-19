@@ -1,5 +1,5 @@
 import 'package:path/path.dart' as p;
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sqflite;
 
 import '../domain/warehouse_log_entry.dart';
 
@@ -11,24 +11,24 @@ abstract interface class WarehouseLogStorage {
 
 class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
   SqfliteWarehouseLogStorage({
-    DatabaseFactory? databaseFactory,
+    sqflite.DatabaseFactory? databaseFactory,
     String? databasePath,
   }) : _factory = databaseFactory ?? sqflite.databaseFactory,
        _databasePath = databasePath;
 
-  final DatabaseFactory _factory;
+  final sqflite.DatabaseFactory _factory;
   final String? _databasePath;
-  Future<Database>? _database;
+  Future<sqflite.Database>? _database;
 
-  Future<Database> get _db => _database ??= _open();
+  Future<sqflite.Database> get _db => _database ??= _open();
 
-  Future<Database> _open() async {
+  Future<sqflite.Database> _open() async {
     final path =
         _databasePath ??
         p.join(await _factory.getDatabasesPath(), 'warehouse_log.db');
     return _factory.openDatabase(
       path,
-      options: OpenDatabaseOptions(
+      options: sqflite.OpenDatabaseOptions(
         version: 1,
         onCreate: (database, version) async {
           await database.execute('''
@@ -52,10 +52,7 @@ class SqfliteWarehouseLogStorage implements WarehouseLogStorage {
   }
 
   @override
-  Future<void> insert(
-    WarehouseLogEntry entry, {
-    required int limit,
-  }) async {
+  Future<void> insert(WarehouseLogEntry entry, {required int limit}) async {
     final database = await _db;
     await database.transaction((transaction) async {
       await transaction.insert('warehouse_log', {
