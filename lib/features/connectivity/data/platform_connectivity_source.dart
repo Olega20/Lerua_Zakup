@@ -13,5 +13,10 @@ class PlatformConnectivitySource implements ConnectivityStatusSource {
   Stream<bool> get hasInternet => _channel
       .receiveBroadcastStream()
       .map((event) => event == true)
+      .transform(
+        StreamTransformer<bool, bool>.fromHandlers(
+          handleError: (error, stackTrace, sink) => sink.add(false),
+        ),
+      )
       .distinct();
 }

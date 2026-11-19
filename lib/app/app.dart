@@ -12,6 +12,10 @@ import '../features/settings/presentation/settings_screen.dart';
 import 'app_router.dart';
 import 'app_lifecycle.dart';
 import '../core/notifications/notification_service.dart';
+import '../core/platform/storage_capacity_service.dart';
+import '../core/platform/storage_warning_controller.dart';
+import '../features/connectivity/data/connectivity_monitor.dart';
+import '../features/connectivity/data/platform_connectivity_source.dart';
 import 'app_theme.dart';
 
 class LeruaZakupApp extends StatefulWidget {
@@ -30,9 +34,22 @@ class LeruaZakupApp extends StatefulWidget {
   State<LeruaZakupApp> createState() => _LeruaZakupAppState();
 }
 
-class _LeruaZakupAppState extends State<LeruaZakupApp> {
+class _LeruaZakupAppState extends State<LeruaZakupApp>
+    with WidgetsBindingObserver {
   final AppRouter _router = AppRouter();
   final SnackbarService _snackbarService = SnackbarService();
+  late final Stream<ConnectivityStatus> _connectivityStatuses =
+      ConnectivityMonitor(source: PlatformConnectivitySource())
+          .statuses
+          .asBroadcastStream();
+  late final StorageWarningController _storageWarningController =
+      StorageWarningController(
+        capacityService: StorageCapacityService(),
+        store: SharedPreferencesStorageWarningStore(),
+        onWarning: () => _snackbarService.showGlobal(
+          'Мало свободного места на устройстве',
+        ),
+      );
   final HomeBackController _homeBackController = HomeBackController();
   late final AppLifecycleController _lifecycle = AppLifecycleController(
     systemUi: FlutterSystemUiController(),
@@ -51,12 +68,23 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   void initState() {
     super.initState();
     _lifecycle.initialize();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _storageWarningController.check();
+    });
     _initializeNotifications();
     _restoreTheme();
     if (widget.appVersionOverride != null) {
       _appVersion = widget.appVersionOverride!;
     } else {
       _loadVersion();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _storageWarningController.check();
     }
   }
 
@@ -116,6 +144,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _lifecycle.dispose();
     super.dispose();
   }
@@ -172,6 +201,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
     darkTheme: AppTheme.dark,
     themeMode: _themeMode,
     navigatorKey: _router.navigatorKey,
+    scaffoldMessengerKey: _snackbarService.messengerKey,
     home: Builder(
       builder: (context) => PopScope(
         canPop: false,
@@ -181,6 +211,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
         child: Scaffold(
           body: HomeScreen(
             now: DateTime.now(),
+            connectivityStatuses: _connectivityStatuses,
             onOpenCalendar: () => _openCalendar(context),
             onOpenSettings: () => _openSettings(context),
             onShowPlaceholder: (message) =>

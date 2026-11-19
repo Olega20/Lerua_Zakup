@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../calendar/presentation/week_strip.dart';
+import '../../connectivity/domain/connectivity_status.dart';
+import '../../connectivity/presentation/connectivity_indicator.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -17,6 +19,7 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onOpenSettings;
   final ValueChanged<String> onShowPlaceholder;
   final ValueChanged<DateTime>? onDateSelected;
+  final Stream<ConnectivityStatus>? connectivityStatuses;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
