@@ -3,13 +3,12 @@ import 'warehouse_log_storage.dart';
 
 class WarehouseLogRepository {
   WarehouseLogRepository({
-    required WarehouseLogStorage storage,
+    required this.storage,
     this.maxEntries = 500,
     DateTime Function()? clock,
-  }) : _storage = storage,
-       _clock = clock ?? DateTime.now;
+  }) : _clock = clock ?? DateTime.now;
 
-  final WarehouseLogStorage _storage;
+  final WarehouseLogStorage storage;
   final DateTime Function() _clock;
   final int maxEntries;
 
@@ -19,7 +18,7 @@ class WarehouseLogRepository {
     required String description,
     int? httpStatusCode,
     String? apiErrorCode,
-  }) => _storage.insert(
+  }) => storage.insert(
     WarehouseLogEntry(
       timestamp: _clock(),
       level: level,
@@ -32,9 +31,9 @@ class WarehouseLogRepository {
   );
 
   Future<List<WarehouseLogEntry>> latest() =>
-      _storage.latest(limit: maxEntries);
+      storage.latest(limit: maxEntries);
 
-  Future<void> clear() => _storage.clear();
+  Future<void> clear() => storage.clear();
 
   String? _safeApiCode(String? value) {
     if (value == null || value.isEmpty) return null;
