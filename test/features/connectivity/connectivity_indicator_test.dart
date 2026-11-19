@@ -87,7 +87,7 @@ void main() {
         .color;
     expect(color, Colors.amber);
     statuses.add(ApiConnectionState.connected);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(
       tester
           .widget<Container>(
