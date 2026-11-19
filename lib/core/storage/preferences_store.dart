@@ -14,10 +14,11 @@ class SharedPreferencesStore implements PreferencesStore {
   Future<ThemeMode?> readTheme() async {
     final preferences = await SharedPreferences.getInstance();
     final value = preferences.getString(_themeKey);
+    if (value == null) return null;
     for (final mode in ThemeMode.values) {
       if (mode.name == value) return mode;
     }
-    return null;
+    throw FormatException('Unsupported saved theme mode');
   }
 
   @override

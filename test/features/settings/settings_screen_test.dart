@@ -104,7 +104,13 @@ void main() {
     await tester.tap(find.text('Сохранить'));
     await tester.pumpAndSettle();
     expect(secure.token, isNull);
-    expect(find.text('Введите API-токен'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SnackBar),
+        matching: find.text('Введите API-токен'),
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('deleting token requires confirmation', (tester) async {
