@@ -13,7 +13,7 @@ class AppDatabase {
   Future<sqflite.Database> _open() async {
     final path = databasePath ?? p.join(await _factory.getDatabasesPath(), 'lerua_zakup.db');
     final db = await _factory.openDatabase(path, options: sqflite.OpenDatabaseOptions(
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
         await db.execute('PRAGMA journal_mode = WAL');
@@ -21,6 +21,20 @@ class AppDatabase {
       onCreate: (db, version) async {
         for (final sql in _schema) { await db.execute(sql); }
         await db.insert('schema_migrations', {'version': version, 'applied_at': DateTime.now().millisecondsSinceEpoch});
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          for (final column in [
+            'component TEXT', 'error_code TEXT', 'recommended_action TEXT',
+            'technical_details TEXT', 'correlation_id TEXT', 'operation_id TEXT',
+            'task_id TEXT', 'attempt_number INTEGER',
+          ]) {
+            await db.execute('ALTER TABLE warehouse_log ADD COLUMN $column');
+          }
+          await db.insert('schema_migrations', {
+            'version': 2, 'applied_at': DateTime.now().millisecondsSinceEpoch,
+          });
+        }
       },
     ));
     if (databasePath == null) await _importLegacyLog(db);
@@ -80,7 +94,7 @@ class AppDatabase {
     '''CREATE TABLE api_task_events(id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES api_tasks(id) ON DELETE CASCADE, event_type TEXT NOT NULL, from_state TEXT, to_state TEXT, message TEXT NOT NULL, created_at INTEGER NOT NULL)''',
     '''CREATE TABLE api_queue_state(logical_queue TEXT PRIMARY KEY, is_paused INTEGER NOT NULL DEFAULT 0, pause_reason TEXT, requires_resume_confirmation INTEGER NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL)''',
     '''CREATE TABLE journal_api_task_links(journal_entry_id INTEGER NOT NULL REFERENCES warehouse_journal_entries(id) ON DELETE CASCADE, task_id INTEGER NOT NULL REFERENCES api_tasks(id) ON DELETE CASCADE, relation_type TEXT NOT NULL DEFAULT 'related', PRIMARY KEY(journal_entry_id,task_id))''',
-    '''CREATE TABLE warehouse_log(id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, level TEXT NOT NULL, event_type TEXT NOT NULL, description TEXT NOT NULL, http_status_code INTEGER, api_error_code TEXT)''',
+    '''CREATE TABLE warehouse_log(id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER NOT NULL, level TEXT NOT NULL, event_type TEXT NOT NULL, description TEXT NOT NULL, http_status_code INTEGER, api_error_code TEXT, component TEXT, error_code TEXT, recommended_action TEXT, technical_details TEXT, correlation_id TEXT, operation_id TEXT, task_id TEXT, attempt_number INTEGER)''',
     'CREATE INDEX warehouse_log_timestamp_idx ON warehouse_log(timestamp DESC,id DESC)',
   ];
 }
