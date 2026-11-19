@@ -273,17 +273,20 @@ Expected: tests pass and Android debug APK builds.
 - `StorageWarningPolicy`: evaluates available capacity against a threshold selected and documented before implementation; warning is non-blocking and repeated warnings are rate-limited.
 
 - [x] **Step 1: Confirm the low-storage threshold and repeat-warning policy.** Implementation default: warn when available internal data-partition storage is below **500 MiB**. This is an early-warning threshold aligned with Android's documented/AOSP low-storage threshold cap; it is not represented as a user-selected preference. If capacity is unavailable, do not warn. While storage remains below threshold, show at most one warning per **24 hours** (timestamp persisted across process restarts); if capacity recovers to the threshold or above, the next low-storage episode may warn immediately once the 24-hour cooldown has elapsed. Check at startup and whenever the app resumes. Research: Android's `DeviceStorageMonitorService` uses a configurable percentage threshold with a default 500 MB maximum cap; the exact OEM threshold can vary.
-- [ ] **Step 2: Write failing connectivity tests** for offline red, online yellow, immediate offline transition, online recovery, and no API calls.
-- [ ] **Step 3: Implement connectivity monitoring** with a compatible plugin and ensure duplicate events do not cause harmful UI churn.
-- [ ] **Step 4: Write failing storage warning policy tests** for below-threshold, at-threshold, above-threshold, unavailable capacity, and rate limiting.
-- [ ] **Step 5: Implement storage capacity lookup and non-blocking warning** with the documented threshold and Snackbar presentation.
-- [ ] **Step 6: Integrate the indicator into Home** as a full-width 4 px strip above the calendar. Yellow is used whenever online; green is never shown in this release.
-- [ ] **Step 7: Run**
+- [x] **Step 2: Write failing connectivity tests** for offline red, online yellow, immediate offline transition, online recovery, and no API calls.
+- [x] **Step 3: Implement connectivity monitoring** with Android `ConnectivityManager`/`NetworkCallback` and `NET_CAPABILITY_VALIDATED` over an `EventChannel`; duplicate states are suppressed in the Dart stream. This uses the native Android API directly rather than adding a Flutter connectivity dependency.
+- [x] **Step 4: Write failing storage warning policy tests** for below-threshold, at-threshold, above-threshold, unavailable capacity, and rate limiting.
+- [x] **Step 5: Implement storage capacity lookup and non-blocking warning** with the documented threshold and Snackbar presentation.
+- [x] **Step 6: Integrate the indicator into Home** as a full-width 4 px strip above the calendar. Yellow is used whenever online; green is never shown in this release.
+- [x] **Step 7: Run**
 ```powershell
 flutter test test/features/connectivity test/core/platform
 ```
 Expected: all tests pass; code inspection confirms no MySklad HTTP requests or API token validation are present.
-- [ ] **Step 8: Commit** `feat: add offline connectivity indicator and storage warning`.
+- [x] **Step 8: Commit** `feat: add offline connectivity indicator and storage warning`.
+
+
+**Verification:** Full `flutter test` suite: 92 tests passed. `dart format --output=none --set-exit-if-changed` passed for all Task 7 Dart files. `flutter analyze`: no issues. `flutter build apk --debug`: succeeded. No Android device was connected; physical connectivity transitions and the actual low-storage Snackbar are deferred to the agreed full-scaffold device test. Git working tree was clean after verification.
 
 ## Task 8: Final integration, resilience, and release verification
 
