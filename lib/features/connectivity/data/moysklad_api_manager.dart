@@ -7,16 +7,13 @@ import 'moysklad_api_client.dart';
 
 class MoySkladApiManager {
   MoySkladApiManager({
-    required SecureTokenStore tokenStore,
-    required MoySkladApiClient apiClient,
-    required Stream<bool> internet,
+    required SecureTokenStore _tokenStore,
+    required MoySkladApiClient _apiClient,
+    required Stream<bool> _internet,
     this.checkInterval = const Duration(minutes: 5),
     DateTime Function()? clock,
     Timer Function(Duration, void Function())? periodicTimer,
-  }) : _tokenStore = tokenStore,
-       _apiClient = apiClient,
-       _internet = internet,
-       _clock = clock ?? DateTime.now,
+  }) : _clock = clock ?? DateTime.now,
        _periodicTimer = periodicTimer ?? _defaultPeriodicTimer;
 
   final SecureTokenStore _tokenStore;
