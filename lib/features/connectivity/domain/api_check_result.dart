@@ -10,11 +10,7 @@ enum ApiCheckStatus {
 }
 
 class ApiCheckResult {
-  const ApiCheckResult(
-    this.status, {
-    this.httpStatusCode,
-    this.retryAfter,
-  });
+  const ApiCheckResult(this.status, {this.httpStatusCode, this.retryAfter});
 
   final ApiCheckStatus status;
   final int? httpStatusCode;

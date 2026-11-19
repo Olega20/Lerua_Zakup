@@ -54,10 +54,7 @@ void main() {
 
       expect(result.status, ApiCheckStatus.connected);
       expect(transport.uri!.host, 'api.moysklad.ru');
-      expect(
-        transport.uri!.path,
-        '/api/remap/1.2/context/employee/',
-      );
+      expect(transport.uri!.path, '/api/remap/1.2/context/employee/');
       expect(transport.headers!['Authorization'], 'Bearer secret-token');
       expect(transport.headers!['Accept'], 'application/json');
       expect(transport.headers!['Accept-Encoding'], 'gzip');
@@ -66,15 +63,12 @@ void main() {
 
     test('requires a JSON object for HTTP 200', () async {
       final transport = FakeMoySkladHttpTransport(
-        () async => const MoySkladHttpResponse(
-          statusCode: 200,
-          body: 'not-json',
-        ),
+        () async =>
+            const MoySkladHttpResponse(statusCode: 200, body: 'not-json'),
       );
 
-      final result = await MoySkladApiClient(
-        transport: transport,
-      ).checkConnection('token');
+      final result = await MoySkladApiClient(transport: transport)
+          .checkConnection('token');
 
       expect(result.status, ApiCheckStatus.invalidResponse);
       expect(result.httpStatusCode, 200);
@@ -92,9 +86,8 @@ void main() {
             body: '{"error":"details"}',
           ),
         );
-        final result = await MoySkladApiClient(
-          transport: transport,
-        ).checkConnection('token');
+        final result = await MoySkladApiClient(transport: transport)
+            .checkConnection('token');
         expect(result.status, testCase.$2);
         expect(result.httpStatusCode, testCase.$1);
       }
@@ -109,33 +102,34 @@ void main() {
         ),
       );
 
-      final result = await MoySkladApiClient(
-        transport: transport,
-      ).checkConnection('token');
+      final result = await MoySkladApiClient(transport: transport)
+          .checkConnection('token');
 
       expect(result.status, ApiCheckStatus.rateLimited);
       expect(result.retryAfter, const Duration(seconds: 30));
       expect(result.toString(), isNot(contains('must-not-escape')));
     });
 
-    test('maps timeout and transport exceptions without leaking details', () async {
-      final timeoutTransport = FakeMoySkladHttpTransport(
-        () => Future.error(TimeoutException('secret-token')),
-      );
-      final timeoutResult = await MoySkladApiClient(
-        transport: timeoutTransport,
-      ).checkConnection('secret-token');
-      expect(timeoutResult.status, ApiCheckStatus.timeout);
-      expect(timeoutResult.toString(), isNot(contains('secret-token')));
+    test(
+      'maps timeout and transport exceptions without leaking details',
+      () async {
+        final timeoutTransport = FakeMoySkladHttpTransport(
+          () => Future.error(TimeoutException('secret-token')),
+        );
+        final timeoutResult = await MoySkladApiClient(
+          transport: timeoutTransport,
+        ).checkConnection('secret-token');
+        expect(timeoutResult.status, ApiCheckStatus.timeout);
+        expect(timeoutResult.toString(), isNot(contains('secret-token')));
 
-      final failedTransport = FakeMoySkladHttpTransport(
-        () => Future.error(StateError('Authorization: secret-token')),
-      );
-      final failedResult = await MoySkladApiClient(
-        transport: failedTransport,
-      ).checkConnection('secret-token');
-      expect(failedResult.status, ApiCheckStatus.unavailable);
-      expect(failedResult.toString(), isNot(contains('secret-token')));
-    });
+        final failedTransport = FakeMoySkladHttpTransport(
+          () => Future.error(StateError('Authorization: secret-token')),
+        );
+        final failedResult = await MoySkladApiClient(transport: failedTransport)
+            .checkConnection('secret-token');
+        expect(failedResult.status, ApiCheckStatus.unavailable);
+        expect(failedResult.toString(), isNot(contains('secret-token')));
+      },
+    );
   });
 }
