@@ -241,20 +241,23 @@ Expected: all storage and Settings tests pass.
 - `AppLifecycleController`: coordinates lifecycle notifications and restoration policy; it does not persist transient business drafts.
 - `NotificationService.initializeAndRequestPermission()`: requests Android notification permission at first app launch, handles denial without blocking app use, and creates the app notification group/channel foundations without scheduling business notifications.
 
-- [ ] **Step 1: Write lifecycle tests** for retained task state, fresh launch to Home, and system-provided state restoration after process recreation.
-- [ ] **Step 2: Run lifecycle tests** and verify expected failures.
-- [ ] **Step 3: Implement lifecycle and navigation restoration behavior** without treating explicit exit as process death restoration.
-- [ ] **Step 4: Write notification service tests** for first-launch permission flow and denial.
-- [ ] **Step 5: Implement notification foundation** with standard Android sound defaults, grouping metadata, and no business notifications.
-- [ ] **Step 6: Configure Android portrait orientation, immersive sticky mode, system gesture compatibility, and backup exclusions** so secure token data is not restored from backup.
-- [ ] **Step 7: Run**
+- [x] **Step 1: Write lifecycle tests** for retained task state, fresh launch to Home, and system-provided state restoration after process recreation.
+- [x] **Step 2: Run lifecycle tests** and verify expected failures.
+- [x] **Step 3: Implement lifecycle and navigation restoration behavior** without treating explicit exit as process death restoration.
+- [x] **Step 4: Write notification service tests** for first-launch permission flow and denial.
+- [x] **Step 5: Implement notification foundation** with standard Android sound defaults, grouping metadata, and no business notifications.
+- [x] **Step 6: Configure Android portrait orientation, immersive sticky mode, system gesture compatibility, and backup exclusions** so secure token data is not restored from backup.
+- [x] **Step 7: Run**
 ```powershell
 flutter test test/app
 flutter build apk --debug
 ```
 Expected: tests pass and Android debug APK builds.
 - [ ] **Step 8: Verify manually on Android**: system bars hidden, edge gestures still work, notification permission denial does not block app, task retained from Recents restores screen, fresh launch after explicit exit opens Home.
-- [ ] **Step 9: Commit** `feat: add Android lifecycle and notification foundation`.
+- [x] **Step 9: Commit** `feat: add Android lifecycle and notification foundation`.
+
+
+**Manual verification note:** Step 8 remains open because no Android device was connected to ADB during this task. The Android debug APK builds successfully; immersive gesture behavior, the system permission dialog, and process/task restoration still require verification on the user's phone.
 
 ## Task 7: Connectivity indicator and low-storage warning
 
