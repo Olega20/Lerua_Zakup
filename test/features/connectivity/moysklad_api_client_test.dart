@@ -55,9 +55,12 @@ void main() {
       expect(result.status, ApiCheckStatus.connected);
       expect(transport.uri!.host, 'api.moysklad.ru');
       expect(transport.uri!.path, '/api/remap/1.2/context/employee/');
-      expect(transport.headers!['Authorization'], 'Bearer secret-token');
-      expect(transport.headers!['Accept'], 'application/json');
-      expect(transport.headers!['Accept-Encoding'], 'gzip');
+      String header(String name) => transport.headers!.entries
+          .firstWhere((entry) => entry.key.toLowerCase() == name.toLowerCase())
+          .value;
+      expect(header('Authorization'), 'Bearer secret-token');
+      expect(header('Accept'), 'application/json');
+      expect(header('Accept-Encoding'), 'gzip');
       expect(transport.timeout, const Duration(seconds: 10));
     });
 
