@@ -1,6 +1,19 @@
 # Lerua Zakup
 
-Lerua Zakup is an Android application built with Flutter. The first milestone establishes the Android project scaffold; business features are being added incrementally.
+Lerua Zakup is an Android application built with Flutter. The first offline scaffold is implemented; business workflows and MoySklad synchronization will be added in later milestones.
+
+## Implemented in the offline foundation
+
+- Home screen with the six agreed actions and placeholder feedback.
+- Compact weekly strip and full-screen monthly calendar.
+- Light, dark, and system themes with persistent settings.
+- Masked API-token storage using Android secure storage.
+- Android back navigation, exit confirmation, and restoration support.
+- Full-screen portrait mode and notification permission groundwork.
+- Live internet-availability indicator (red = no validated internet, yellow = internet available).
+- Low-storage warning when available internal storage falls below 500 MiB, rate-limited to once per 24 hours.
+
+The current offline release does **not** send requests to MoySklad. The indicator never turns green until API reachability is implemented and confirmed.
 
 ## Requirements
 
@@ -19,31 +32,35 @@ Lerua Zakup is an Android application built with Flutter. The first milestone es
    flutter pub get
    ```
 
-4. Run static analysis and tests:
+4. Run static analysis and all unit/widget tests:
 
    ```bash
    flutter analyze
    flutter test
    ```
 
-5. Build a debug APK:
+5. Run the Android integration smoke test on a connected Android device or emulator:
+
+   ```bash
+   flutter test integration_test
+   ```
+
+6. Build a debug or release APK:
 
    ```bash
    flutter build apk --debug
+   flutter build apk --release
    ```
 
-The debug APK is written to `build/app/outputs/flutter-apk/app-debug.apk`.
+APK files are written to `build/app/outputs/flutter-apk/`.
 
 ## Android application ID
 
 `com.olega20.leruazakup`
 
-## Project status
-
-The initial scaffold is in place. The app's agreed home screen, calendar, settings, navigation, and offline-first foundations will be implemented in subsequent reviewed milestones.
-
-## Documentation
+## Project documentation
 
 - [Agreed requirements](docs/requirements/AGREED_REQUIREMENTS.md)
 - [Startup design](docs/superpowers/specs/2026-11-19-lerua-zakup-startup-design.md)
 - [Startup implementation plan](docs/superpowers/plans/2026-11-19-lerua-zakup-startup.md)
+- [Offline release verification checklist](docs/release/OFFLINE_RELEASE_CHECKLIST.md)
