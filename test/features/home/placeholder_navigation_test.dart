@@ -4,6 +4,9 @@ import 'package:lerua_zakup/app/app.dart';
 import 'package:lerua_zakup/core/storage/preferences_store.dart';
 import 'package:lerua_zakup/core/storage/secure_token_store.dart';
 import 'package:lerua_zakup/features/settings/data/settings_repository.dart';
+import 'package:lerua_zakup/features/warehouse_log/data/warehouse_log_repository.dart';
+import 'package:lerua_zakup/features/warehouse_log/data/warehouse_log_storage.dart';
+import 'package:lerua_zakup/features/warehouse_log/domain/warehouse_log_entry.dart';
 
 class _Preferences implements PreferencesStore {
   @override
@@ -25,6 +28,23 @@ class _SecureStore implements SecureTokenStore {
   Future<void> writeToken(String token) async {}
   @override
   Future<void> deleteToken() async {}
+}
+
+class _TestWarehouseLogStorage implements WarehouseLogStorage {
+  final entries = <WarehouseLogEntry>[];
+
+  @override
+  Future<void> insert(WarehouseLogEntry entry, {required int limit}) async {
+    entries.insert(0, entry);
+    if (entries.length > limit) entries.removeRange(limit, entries.length);
+  }
+
+  @override
+  Future<List<WarehouseLogEntry>> latest({required int limit}) async =>
+      entries.take(limit).toList();
+
+  @override
+  Future<void> clear() async => entries.clear();
 }
 
 SettingsRepository _testRepository() => SettingsRepository(
@@ -59,11 +79,14 @@ void main() {
   });
 
   testWidgets(
-    'Settings opens a non-empty placeholder with Warehouse Journal action',
+    'Settings opens the diagnostic warehouse journal',
     (tester) async {
       await tester.pumpWidget(
         LeruaZakupApp(
           settingsRepository: _testRepository(),
+          warehouseLogRepository: WarehouseLogRepository(
+            storage: _TestWarehouseLogStorage(),
+          ),
           appVersionOverride: '1.0.0+1',
         ),
       );
@@ -74,8 +97,8 @@ void main() {
       expect(find.text('Настройки'), findsOneWidget);
       expect(find.text('Журнал склада'), findsOneWidget);
       await tester.tap(find.text('Журнал склада'));
-      await tester.pump();
-      expect(find.text('Функция находится в разработке'), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(find.text('Журнал пока пуст'), findsOneWidget);
     },
   );
 

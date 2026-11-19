@@ -28,11 +28,13 @@ class LeruaZakupApp extends StatefulWidget {
   const LeruaZakupApp({
     super.key,
     this.settingsRepository,
+    this.warehouseLogRepository,
     this.appVersionOverride,
     this.onExitRequested,
   });
 
   final SettingsRepository? settingsRepository;
+  final WarehouseLogRepository? warehouseLogRepository;
   final String? appVersionOverride;
   final VoidCallback? onExitRequested;
 
@@ -55,6 +57,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   late final Stream<ApiConnectionState> _connectivityStatuses =
       _apiManager.states;
   late final WarehouseLogRepository _warehouseLogRepository =
+      widget.warehouseLogRepository ??
       WarehouseLogRepository(storage: SqfliteWarehouseLogStorage());
   late final StorageWarningController _storageWarningController =
       StorageWarningController(
