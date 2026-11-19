@@ -17,7 +17,7 @@ void main() {
     expect(result.technicalDetails, isNot(contains('abc')));
   });
 
-  test('classifies local database failures separately', () {
+  test('keeps unknown exception details out of the diagnostic', () {
     final result = classifier.describe(Exception('database failure'));
     // Unknown exception text is never copied to the diagnostic.
     expect(result.code, 'UNEXPECTED_ERROR');
