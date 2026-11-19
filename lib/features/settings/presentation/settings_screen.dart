@@ -355,9 +355,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       }
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => WarehouseLogScreen(
-                            repository: repository,
-                          ),
+                          builder: (_) =>
+                              WarehouseLogScreen(repository: repository),
                         ),
                       );
                     },

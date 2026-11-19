@@ -162,14 +162,11 @@ class _WarehouseLogScreenState extends State<WarehouseLogScreen> {
               itemBuilder: (context, index) {
                 final entry = _entries[index];
                 return ListTile(
-                  leading: Icon(
-                    switch (entry.level) {
-                      WarehouseLogLevel.info => Icons.info_outline,
-                      WarehouseLogLevel.warning => Icons.warning_amber,
-                      WarehouseLogLevel.error => Icons.error_outline,
-                    },
-                    color: _levelColor(context, entry.level),
-                  ),
+                  leading: Icon(switch (entry.level) {
+                    WarehouseLogLevel.info => Icons.info_outline,
+                    WarehouseLogLevel.warning => Icons.warning_amber,
+                    WarehouseLogLevel.error => Icons.error_outline,
+                  }, color: _levelColor(context, entry.level)),
                   title: Text(warehouseLogEventLabel(entry.type)),
                   subtitle: Text(
                     '${_formatTime(entry.timestamp)}\n${entry.description}',
