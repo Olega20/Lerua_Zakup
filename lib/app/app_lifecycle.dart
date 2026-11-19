@@ -21,10 +21,9 @@ class FlutterSystemUiController implements SystemUiController {
 }
 
 class AppLifecycleController with WidgetsBindingObserver {
-  AppLifecycleController({required SystemUiController systemUi})
-    : _systemUi = systemUi;
+  AppLifecycleController({required this.systemUi});
 
-  final SystemUiController _systemUi;
+  final SystemUiController systemUi;
   bool _initialized = false;
 
   Future<void> initialize() async {
