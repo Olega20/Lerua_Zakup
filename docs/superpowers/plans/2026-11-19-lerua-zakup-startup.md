@@ -189,17 +189,17 @@ Expected: all calendar domain and widget tests pass.
 - Home consumes the calendar week widget and connectivity indicator from Task 7.
 - Placeholder destinations use the shared placeholder widget and the exact Snackbar text `Функция находится в разработке`.
 
-- [ ] **Step 1: Write failing Home widget tests** for top indicator slot, calendar above buttons, six identical text-only buttons, equal vertical distribution, no app-name header, and Russian labels.
-- [ ] **Step 2: Run tests** and confirm the Home screen is missing.
-- [ ] **Step 3: Implement Home layout** using responsive constraints, keeping the indicator slot reserved for Task 7.
-- [ ] **Step 4: Write failing placeholder tests** for all five business buttons and the Settings Journal placeholder; tapping must not open a blank screen and must show the exact Snackbar message.
-- [ ] **Step 5: Implement the lightweight placeholder destinations** and route behavior.
-- [ ] **Step 6: Run**
+- [x] **Step 1: Write failing Home widget tests** for top indicator slot, calendar above buttons, six identical text-only buttons, equal vertical distribution, no app-name header, and Russian labels.
+- [x] **Step 2: Run tests** and confirm the Home screen is missing.
+- [x] **Step 3: Implement Home layout** using responsive constraints, keeping the indicator slot reserved for Task 7.
+- [x] **Step 4: Write failing placeholder tests** for all five business buttons and the Settings Journal placeholder; tapping must not open a blank screen and must show the exact Snackbar message.
+- [x] **Step 5: Implement the lightweight placeholder destinations** and route behavior.
+- [x] **Step 6: Run**
 ```powershell
 flutter test test/features/home
 ```
 Expected: Home layout and placeholder tests pass.
-- [ ] **Step 7: Commit** `feat: add home screen and placeholder sections`.
+- [x] **Step 7: Commit** `feat: add home screen and placeholder sections`.
 
 ## Task 5: Settings, persistent preferences, secure token, and reset
 
