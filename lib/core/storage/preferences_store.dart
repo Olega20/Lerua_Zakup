@@ -30,6 +30,6 @@ class SharedPreferencesStore implements PreferencesStore {
   @override
   Future<void> clearUserPreferences() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.clear();
+    await preferences.remove(_themeKey);
   }
 }
