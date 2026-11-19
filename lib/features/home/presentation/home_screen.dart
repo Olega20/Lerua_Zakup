@@ -12,6 +12,7 @@ class HomeScreen extends StatefulWidget {
     required this.onOpenSettings,
     required this.onShowPlaceholder,
     this.onDateSelected,
+    this.connectivityStatuses,
   });
 
   final DateTime now;
