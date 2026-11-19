@@ -35,8 +35,8 @@ class AppLifecycleController with WidgetsBindingObserver {
   }
 
   Future<void> _applySystemUi() async {
-    await _systemUi.setPortraitOrientation();
-    await _systemUi.enableImmersiveMode();
+    await systemUi.setPortraitOrientation();
+    await systemUi.enableImmersiveMode();
   }
 
   @override
