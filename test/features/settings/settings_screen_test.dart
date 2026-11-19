@@ -1,0 +1,147 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:lerua_zakup/core/storage/preferences_store.dart';
+import 'package:lerua_zakup/core/storage/secure_token_store.dart';
+import 'package:lerua_zakup/features/settings/data/settings_repository.dart';
+import 'package:lerua_zakup/features/settings/presentation/settings_screen.dart';
+
+class TestPreferencesStore implements PreferencesStore {
+  ThemeMode? theme;
+  bool failWrite = false;
+
+  @override
+  Future<ThemeMode?> readTheme() async => theme;
+
+  @override
+  Future<void> writeTheme(ThemeMode mode) async {
+    if (failWrite) throw StateError('preferences failure');
+    theme = mode;
+  }
+
+  @override
+  Future<void> clearUserPreferences() async => theme = null;
+}
+
+class TestSecureStore implements SecureTokenStore {
+  String? token;
+  bool failWrite = false;
+
+  @override
+  Future<String?> readToken() async => token;
+
+  @override
+  Future<void> writeToken(String value) async {
+    if (failWrite) throw StateError('secure failure');
+    token = value;
+  }
+
+  @override
+  Future<void> deleteToken() async => token = null;
+}
+
+void main() {
+  late TestPreferencesStore preferences;
+  late TestSecureStore secure;
+  late SettingsRepository repository;
+  var themeChanges = <ThemeMode>[];
+
+  setUp(() {
+    preferences = TestPreferencesStore();
+    secure = TestSecureStore();
+    repository = SettingsRepository(
+      preferencesStore: preferences,
+      secureTokenStore: secure,
+    );
+    themeChanges = [];
+  });
+
+  Widget app() => MaterialApp(
+        home: SettingsScreen(
+          repository: repository,
+          appVersion: '1.0.0+1',
+          onThemeChanged: themeChanges.add,
+        ),
+      );
+
+  testWidgets('shows three separate theme buttons and applies selection', (tester) async {
+    await tester.pumpWidget(app());
+    expect(find.text('Светлая'), findsOneWidget);
+    expect(find.text('Тёмная'), findsOneWidget);
+    expect(find.text('Системная'), findsOneWidget);
+
+    await tester.tap(find.text('Тёмная'));
+    await tester.pumpAndSettle();
+    expect(preferences.theme, ThemeMode.dark);
+    expect(themeChanges, [ThemeMode.dark]);
+  });
+
+  testWidgets('token input is always obscured and has no reveal control', (tester) async {
+    await tester.pumpWidget(app());
+    final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
+    expect(field.obscureText, isTrue);
+    expect(find.byIcon(Icons.visibility), findsNothing);
+    expect(find.byIcon(Icons.visibility_off), findsNothing);
+  });
+
+  testWidgets('saves token masked and leaves field populated with mask', (tester) async {
+    await tester.pumpWidget(app());
+    await tester.enterText(find.byKey(const ValueKey('api-token-field')), 'secret token');
+    await tester.tap(find.text('Сохранить'));
+    await tester.pumpAndSettle();
+
+    expect(secure.token, 'secrettoken');
+    final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
+    expect(field.obscureText, isTrue);
+    expect(field.controller!.text, isNot('secrettoken'));
+  });
+
+  testWidgets('empty token is not saved', (tester) async {
+    await tester.pumpWidget(app());
+    await tester.tap(find.text('Сохранить'));
+    await tester.pumpAndSettle();
+    expect(secure.token, isNull);
+    expect(find.text('Введите API-токен'), findsOneWidget);
+  });
+
+  testWidgets('deleting token requires confirmation', (tester) async {
+    secure.token = 'existing';
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Удалить токен'));
+    await tester.pumpAndSettle();
+    expect(secure.token, 'existing');
+    await tester.tap(find.text('Отмена'));
+    await tester.pumpAndSettle();
+    expect(secure.token, 'existing');
+  });
+
+  testWidgets('reset asks separately before deleting token', (tester) async {
+    secure.token = 'existing';
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Сбросить настройки'));
+    await tester.pumpAndSettle();
+    expect(find.text('Удалить сохранённый API-токен?'), findsOneWidget);
+    await tester.tap(find.text('Оставить токен'));
+    await tester.pumpAndSettle();
+    expect(secure.token, 'existing');
+    expect(preferences.theme, isNull);
+  });
+
+  testWidgets('shows version in Settings', (tester) async {
+    await tester.pumpWidget(app());
+    expect(find.text('Версия 1.0.0+1'), findsOneWidget);
+  });
+
+  testWidgets('secure storage failure keeps entered token in the masked field', (tester) async {
+    secure.failWrite = true;
+    await tester.pumpWidget(app());
+    await tester.enterText(find.byKey(const ValueKey('api-token-field')), 'private');
+    await tester.tap(find.text('Сохранить'));
+    await tester.pumpAndSettle();
+    final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
+    expect(field.controller!.text, 'private');
+    expect(field.obscureText, isTrue);
+    expect(find.text('Не удалось сохранить API-токен'), findsOneWidget);
+  });
+}
