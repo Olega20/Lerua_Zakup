@@ -13,18 +13,15 @@ void main() {
 
   group('CalendarDate.weekDays', () {
     test('returns seven dates from Monday through Sunday', () {
-      expect(
-        CalendarDate.weekDays(DateTime(2026, 11, 19)),
-        [
-          DateTime(2026, 11, 16),
-          DateTime(2026, 11, 17),
-          DateTime(2026, 11, 18),
-          DateTime(2026, 11, 19),
-          DateTime(2026, 11, 20),
-          DateTime(2026, 11, 21),
-          DateTime(2026, 11, 22),
-        ],
-      );
+      expect(CalendarDate.weekDays(DateTime(2026, 11, 19)), [
+        DateTime(2026, 11, 16),
+        DateTime(2026, 11, 17),
+        DateTime(2026, 11, 18),
+        DateTime(2026, 11, 19),
+        DateTime(2026, 11, 20),
+        DateTime(2026, 11, 21),
+        DateTime(2026, 11, 22),
+      ]);
     });
   });
 
@@ -63,7 +60,10 @@ void main() {
 
     test('formats month title and adds year only for another year', () {
       expect(CalendarDate.monthTitle(2026, 11, currentYear: 2026), 'Ноябрь');
-      expect(CalendarDate.monthTitle(2025, 11, currentYear: 2026), 'Ноябрь 2025');
+      expect(
+        CalendarDate.monthTitle(2025, 11, currentYear: 2026),
+        'Ноябрь 2025',
+      );
     });
   });
 }
