@@ -14,8 +14,9 @@ class _FullCalendarScreenState extends State<FullCalendarScreen>
   late DateTime _selectedDate;
   late DateTime _visibleMonth;
   double _horizontalDrag = 0;
-  late final RestorableString _restoredSelectedDate =
-      RestorableString(widget.now.toIso8601String());
+  late final RestorableString _restoredSelectedDate = RestorableString(
+    widget.now.toIso8601String(),
+  );
   late final RestorableString _restoredVisibleMonth = RestorableString(
     DateTime(widget.now.year, widget.now.month, 1).toIso8601String(),
   );

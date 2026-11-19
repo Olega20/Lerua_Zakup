@@ -24,8 +24,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with RestorationMixin {
   late DateTime _selectedDate;
-  late final RestorableString _restoredSelectedDate =
-      RestorableString(_today.toIso8601String());
+  late final RestorableString _restoredSelectedDate = RestorableString(
+    _today.toIso8601String(),
+  );
 
   @override
   String? get restorationId => 'home_screen';
