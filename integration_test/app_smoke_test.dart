@@ -7,19 +7,6 @@ import 'package:lerua_zakup/core/storage/secure_token_store.dart';
 import 'package:lerua_zakup/features/settings/data/settings_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class _MemoryPreferencesStore implements PreferencesStore {
-  ThemeMode? theme;
-
-  @override
-  Future<ThemeMode?> readTheme() async => theme;
-
-  @override
-  Future<void> writeTheme(ThemeMode mode) async => theme = mode;
-
-  @override
-  Future<void> clearUserPreferences() async => theme = null;
-}
-
 class _MemorySecureTokenStore implements SecureTokenStore {
   String? token;
 
@@ -37,14 +24,12 @@ void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('offline startup shell smoke test', (tester) async {
-    SharedPreferences.setMockInitialValues({
-      'notification_permission_requested': true,
-    });
-    final preferences = _MemoryPreferencesStore();
-    final secure = _MemorySecureTokenStore();
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.clear();
+    await preferences.setBool('notification_permission_requested', true);
     final repository = SettingsRepository(
-      preferencesStore: preferences,
-      secureTokenStore: secure,
+      preferencesStore: SharedPreferencesStore(),
+      secureTokenStore: _MemorySecureTokenStore(),
     );
 
     await tester.pumpWidget(
@@ -68,7 +53,7 @@ void main() {
     expect(find.text('Тема оформления'), findsOneWidget);
     await tester.tap(find.text('Тёмная'));
     await tester.pumpAndSettle();
-    expect(preferences.theme, ThemeMode.dark);
+    expect(await preferences.getString('theme_mode'), ThemeMode.dark.name);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
