@@ -50,6 +50,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     tokenStore: FlutterSecureTokenStore(),
     apiClient: MoySkladApiClient(),
     internet: _connectivitySource.hasInternet.asBroadcastStream(),
+    onEvent: _warehouseLogRepository.append,
   );
   late final Stream<ApiConnectionState> _connectivityStatuses =
       _apiManager.states;

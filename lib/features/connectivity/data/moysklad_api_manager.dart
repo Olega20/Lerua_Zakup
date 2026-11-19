@@ -3,6 +3,7 @@ import 'dart:async';
 import '../../../core/storage/secure_token_store.dart';
 import '../domain/api_check_result.dart';
 import '../domain/api_connection_state.dart';
+import '../../warehouse_log/domain/warehouse_log_entry.dart';
 import 'moysklad_api_client.dart';
 
 class MoySkladApiManager {
@@ -13,8 +14,10 @@ class MoySkladApiManager {
     this.checkInterval = const Duration(minutes: 5),
     DateTime Function()? clock,
     Timer Function(Duration, void Function())? periodicTimer,
+    Future<void> Function(WarehouseLogEntry entry)? onEvent,
   }) : _clock = clock ?? DateTime.now,
-       _periodicTimer = periodicTimer ?? _defaultPeriodicTimer;
+       _periodicTimer = periodicTimer ?? _defaultPeriodicTimer,
+       _onEvent = onEvent;
 
   final SecureTokenStore tokenStore;
   final MoySkladApiClient apiClient;
@@ -22,6 +25,7 @@ class MoySkladApiManager {
   final Duration checkInterval;
   final DateTime Function() _clock;
   final Timer Function(Duration, void Function()) _periodicTimer;
+  final Future<void> Function(WarehouseLogEntry entry)? _onEvent;
 
   final StreamController<ApiConnectionState> _states =
       StreamController<ApiConnectionState>.broadcast();
@@ -69,8 +73,18 @@ class MoySkladApiManager {
     if (!online) {
       _retryNotBefore = null;
       _setState(ApiConnectionState.offline);
+      unawaited(_recordEvent(
+        WarehouseLogLevel.warning,
+        WarehouseLogEventType.internetLost,
+        'Подтверждённое интернет-соединение потеряно',
+      ));
     } else {
       _setState(ApiConnectionState.unavailable);
+      unawaited(_recordEvent(
+        WarehouseLogLevel.info,
+        WarehouseLogEventType.internetRestored,
+        'Подтверждённое интернет-соединение восстановлено',
+      ));
       unawaited(checkNow());
     }
     _updateTimer();
@@ -84,6 +98,11 @@ class MoySkladApiManager {
 
   Future<void> onTokenSaved() async {
     _generation++;
+    await _recordEvent(
+      WarehouseLogLevel.info,
+      WarehouseLogEventType.tokenSaved,
+      'Access Token сохранён',
+    );
     _retryNotBefore = null;
     if (_online) {
       _setState(ApiConnectionState.unavailable);
@@ -93,6 +112,11 @@ class MoySkladApiManager {
 
   void onTokenDeleted() {
     _generation++;
+    unawaited(_recordEvent(
+      WarehouseLogLevel.info,
+      WarehouseLogEventType.tokenDeleted,
+      'Access Token удалён',
+    ));
     _retryNotBefore = null;
     _setState(
       _online ? ApiConnectionState.unavailable : ApiConnectionState.offline,
@@ -153,11 +177,22 @@ class MoySkladApiManager {
 
     final generation = _generation;
     _setState(ApiConnectionState.checking);
+    await _recordEvent(
+      WarehouseLogLevel.info,
+      WarehouseLogEventType.checkStarted,
+      'Проверка доступности API запущена',
+    );
+    if (!_isCurrent(generation)) return;
     try {
       final token = await tokenStore.readToken();
       if (!_isCurrent(generation)) return;
       if (token == null || token.trim().isEmpty) {
         _lastCheckAt = _clock();
+        await _recordEvent(
+          WarehouseLogLevel.warning,
+          WarehouseLogEventType.missingToken,
+          'Access Token не сохранён',
+        );
         _setState(ApiConnectionState.unavailable);
         return;
       }
@@ -165,6 +200,14 @@ class MoySkladApiManager {
       final result = await apiClient.checkConnection(token);
       if (!_isCurrent(generation)) return;
       _lastCheckAt = _clock();
+      final event = _eventForResult(result);
+      await _recordEvent(
+        event.$1,
+        event.$2,
+        event.$3,
+        httpStatusCode: result.httpStatusCode,
+      );
+      if (!_isCurrent(generation)) return;
       if (result.status == ApiCheckStatus.rateLimited) {
         _retryNotBefore = _clock().add(result.retryAfter ?? checkInterval);
         _setState(ApiConnectionState.unavailable);
@@ -179,8 +222,81 @@ class MoySkladApiManager {
     } catch (_) {
       if (_isCurrent(generation)) {
         _lastCheckAt = _clock();
+        await _recordEvent(
+          WarehouseLogLevel.error,
+          WarehouseLogEventType.apiUnavailable,
+          'Не удалось выполнить проверку API',
+        );
         _setState(ApiConnectionState.unavailable);
       }
+    }
+  }
+
+  (WarehouseLogLevel, WarehouseLogEventType, String) _eventForResult(
+    ApiCheckResult result,
+  ) => switch (result.status) {
+    ApiCheckStatus.connected => (
+      WarehouseLogLevel.info,
+      WarehouseLogEventType.checkSucceeded,
+      'МойСклад ответил успешно',
+    ),
+    ApiCheckStatus.missingToken => (
+      WarehouseLogLevel.warning,
+      WarehouseLogEventType.missingToken,
+      'Access Token не сохранён',
+    ),
+    ApiCheckStatus.unauthorized => (
+      WarehouseLogLevel.warning,
+      WarehouseLogEventType.unauthorized,
+      'API отклонил Access Token',
+    ),
+    ApiCheckStatus.forbidden => (
+      WarehouseLogLevel.warning,
+      WarehouseLogEventType.forbidden,
+      'У токена нет прав на проверку контекста',
+    ),
+    ApiCheckStatus.rateLimited => (
+      WarehouseLogLevel.warning,
+      WarehouseLogEventType.rateLimited,
+      'API ограничил частоту запросов',
+    ),
+    ApiCheckStatus.timeout => (
+      WarehouseLogLevel.error,
+      WarehouseLogEventType.timeout,
+      'API не ответил за отведённое время',
+    ),
+    ApiCheckStatus.invalidResponse => (
+      WarehouseLogLevel.error,
+      WarehouseLogEventType.invalidResponse,
+      'API вернул некорректный JSON-ответ',
+    ),
+    ApiCheckStatus.unavailable => (
+      WarehouseLogLevel.error,
+      WarehouseLogEventType.apiUnavailable,
+      'Не удалось получить успешный ответ API',
+    ),
+  };
+
+  Future<void> _recordEvent(
+    WarehouseLogLevel level,
+    WarehouseLogEventType type,
+    String description, {
+    int? httpStatusCode,
+  }) async {
+    final sink = _onEvent;
+    if (sink == null) return;
+    try {
+      await sink(
+        WarehouseLogEntry(
+          timestamp: _clock(),
+          level: level,
+          type: type,
+          description: description,
+          httpStatusCode: httpStatusCode,
+        ),
+      );
+    } catch (_) {
+      // Diagnostics must never interrupt connectivity checks or app startup.
     }
   }
 

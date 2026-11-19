@@ -12,13 +12,16 @@ class WarehouseLogRepository {
   final DateTime Function() _clock;
   final int maxEntries;
 
+  Future<void> append(WarehouseLogEntry entry) =>
+      storage.insert(entry, limit: maxEntries);
+
   Future<void> record({
     required WarehouseLogLevel level,
     required WarehouseLogEventType type,
     required String description,
     int? httpStatusCode,
     String? apiErrorCode,
-  }) => storage.insert(
+  }) => append(
     WarehouseLogEntry(
       timestamp: _clock(),
       level: level,
@@ -27,7 +30,6 @@ class WarehouseLogRepository {
       httpStatusCode: httpStatusCode,
       apiErrorCode: _safeApiCode(apiErrorCode),
     ),
-    limit: maxEntries,
   );
 
   Future<List<WarehouseLogEntry>> latest() => storage.latest(limit: maxEntries);
