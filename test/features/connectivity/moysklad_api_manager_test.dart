@@ -264,6 +264,14 @@ void main() {
       expect(transport.calls, 1);
       await manager.checkNow();
       expect(transport.calls, 1);
+      await manager.onTokenSaved();
+      expect(transport.calls, 1);
+      internet.add(false);
+      await Future<void>.delayed(Duration.zero);
+      internet.add(true);
+      await Future<void>.delayed(Duration.zero);
+      await Future<void>.delayed(Duration.zero);
+      expect(transport.calls, 1);
       now = now.add(const Duration(seconds: 61));
       await manager.checkNow();
       expect(transport.calls, 2);

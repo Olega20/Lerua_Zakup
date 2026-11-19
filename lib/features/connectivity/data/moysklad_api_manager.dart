@@ -72,7 +72,6 @@ class MoySkladApiManager {
     _online = online;
     _generation++;
     if (!online) {
-      _retryNotBefore = null;
       _setState(ApiConnectionState.offline);
       unawaited(
         _recordEvent(
@@ -108,7 +107,6 @@ class MoySkladApiManager {
       WarehouseLogEventType.tokenSaved,
       'Access Token сохранён',
     );
-    _retryNotBefore = null;
     if (_online) {
       _setState(ApiConnectionState.unavailable);
       await checkNow();
