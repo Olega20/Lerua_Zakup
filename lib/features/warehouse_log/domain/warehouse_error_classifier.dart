@@ -54,7 +54,7 @@ class WarehouseErrorClassifier {
         code: 'PLATFORM_SERVICE_ERROR',
         message: 'Не удалось выполнить системную операцию устройства.',
         recommendedAction: 'Проверьте разрешения и доступность функции, затем повторите действие.',
-        technicalDetails: 'Системный код: ${sanitizeDiagnosticText(error.code)}',
+        technicalDetails: 'Системный код: ${error.code.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '')}',
       );
     }
     return _result('UNEXPECTED_ERROR', WarehouseLogEventType.unexpectedError,
