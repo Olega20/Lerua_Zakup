@@ -92,26 +92,31 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   }
 
   void _openCalendar(BuildContext context) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => FullCalendarScreen(now: DateTime.now()),
-      ),
-    );
+    Navigator.restorablePush<void>(context, _calendarRoute);
   }
 
   void _openSettings(BuildContext context) {
-    Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => SettingsScreen(
-          repository: _settingsRepository,
-          appVersion: _appVersion,
-          onThemeChanged: (mode) {
-            if (mounted) setState(() => _themeMode = mode);
-          },
-          onTokenSaved: () {
-            // Connectivity/API checking is connected in Task 7.
-          },
-        ),
+    Navigator.restorablePush<void>(context, _settingsRoute);
+  }
+
+  static Route<void> _calendarRoute(
+    BuildContext context,
+    Object? arguments,
+  ) => MaterialPageRoute<void>(
+    builder: (_) => FullCalendarScreen(now: DateTime.now()),
+  );
+
+  static Route<void> _settingsRoute(
+    BuildContext context,
+    Object? arguments,
+  ) {
+    final dependencies = _AppDependencies.of(context);
+    return MaterialPageRoute<void>(
+      builder: (_) => SettingsScreen(
+        repository: dependencies.repository,
+        appVersion: dependencies.appVersion,
+        onThemeChanged: dependencies.onThemeChanged,
+        onTokenSaved: dependencies.onTokenSaved,
       ),
     );
   }
@@ -136,10 +141,46 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
         ),
       ),
     ),
-    builder: (context, child) => Listener(
-      behavior: HitTestBehavior.translucent,
-      onPointerDown: (_) => _snackbarService.dismiss(),
-      child: child ?? const SizedBox.shrink(),
+    builder: (context, child) => _AppDependencies(
+      repository: _settingsRepository,
+      appVersion: _appVersion,
+      onThemeChanged: (mode) {
+        if (mounted) setState(() => _themeMode = mode);
+      },
+      onTokenSaved: () {
+        // Connectivity/API checking is connected in Task 7.
+      },
+      child: Listener(
+        behavior: HitTestBehavior.translucent,
+        onPointerDown: (_) => _snackbarService.dismiss(),
+        child: child ?? const SizedBox.shrink(),
+      ),
     ),
   );
+}
+
+class _AppDependencies extends InheritedWidget {
+  const _AppDependencies({
+    required this.repository,
+    required this.appVersion,
+    required this.onThemeChanged,
+    required this.onTokenSaved,
+    required super.child,
+  });
+
+  final SettingsRepository repository;
+  final String appVersion;
+  final ValueChanged<ThemeMode> onThemeChanged;
+  final VoidCallback onTokenSaved;
+
+  static _AppDependencies of(BuildContext context) {
+    final dependencies =
+        context.dependOnInheritedWidgetOfExactType<_AppDependencies>();
+    assert(dependencies != null, 'App dependencies are unavailable');
+    return dependencies!;
+  }
+
+  @override
+  bool updateShouldNotify(_AppDependencies oldWidget) =>
+      repository != oldWidget.repository || appVersion != oldWidget.appVersion;
 }
