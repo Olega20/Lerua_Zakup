@@ -7,15 +7,15 @@ abstract interface class StorageCapacityReader {
 
 class StorageCapacityService implements StorageCapacityReader {
   StorageCapacityService({
-    MethodChannel channel = const MethodChannel('lerua_zakup/platform'),
-  }) : _channel = channel;
+    this.channel = const MethodChannel('lerua_zakup/platform'),
+  });
 
-  final MethodChannel _channel;
+  final MethodChannel channel;
 
   @override
   Future<int?> getAvailableBytes() async {
     try {
-      return await _channel.invokeMethod<int>('getAvailableStorageBytes');
+      return await channel.invokeMethod<int>('getAvailableStorageBytes');
     } on PlatformException {
       return null;
     } on MissingPluginException {

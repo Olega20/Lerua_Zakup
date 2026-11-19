@@ -6,13 +6,13 @@ import 'connectivity_monitor.dart';
 
 class PlatformConnectivitySource implements ConnectivityStatusSource {
   PlatformConnectivitySource({
-    EventChannel channel = const EventChannel('lerua_zakup/connectivity'),
-  }) : _channel = channel;
+    this.channel = const EventChannel('lerua_zakup/connectivity'),
+  });
 
-  final EventChannel _channel;
+  final EventChannel channel;
 
   @override
-  Stream<bool> get hasInternet => _channel
+  Stream<bool> get hasInternet => channel
       .receiveBroadcastStream()
       .map((event) => event == true)
       .transform(

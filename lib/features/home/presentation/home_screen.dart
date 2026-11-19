@@ -94,10 +94,15 @@ class _HomeScreenState extends State<HomeScreen> with RestorationMixin {
     return SafeArea(
       child: Column(
         children: [
-          const SizedBox(
-            key: ValueKey('connectivity-indicator-slot'),
+          SizedBox(
+            key: const ValueKey('connectivity-indicator-slot'),
             height: 4,
             width: double.infinity,
+            child: ConnectivityIndicator(
+              statuses:
+                  widget.connectivityStatuses ??
+                  const Stream<ConnectivityStatus>.empty(),
+            ),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
