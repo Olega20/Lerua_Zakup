@@ -141,9 +141,7 @@ class _HomeActionButton extends StatelessWidget {
           foregroundColor: foregroundColor ?? colors.onSurface,
           backgroundColor: colors.surface,
           side: BorderSide(color: colors.outlineVariant, width: 0.8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(7),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(7)),
           textStyle: Theme.of(context).textTheme.titleMedium,
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         ),
