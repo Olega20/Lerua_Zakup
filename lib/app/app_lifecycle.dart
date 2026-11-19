@@ -10,14 +10,14 @@ abstract interface class SystemUiController {
 
 class FlutterSystemUiController implements SystemUiController {
   @override
-  Future<void> setPortraitOrientation() => SystemChrome.setPreferredOrientations(
-    const [DeviceOrientation.portraitUp],
-  );
+  Future<void> setPortraitOrientation() =>
+      SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+      ]);
 
   @override
-  Future<void> enableImmersiveMode() => SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.immersiveSticky,
-  );
+  Future<void> enableImmersiveMode() =>
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 }
 
 class AppLifecycleController with WidgetsBindingObserver {

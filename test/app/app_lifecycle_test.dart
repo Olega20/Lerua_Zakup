@@ -19,6 +19,7 @@ class FakeSystemUiController implements SystemUiController {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('AppLifecycleController', () {
     test('configures portrait immersive mode on initialization', () async {
       final systemUi = FakeSystemUiController();

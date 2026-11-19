@@ -21,8 +21,7 @@ class FakeNotificationPlatform implements NotificationPlatform {
   }
 }
 
-class FakeNotificationPermissionStore
-    implements NotificationPermissionStore {
+class FakeNotificationPermissionStore implements NotificationPermissionStore {
   bool requested = false;
   int markCalls = 0;
 
@@ -62,16 +61,19 @@ void main() {
       expect(platform.permissionCalls, 0);
     });
 
-    test('permission denial does not prevent notification initialization', () async {
-      final platform = FakeNotificationPlatform()..permissionGranted = false;
-      final store = FakeNotificationPermissionStore();
-      final service = NotificationService(platform: platform, store: store);
+    test(
+      'permission denial does not prevent notification initialization',
+      () async {
+        final platform = FakeNotificationPlatform()..permissionGranted = false;
+        final store = FakeNotificationPermissionStore();
+        final service = NotificationService(platform: platform, store: store);
 
-      final granted = await service.initializeAndRequestPermission();
+        final granted = await service.initializeAndRequestPermission();
 
-      expect(granted, isFalse);
-      expect(platform.channelCalls, 1);
-      expect(store.requested, isTrue);
-    });
+        expect(granted, isFalse);
+        expect(platform.channelCalls, 1);
+        expect(store.requested, isTrue);
+      },
+    );
   });
 }
