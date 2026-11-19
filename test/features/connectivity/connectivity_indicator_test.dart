@@ -2,14 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:lerua_zakup/features/connectivity/domain/connectivity_status.dart';
+import 'package:lerua_zakup/features/connectivity/domain/api_connection_state.dart';
 import 'package:lerua_zakup/features/connectivity/presentation/connectivity_indicator.dart';
 
 void main() {
   testWidgets('starts red while internet status is not yet confirmed', (
     tester,
   ) async {
-    final statuses = StreamController<ConnectivityStatus>.broadcast();
+    final statuses = StreamController<ApiConnectionState>.broadcast();
     addTearDown(statuses.close);
 
     await tester.pumpWidget(
@@ -30,7 +30,7 @@ void main() {
     );
   });
 
-  testWidgets('uses yellow online and immediately changes to red offline', (
+  testWidgets('uses yellow while checking and immediately changes to red offline', (
     tester,
   ) async {
     final statuses = StreamController<ConnectivityStatus>.broadcast();
@@ -42,7 +42,7 @@ void main() {
       ),
     );
 
-    statuses.add(ConnectivityStatus.online);
+    statuses.add(ApiConnectionState.unavailable);
     await tester.pump();
     expect(
       tester
@@ -53,7 +53,7 @@ void main() {
       Colors.amber,
     );
 
-    statuses.add(ConnectivityStatus.offline);
+    statuses.add(ApiConnectionState.offline);
     await tester.pumpAndSettle();
     expect(
       tester
@@ -65,7 +65,7 @@ void main() {
     );
   });
 
-  testWidgets('never shows green before API confirmation is implemented', (
+  testWidgets('shows green only after successful API confirmation', (
     tester,
   ) async {
     final statuses = StreamController<ConnectivityStatus>.broadcast();
@@ -82,6 +82,12 @@ void main() {
     final color = tester
         .widget<Container>(find.byKey(const ValueKey('connectivity-indicator')))
         .color;
-    expect(color, isNot(Colors.green));
+    expect(color, Colors.amber);
+    statuses.add(ApiConnectionState.connected);
+    await tester.pump();
+    expect(
+      tester.widget<Container>(find.byKey(const ValueKey('connectivity-indicator'))).color,
+      Colors.green,
+    );
   });
 }

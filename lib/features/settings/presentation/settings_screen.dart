@@ -13,6 +13,7 @@ class SettingsScreen extends StatefulWidget {
     required this.onThemeChanged,
     this.onSeedColorChanged,
     this.onTokenSaved,
+    this.onTokenDeleted,
   });
 
   final SettingsRepository repository;
@@ -20,6 +21,7 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeChanged;
   final ValueChanged<Color>? onSeedColorChanged;
   final VoidCallback? onTokenSaved;
+  final VoidCallback? onTokenDeleted;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
@@ -194,6 +196,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _tokenDirty = false;
         _tokenController.clear();
       });
+      widget.onTokenDeleted?.call();
     } catch (_) {
       _message('Не удалось удалить API-токен');
     }
@@ -234,6 +237,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       });
       widget.onThemeChanged(ThemeMode.light);
       widget.onSeedColorChanged?.call(AppTheme.defaultSeedColor);
+      if (deleteToken) widget.onTokenDeleted?.call();
       _message('Настройки сброшены');
     } catch (_) {
       _message('Не удалось сбросить настройки');

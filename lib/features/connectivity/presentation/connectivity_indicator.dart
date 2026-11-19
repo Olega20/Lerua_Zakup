@@ -2,20 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../domain/connectivity_status.dart';
+import '../domain/api_connection_state.dart';
 
 class ConnectivityIndicator extends StatefulWidget {
   const ConnectivityIndicator({super.key, required this.statuses});
 
-  final Stream<ConnectivityStatus> statuses;
+  final Stream<ApiConnectionState> statuses;
 
   @override
   State<ConnectivityIndicator> createState() => _ConnectivityIndicatorState();
 }
 
 class _ConnectivityIndicatorState extends State<ConnectivityIndicator> {
-  StreamSubscription<ConnectivityStatus>? _subscription;
-  ConnectivityStatus _status = ConnectivityStatus.offline;
+  StreamSubscription<ApiConnectionState>? _subscription;
+  ApiConnectionState _status = ApiConnectionState.offline;
 
   @override
   void initState() {
@@ -47,6 +47,11 @@ class _ConnectivityIndicatorState extends State<ConnectivityIndicator> {
     key: const ValueKey('connectivity-indicator'),
     height: 4,
     width: double.infinity,
-    color: _status == ConnectivityStatus.online ? Colors.amber : Colors.red,
+    color: switch (_status) {
+      ApiConnectionState.offline => Colors.red,
+      ApiConnectionState.connected => Colors.green,
+      ApiConnectionState.checking ||
+      ApiConnectionState.unavailable => Colors.amber,
+    },
   );
 }

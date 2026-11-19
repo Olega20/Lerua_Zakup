@@ -14,9 +14,10 @@ import 'app_lifecycle.dart';
 import '../core/notifications/notification_service.dart';
 import '../core/platform/storage_capacity_service.dart';
 import '../core/platform/storage_warning_controller.dart';
-import '../features/connectivity/data/connectivity_monitor.dart';
+import '../features/connectivity/data/moysklad_api_client.dart';
+import '../features/connectivity/data/moysklad_api_manager.dart';
 import '../features/connectivity/data/platform_connectivity_source.dart';
-import '../features/connectivity/domain/connectivity_status.dart';
+import '../features/connectivity/domain/api_connection_state.dart';
 import 'app_theme.dart';
 
 class LeruaZakupApp extends StatefulWidget {
@@ -39,9 +40,15 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     with WidgetsBindingObserver {
   final AppRouter _router = AppRouter();
   final SnackbarService _snackbarService = SnackbarService();
-  late final Stream<ConnectivityStatus> _connectivityStatuses =
-      ConnectivityMonitor(source: PlatformConnectivitySource()).statuses
-          .asBroadcastStream();
+  late final PlatformConnectivitySource _connectivitySource =
+      PlatformConnectivitySource();
+  late final MoySkladApiManager _apiManager = MoySkladApiManager(
+    tokenStore: FlutterSecureTokenStore(),
+    apiClient: MoySkladApiClient(),
+    internet: _connectivitySource.hasInternet.asBroadcastStream(),
+  );
+  late final Stream<ApiConnectionState> _connectivityStatuses =
+      _apiManager.states;
   late final StorageWarningController _storageWarningController =
       StorageWarningController(
         capacityService: StorageCapacityService(),
@@ -72,6 +79,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _checkStorageCapacity();
     });
+    unawaited(_apiManager.start());
     _initializeNotifications();
     _restoreSettings();
     if (widget.appVersionOverride != null) {
@@ -83,6 +91,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    _apiManager.setForeground(state == AppLifecycleState.resumed);
     if (state == AppLifecycleState.resumed) {
       _checkStorageCapacity();
     }
@@ -154,6 +163,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _lifecycle.dispose();
+    unawaited(_apiManager.dispose());
     super.dispose();
   }
 
@@ -201,6 +211,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         onThemeChanged: dependencies.onThemeChanged,
         onSeedColorChanged: dependencies.onSeedColorChanged,
         onTokenSaved: dependencies.onTokenSaved,
+        onTokenDeleted: dependencies.onTokenDeleted,
       ),
     );
   }
@@ -242,9 +253,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       onSeedColorChanged: (color) {
         if (mounted) setState(() => _seedColor = color);
       },
-      onTokenSaved: () {
-        // API reachability checks are intentionally excluded from this offline release.
-      },
+      onTokenSaved: () => unawaited(_apiManager.onTokenSaved()),
+      onTokenDeleted: _apiManager.onTokenDeleted,
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => _snackbarService.dismiss(),
@@ -261,6 +271,7 @@ class _AppDependencies extends InheritedWidget {
     required this.onThemeChanged,
     required this.onSeedColorChanged,
     required this.onTokenSaved,
+    required this.onTokenDeleted,
     required super.child,
   });
 
@@ -269,6 +280,7 @@ class _AppDependencies extends InheritedWidget {
   final ValueChanged<ThemeMode> onThemeChanged;
   final ValueChanged<Color> onSeedColorChanged;
   final VoidCallback onTokenSaved;
+  final VoidCallback onTokenDeleted;
 
   static _AppDependencies of(BuildContext context) {
     final dependencies = context

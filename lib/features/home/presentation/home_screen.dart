@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../calendar/presentation/week_strip.dart';
-import '../../connectivity/domain/connectivity_status.dart';
+import '../../connectivity/domain/api_connection_state.dart';
 import '../../connectivity/presentation/connectivity_indicator.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,7 +20,7 @@ class HomeScreen extends StatefulWidget {
   final VoidCallback onOpenSettings;
   final ValueChanged<String> onShowPlaceholder;
   final ValueChanged<DateTime>? onDateSelected;
-  final Stream<ConnectivityStatus>? connectivityStatuses;
+  final Stream<ApiConnectionState>? connectivityStatuses;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> with RestorationMixin {
             child: ConnectivityIndicator(
               statuses:
                   widget.connectivityStatuses ??
-                  const Stream<ConnectivityStatus>.empty(),
+                  const Stream<ApiConnectionState>.empty(),
             ),
           ),
           Padding(
