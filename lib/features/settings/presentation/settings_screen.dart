@@ -96,7 +96,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<bool> _confirm(String title, String message, {
+  Future<bool> _confirm(
+    String title,
+    String message, {
     required String confirmLabel,
     String cancelLabel = 'Отмена',
   }) async {
@@ -161,9 +163,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
 
     try {
-      await widget.repository.resetSettings(
-        confirmTokenDeletion: deleteToken,
-      );
+      await widget.repository.resetSettings(confirmTokenDeletion: deleteToken);
       if (!mounted) return;
       setState(() {
         _themeMode = ThemeMode.light;
@@ -210,8 +210,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             : ListView(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
-                  Text('Тема оформления',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Тема оформления',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 10),
                   SegmentedButton<ThemeMode>(
                     segments: const [
@@ -233,8 +235,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         _changeTheme(selection.first),
                   ),
                   const SizedBox(height: 28),
-                  Text('API-токен',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'API-токен',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   const SizedBox(height: 10),
                   TextField(
                     key: const ValueKey('api-token-field'),
@@ -261,15 +265,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Text(_saving ? 'Сохранение…' : 'Сохранить'),
                     ),
                   const SizedBox(height: 28),
-                  Text('Журнал склада',
-                      style: Theme.of(context).textTheme.titleMedium),
+                  Text(
+                    'Журнал склада',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Журнал склада'),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => _message(
-                      'Функция находится в разработке',
-                    ),
+                    onTap: () => _message('Функция находится в разработке'),
                   ),
                   const SizedBox(height: 12),
                   OutlinedButton(

@@ -44,7 +44,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp> {
   Future<void> _loadVersion() async {
     try {
       final info = await PackageInfo.fromPlatform();
-      if (mounted) setState(() => _appVersion = '${info.version}+${info.buildNumber}');
+      if (mounted)
+        setState(() => _appVersion = '${info.version}+${info.buildNumber}');
     } catch (_) {
       // Keep the version from pubspec when platform metadata is unavailable.
     }

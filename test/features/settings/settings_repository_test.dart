@@ -110,13 +110,16 @@ void main() {
     await expectLater(repository.saveTheme(ThemeMode.dark), throwsStateError);
   });
 
-  test('reset preserves token unless its separate confirmation was given', () async {
-    preferences.theme = ThemeMode.dark;
-    secure.token = 'keep-me';
-    await repository.resetSettings(confirmTokenDeletion: false);
-    expect(preferences.theme, isNull);
-    expect(secure.token, 'keep-me');
-  });
+  test(
+    'reset preserves token unless its separate confirmation was given',
+    () async {
+      preferences.theme = ThemeMode.dark;
+      secure.token = 'keep-me';
+      await repository.resetSettings(confirmTokenDeletion: false);
+      expect(preferences.theme, isNull);
+      expect(secure.token, 'keep-me');
+    },
+  );
 
   test('reset deletes token only after explicit confirmation', () async {
     preferences.theme = ThemeMode.dark;

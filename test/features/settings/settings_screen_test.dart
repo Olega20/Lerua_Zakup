@@ -56,14 +56,16 @@ void main() {
   });
 
   Widget app() => MaterialApp(
-        home: SettingsScreen(
-          repository: repository,
-          appVersion: '1.0.0+1',
-          onThemeChanged: themeChanges.add,
-        ),
-      );
+    home: SettingsScreen(
+      repository: repository,
+      appVersion: '1.0.0+1',
+      onThemeChanged: themeChanges.add,
+    ),
+  );
 
-  testWidgets('shows three separate theme buttons and applies selection', (tester) async {
+  testWidgets('shows three separate theme buttons and applies selection', (
+    tester,
+  ) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
     expect(find.text('Светлая'), findsOneWidget);
@@ -76,24 +78,35 @@ void main() {
     expect(themeChanges, [ThemeMode.dark]);
   });
 
-  testWidgets('token input is always obscured and has no reveal control', (tester) async {
+  testWidgets('token input is always obscured and has no reveal control', (
+    tester,
+  ) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
-    final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('api-token-field')),
+    );
     expect(field.obscureText, isTrue);
     expect(find.byIcon(Icons.visibility), findsNothing);
     expect(find.byIcon(Icons.visibility_off), findsNothing);
   });
 
-  testWidgets('saves token masked and leaves field populated with mask', (tester) async {
+  testWidgets('saves token masked and leaves field populated with mask', (
+    tester,
+  ) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('api-token-field')), 'secret token');
+    await tester.enterText(
+      find.byKey(const ValueKey('api-token-field')),
+      'secret token',
+    );
     await tester.tap(find.text('Сохранить'));
     await tester.pumpAndSettle();
 
     expect(secure.token, 'secrettoken');
-    final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
+    final field = tester.widget<TextField>(
+      find.byKey(const ValueKey('api-token-field')),
+    );
     expect(field.obscureText, isTrue);
     expect(field.controller!.text, isNot('secrettoken'));
   });
@@ -149,16 +162,24 @@ void main() {
     expect(find.text('Версия 1.0.0+1'), findsOneWidget);
   });
 
-  testWidgets('secure storage failure keeps entered token in the masked field', (tester) async {
-    secure.failWrite = true;
-    await tester.pumpWidget(app());
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const ValueKey('api-token-field')), 'private');
-    await tester.tap(find.text('Сохранить'));
-    await tester.pumpAndSettle();
-    final field = tester.widget<TextField>(find.byKey(const ValueKey('api-token-field')));
-    expect(field.controller!.text, 'private');
-    expect(field.obscureText, isTrue);
-    expect(find.text('Не удалось сохранить API-токен'), findsOneWidget);
-  });
+  testWidgets(
+    'secure storage failure keeps entered token in the masked field',
+    (tester) async {
+      secure.failWrite = true;
+      await tester.pumpWidget(app());
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const ValueKey('api-token-field')),
+        'private',
+      );
+      await tester.tap(find.text('Сохранить'));
+      await tester.pumpAndSettle();
+      final field = tester.widget<TextField>(
+        find.byKey(const ValueKey('api-token-field')),
+      );
+      expect(field.controller!.text, 'private');
+      expect(field.obscureText, isTrue);
+      expect(find.text('Не удалось сохранить API-токен'), findsOneWidget);
+    },
+  );
 }

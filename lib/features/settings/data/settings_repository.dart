@@ -23,8 +23,7 @@ class SettingsRepository {
     }
   }
 
-  Future<void> saveTheme(ThemeMode mode) =>
-      _preferencesStore.writeTheme(mode);
+  Future<void> saveTheme(ThemeMode mode) => _preferencesStore.writeTheme(mode);
 
   Future<String?> loadToken() async {
     try {
