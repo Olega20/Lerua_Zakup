@@ -271,10 +271,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Text(_saving ? 'Сохранение…' : 'Сохранить'),
                     ),
                   const SizedBox(height: 28),
-                  Text(
-                    'Журнал склада',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Журнал склада'),
