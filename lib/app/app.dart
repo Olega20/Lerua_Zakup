@@ -12,7 +12,11 @@ import 'app_router.dart';
 import 'app_theme.dart';
 
 class LeruaZakupApp extends StatefulWidget {
-  const LeruaZakupApp({super.key, this.settingsRepository, this.appVersionOverride});
+  const LeruaZakupApp({
+    super.key,
+    this.settingsRepository,
+    this.appVersionOverride,
+  });
 
   final SettingsRepository? settingsRepository;
   final String? appVersionOverride;

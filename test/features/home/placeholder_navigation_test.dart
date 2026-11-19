@@ -57,10 +57,12 @@ void main() {
   testWidgets(
     'Settings opens a non-empty placeholder with Warehouse Journal action',
     (tester) async {
-      await tester.pumpWidget(LeruaZakupApp(
-        settingsRepository: _testRepository(),
-        appVersionOverride: '1.0.0+1',
-      ));
+      await tester.pumpWidget(
+        LeruaZakupApp(
+          settingsRepository: _testRepository(),
+          appVersionOverride: '1.0.0+1',
+        ),
+      );
 
       await tester.tap(find.text('Настройки'));
       await tester.pumpAndSettle();
