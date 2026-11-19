@@ -56,5 +56,4 @@ void main() {
     await tester.pumpAndSettle();
     expect(exitCalls, 1);
   });
-
 }

@@ -60,7 +60,6 @@ class AppLifecycleController with WidgetsBindingObserver {
   }
 }
 
-
 enum HomeBackAction { showExitConfirmation, exit }
 
 class HomeBackController {
