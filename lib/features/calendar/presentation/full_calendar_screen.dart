@@ -9,10 +9,31 @@ class FullCalendarScreen extends StatefulWidget {
   State<FullCalendarScreen> createState() => _FullCalendarScreenState();
 }
 
-class _FullCalendarScreenState extends State<FullCalendarScreen> {
+class _FullCalendarScreenState extends State<FullCalendarScreen>
+    with RestorationMixin {
   late DateTime _selectedDate;
   late DateTime _visibleMonth;
   double _horizontalDrag = 0;
+  late final RestorableString _restoredSelectedDate =
+      RestorableString(widget.now.toIso8601String());
+  late final RestorableString _restoredVisibleMonth = RestorableString(
+    DateTime(widget.now.year, widget.now.month, 1).toIso8601String(),
+  );
+
+  @override
+  String? get restorationId => 'full_calendar_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_restoredSelectedDate, 'selected_date');
+    registerForRestoration(_restoredVisibleMonth, 'visible_month');
+    _selectedDate = CalendarDate.dateOnly(
+      DateTime.tryParse(_restoredSelectedDate.value) ?? widget.now,
+    );
+    final restoredMonth =
+        DateTime.tryParse(_restoredVisibleMonth.value) ?? widget.now;
+    _visibleMonth = DateTime(restoredMonth.year, restoredMonth.month, 1);
+  }
 
   @override
   void initState() {
@@ -21,19 +42,29 @@ class _FullCalendarScreenState extends State<FullCalendarScreen> {
     _visibleMonth = DateTime(widget.now.year, widget.now.month, 1);
   }
 
-  void _changeMonth(int amount) => setState(
-    () => _visibleMonth = CalendarDate.addMonths(_visibleMonth, amount),
-  );
+  void _changeMonth(int amount) => setState(() {
+    _visibleMonth = CalendarDate.addMonths(_visibleMonth, amount);
+    _restoredVisibleMonth.value = _visibleMonth.toIso8601String();
+  });
 
   void _selectDate(DateTime date) {
     if (CalendarDate.sameDay(date, _selectedDate)) return;
     setState(() {
       _selectedDate = CalendarDate.dateOnly(date);
+      _restoredSelectedDate.value = _selectedDate.toIso8601String();
       if (_selectedDate.month != _visibleMonth.month ||
           _selectedDate.year != _visibleMonth.year) {
         _visibleMonth = DateTime(_selectedDate.year, _selectedDate.month, 1);
+        _restoredVisibleMonth.value = _visibleMonth.toIso8601String();
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _restoredSelectedDate.dispose();
+    _restoredVisibleMonth.dispose();
+    super.dispose();
   }
 
   @override

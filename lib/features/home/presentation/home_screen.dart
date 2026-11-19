@@ -22,8 +22,19 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with RestorationMixin {
   late DateTime _selectedDate;
+  late final RestorableString _restoredSelectedDate =
+      RestorableString(_today.toIso8601String());
+
+  @override
+  String? get restorationId => 'home_screen';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_restoredSelectedDate, 'selected_date');
+    _selectedDate = DateTime.tryParse(_restoredSelectedDate.value) ?? _today;
+  }
 
   static const _businessActions = [
     'Закупка',
@@ -43,18 +54,33 @@ class _HomeScreenState extends State<HomeScreen> {
       DateTime(widget.now.year, widget.now.month, widget.now.day);
 
   void _selectDate(DateTime date) {
-    setState(() => _selectedDate = date);
+    setState(() {
+      _selectedDate = date;
+      _restoredSelectedDate.value = date.toIso8601String();
+    });
     widget.onDateSelected?.call(date);
   }
 
   void _openCalendar() {
-    setState(() => _selectedDate = _today);
+    setState(() {
+      _selectedDate = _today;
+      _restoredSelectedDate.value = _today.toIso8601String();
+    });
     widget.onOpenCalendar();
   }
 
   void _openSettings() {
-    setState(() => _selectedDate = _today);
+    setState(() {
+      _selectedDate = _today;
+      _restoredSelectedDate.value = _today.toIso8601String();
+    });
     widget.onOpenSettings();
+  }
+
+  @override
+  void dispose() {
+    _restoredSelectedDate.dispose();
+    super.dispose();
   }
 
   @override
