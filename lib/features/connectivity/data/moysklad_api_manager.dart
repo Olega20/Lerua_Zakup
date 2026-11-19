@@ -7,18 +7,18 @@ import 'moysklad_api_client.dart';
 
 class MoySkladApiManager {
   MoySkladApiManager({
-    required SecureTokenStore _tokenStore,
-    required MoySkladApiClient _apiClient,
-    required Stream<bool> _internet,
+    required this.tokenStore,
+    required this.apiClient,
+    required this.internet,
     this.checkInterval = const Duration(minutes: 5),
     DateTime Function()? clock,
     Timer Function(Duration, void Function())? periodicTimer,
   }) : _clock = clock ?? DateTime.now,
        _periodicTimer = periodicTimer ?? _defaultPeriodicTimer;
 
-  final SecureTokenStore _tokenStore;
-  final MoySkladApiClient _apiClient;
-  final Stream<bool> _internet;
+  final SecureTokenStore tokenStore;
+  final MoySkladApiClient apiClient;
+  final Stream<bool> internet;
   final Duration checkInterval;
   final DateTime Function() _clock;
   final Timer Function(Duration, void Function()) _periodicTimer;
@@ -58,7 +58,7 @@ class MoySkladApiManager {
   Future<void> start() async {
     if (_started) return;
     _started = true;
-    _internetSubscription = _internet.distinct().listen(_handleInternet);
+    _internetSubscription = internet.distinct().listen(_handleInternet);
     _updateTimer();
   }
 
@@ -154,7 +154,7 @@ class MoySkladApiManager {
     final generation = _generation;
     _setState(ApiConnectionState.checking);
     try {
-      final token = await _tokenStore.readToken();
+      final token = await tokenStore.readToken();
       if (!_isCurrent(generation)) return;
       if (token == null || token.trim().isEmpty) {
         _lastCheckAt = _clock();
@@ -162,7 +162,7 @@ class MoySkladApiManager {
         return;
       }
 
-      final result = await _apiClient.checkConnection(token);
+      final result = await apiClient.checkConnection(token);
       if (!_isCurrent(generation)) return;
       _lastCheckAt = _clock();
       if (result.status == ApiCheckStatus.rateLimited) {
