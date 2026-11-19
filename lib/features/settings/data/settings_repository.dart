@@ -7,10 +7,9 @@ enum SaveTokenResult { saved, emptyInput, tokenAlreadyExists, storageError }
 
 class SettingsRepository {
   SettingsRepository({
-    required PreferencesStore preferencesStore,
-    required SecureTokenStore secureTokenStore,
-  }) : _preferencesStore = preferencesStore,
-       _secureTokenStore = secureTokenStore;
+    required PreferencesStore this._preferencesStore,
+    required SecureTokenStore this._secureTokenStore,
+  });
 
   final PreferencesStore _preferencesStore;
   final SecureTokenStore _secureTokenStore;
