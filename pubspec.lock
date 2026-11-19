@@ -576,5 +576,3 @@ packages:
 sdks:
   dart: ">=3.13.5 <4.0.0"
   flutter: ">=3.47.0"
-
-[executed on device: DESKTOP-V5ECLT9 (d837cd6e-a1b9-439a-ba7f-6755c4a36aac)]
