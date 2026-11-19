@@ -74,4 +74,33 @@ void main() {
       );
     });
   });
+
+  group('HomeBackController', () {
+    test('shows confirmation first and exits on a second press within two seconds', () {
+      final controller = HomeBackController();
+      final first = DateTime(2026, 11, 19, 12);
+      expect(
+        controller.handleBack(first),
+        HomeBackAction.showExitConfirmation,
+      );
+      expect(
+        controller.handleBack(first.add(const Duration(milliseconds: 1999))),
+        HomeBackAction.exit,
+      );
+    });
+
+    test('shows confirmation again after the two-second window', () {
+      final controller = HomeBackController();
+      final first = DateTime(2026, 11, 19, 12);
+      expect(
+        controller.handleBack(first),
+        HomeBackAction.showExitConfirmation,
+      );
+      expect(
+        controller.handleBack(first.add(const Duration(seconds: 2, milliseconds: 1))),
+        HomeBackAction.showExitConfirmation,
+      );
+    });
+  });
+
 }
