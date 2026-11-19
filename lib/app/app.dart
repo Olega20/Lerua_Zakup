@@ -6,6 +6,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import '../core/feedback/snackbar_service.dart';
 import '../core/storage/preferences_store.dart';
+import '../core/storage/app_database.dart';
 import '../core/storage/secure_token_store.dart';
 import '../features/calendar/presentation/full_calendar_screen.dart';
 import '../features/home/presentation/home_screen.dart';
@@ -56,9 +57,12 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   );
   late final Stream<ApiConnectionState> _connectivityStatuses =
       _apiManager.states;
+  late final AppDatabase _appDatabase = AppDatabase();
   late final WarehouseLogRepository _warehouseLogRepository =
       widget.warehouseLogRepository ??
-      WarehouseLogRepository(storage: SqfliteWarehouseLogStorage());
+      WarehouseLogRepository(
+        storage: SqfliteWarehouseLogStorage(appDatabase: _appDatabase),
+      );
   late final StorageWarningController _storageWarningController =
       StorageWarningController(
         capacityService: StorageCapacityService(),
@@ -184,6 +188,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     WidgetsBinding.instance.removeObserver(this);
     _lifecycle.dispose();
     unawaited(_apiManager.dispose());
+    unawaited(_appDatabase.close());
     super.dispose();
   }
 
