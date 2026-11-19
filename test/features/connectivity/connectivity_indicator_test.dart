@@ -22,7 +22,12 @@ void main() {
       find.byKey(const ValueKey('connectivity-indicator')),
     );
     expect(indicator.color, Colors.red);
-    expect(tester.getSize(find.byKey(const ValueKey('connectivity-indicator'))).height, 4);
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey('connectivity-indicator')))
+          .height,
+      4,
+    );
   });
 
   testWidgets('uses yellow online and immediately changes to red offline', (
@@ -40,18 +45,22 @@ void main() {
     statuses.add(ConnectivityStatus.online);
     await tester.pump();
     expect(
-      tester.widget<Container>(
-        find.byKey(const ValueKey('connectivity-indicator')),
-      ).color,
+      tester
+          .widget<Container>(
+            find.byKey(const ValueKey('connectivity-indicator')),
+          )
+          .color,
       Colors.amber,
     );
 
     statuses.add(ConnectivityStatus.offline);
     await tester.pumpAndSettle();
     expect(
-      tester.widget<Container>(
-        find.byKey(const ValueKey('connectivity-indicator')),
-      ).color,
+      tester
+          .widget<Container>(
+            find.byKey(const ValueKey('connectivity-indicator')),
+          )
+          .color,
       Colors.red,
     );
   });
@@ -70,9 +79,9 @@ void main() {
 
     statuses.add(ConnectivityStatus.online);
     await tester.pump();
-    final color = tester.widget<Container>(
-      find.byKey(const ValueKey('connectivity-indicator')),
-    ).color;
+    final color = tester
+        .widget<Container>(find.byKey(const ValueKey('connectivity-indicator')))
+        .color;
     expect(color, isNot(Colors.green));
   });
 }

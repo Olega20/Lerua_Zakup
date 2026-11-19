@@ -13,9 +13,8 @@ class ConnectivityMonitor {
 
   Stream<ConnectivityStatus> get statuses => source.hasInternet
       .map(
-        (available) => available
-            ? ConnectivityStatus.online
-            : ConnectivityStatus.offline,
+        (available) =>
+            available ? ConnectivityStatus.online : ConnectivityStatus.offline,
       )
       .distinct();
 }

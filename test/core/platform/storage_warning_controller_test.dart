@@ -36,24 +36,27 @@ void main() {
     final now = DateTime(2026, 11, 19, 12);
     const threshold = 500 * 1024 * 1024;
 
-    test('shows a warning and persists its timestamp when storage is low', () async {
-      final service = FakeStorageCapacityService(threshold - 1);
-      final store = FakeStorageWarningStore();
-      var warnings = 0;
-      final controller = StorageWarningController(
-        capacityService: service,
-        store: store,
-        onWarning: () => warnings++,
-        policy: const StorageWarningPolicy(thresholdBytes: threshold),
-        clock: () => now,
-      );
+    test(
+      'shows a warning and persists its timestamp when storage is low',
+      () async {
+        final service = FakeStorageCapacityService(threshold - 1);
+        final store = FakeStorageWarningStore();
+        var warnings = 0;
+        final controller = StorageWarningController(
+          capacityService: service,
+          store: store,
+          onWarning: () => warnings++,
+          policy: const StorageWarningPolicy(thresholdBytes: threshold),
+          clock: () => now,
+        );
 
-      await controller.check();
+        await controller.check();
 
-      expect(warnings, 1);
-      expect(store.lastWarningAt, now);
-      expect(store.writes, 1);
-    });
+        expect(warnings, 1);
+        expect(store.lastWarningAt, now);
+        expect(store.writes, 1);
+      },
+    );
 
     test('does not repeat warning within the cooldown', () async {
       final service = FakeStorageCapacityService(threshold - 1);

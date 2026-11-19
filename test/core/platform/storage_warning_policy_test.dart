@@ -42,11 +42,7 @@ void main() {
 
     test('does not warn when capacity is unavailable', () {
       expect(
-        policy.shouldWarn(
-          availableBytes: null,
-          now: now,
-          lastWarningAt: null,
-        ),
+        policy.shouldWarn(availableBytes: null, now: now, lastWarningAt: null),
         isFalse,
       );
     });

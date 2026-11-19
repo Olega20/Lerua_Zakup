@@ -40,16 +40,14 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   final AppRouter _router = AppRouter();
   final SnackbarService _snackbarService = SnackbarService();
   late final Stream<ConnectivityStatus> _connectivityStatuses =
-      ConnectivityMonitor(source: PlatformConnectivitySource())
-          .statuses
+      ConnectivityMonitor(source: PlatformConnectivitySource()).statuses
           .asBroadcastStream();
   late final StorageWarningController _storageWarningController =
       StorageWarningController(
         capacityService: StorageCapacityService(),
         store: SharedPreferencesStorageWarningStore(),
-        onWarning: () => _snackbarService.showGlobal(
-          'Мало свободного места на устройстве',
-        ),
+        onWarning: () =>
+            _snackbarService.showGlobal('Мало свободного места на устройстве'),
       );
   final HomeBackController _homeBackController = HomeBackController();
   late final AppLifecycleController _lifecycle = AppLifecycleController(
