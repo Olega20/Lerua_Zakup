@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/core/storage/preferences_store.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class FakePreferencesStore implements PreferencesStore {
   ThemeMode? storedTheme;
@@ -46,6 +47,22 @@ void main() {
     await store.clearUserPreferences();
     expect(store.cleared, isTrue);
     expect(await store.readTheme(), isNull);
+  });
+
+  test('settings reset preserves internal notification and storage markers', () async {
+    SharedPreferences.setMockInitialValues({
+      'theme_mode': 'dark',
+      'notification_permission_requested': true,
+      'low_storage_warning_last_shown': 123456,
+    });
+    final store = SharedPreferencesStore();
+
+    await store.clearUserPreferences();
+
+    final preferences = await SharedPreferences.getInstance();
+    expect(preferences.getString('theme_mode'), isNull);
+    expect(preferences.getBool('notification_permission_requested'), isTrue);
+    expect(preferences.getInt('low_storage_warning_last_shown'), 123456);
   });
 
   test('propagates storage errors to its caller', () async {
