@@ -36,16 +36,16 @@ class WarehouseLogEntry {
     return [
       stamp, warehouseLogLevelLabel(level), warehouseLogEventLabel(type),
       sanitizeDiagnosticText(description),
-      if (component != null) 'Компонент: ${sanitizeDiagnosticText(component)}',
-      if (errorCode != null) 'Код ошибки: ${sanitizeDiagnosticText(errorCode)}',
+      if (component != null) 'Компонент: ${sanitizeDiagnosticText(component!)}',
+      if (errorCode != null) 'Код ошибки: ${sanitizeDiagnosticText(errorCode!)}',
       if (httpStatusCode != null) 'HTTP: $httpStatusCode',
-      if (apiErrorCode != null) 'Код API: ${sanitizeDiagnosticText(apiErrorCode)}',
+      if (apiErrorCode != null) 'Код API: ${sanitizeDiagnosticText(apiErrorCode!)}',
       if (attemptNumber != null) 'Попытка: $attemptNumber',
-      if (operationId != null) 'Операция: ${sanitizeDiagnosticText(operationId)}',
-      if (taskId != null) 'Задача: ${sanitizeDiagnosticText(taskId)}',
-      if (correlationId != null) 'Связь: ${sanitizeDiagnosticText(correlationId)}',
-      if (recommendedAction != null) 'Что сделать: ${sanitizeDiagnosticText(recommendedAction)}',
-      if (technicalDetails != null) 'Технические сведения: ${sanitizeDiagnosticText(technicalDetails)}',
+      if (operationId != null) 'Операция: ${sanitizeDiagnosticText(operationId!)}',
+      if (taskId != null) 'Задача: ${sanitizeDiagnosticText(taskId!)}',
+      if (correlationId != null) 'Связь: ${sanitizeDiagnosticText(correlationId!)}',
+      if (recommendedAction != null) 'Что сделать: ${sanitizeDiagnosticText(recommendedAction!)}',
+      if (technicalDetails != null) 'Технические сведения: ${sanitizeDiagnosticText(technicalDetails!)}',
     ].join('\n');
   }
 }
