@@ -62,10 +62,12 @@ void main() {
         () async => const MoySkladHttpResponse(statusCode: 200, body: '{}'),
       );
       timers = [];
+      var now = DateTime(2026, 11, 19);
       manager = MoySkladApiManager(
         tokenStore: tokenStore,
         apiClient: MoySkladApiClient(transport: transport),
         internet: internet.stream,
+        clock: () => now,
         periodicTimer: (duration, callback) {
           final timer = FakePeriodicTimer(callback);
           timers.add(timer);
@@ -157,6 +159,7 @@ void main() {
         manager.setForeground(false);
         expect(timers.last.isActive, isFalse);
         final calls = transport.calls;
+        now = now.add(const Duration(minutes: 6));
         manager.setForeground(true);
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
