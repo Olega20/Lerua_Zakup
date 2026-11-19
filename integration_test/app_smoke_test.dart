@@ -56,7 +56,7 @@ void main() {
     expect(find.text('Тема оформления'), findsOneWidget);
     await tester.tap(find.text('Тёмная'));
     await tester.pumpAndSettle();
-    expect(await preferences.getString('theme_mode'), ThemeMode.dark.name);
+    expect(preferences.getString('theme_mode'), ThemeMode.dark.name);
 
     await tester.binding.handlePopRoute();
     await tester.pumpAndSettle();
