@@ -214,20 +214,20 @@ Expected: Home layout and placeholder tests pass.
 - `SettingsRepository.saveToken(String input) -> Future<SaveTokenResult>`: trims all whitespace before validation/storage; empty input returns an empty-input result and performs no write.
 - `SettingsRepository.resetSettings({required bool confirmTokenDeletion})`: clears user preferences and deletes token only after the separate confirmation has been obtained by the UI.
 
-- [ ] **Step 1: Write failing storage/repository tests** for theme persistence, unreadable/invalid theme fallback to System, token masking state, whitespace stripping, empty token rejection, storage errors, and separate token-deletion confirmation during reset.
-- [ ] **Step 2: Run tests** and verify the missing stores/repository fail.
-- [ ] **Step 3: Implement preference and secure-token store adapters** using packages whose versions have been verified against the installed Flutter/Dart toolchain.
-- [ ] **Step 4: Implement SettingsRepository** and typed results; do not include token contents in exception messages or logs.
-- [ ] **Step 5: Run repository tests** and verify they pass, including injected secure-storage failures.
-- [ ] **Step 6: Write failing settings widget tests** for three theme buttons, masked token field with no reveal control, save/delete/reset confirmations, version display, Journal placeholder, and short error Snackbars.
-- [ ] **Step 7: Implement Settings screen**; successful token save leaves the field masked and populated, storage failure leaves the entered value in the field until leaving Settings.
-- [ ] **Step 8: Test persistence across repository recreation** and verify theme/token remain available after simulated app restart.
-- [ ] **Step 9: Run**
+- [x] **Step 1: Write failing storage/repository tests** for theme persistence, unreadable/invalid theme fallback to System, token masking state, whitespace stripping, empty token rejection, storage errors, and separate token-deletion confirmation during reset.
+- [x] **Step 2: Run tests** and verify the missing stores/repository fail.
+- [x] **Step 3: Implement preference and secure-token store adapters** using packages whose versions have been verified against the installed Flutter/Dart toolchain.
+- [x] **Step 4: Implement SettingsRepository** and typed results; do not include token contents in exception messages or logs.
+- [x] **Step 5: Run repository tests** and verify they pass, including injected secure-storage failures.
+- [x] **Step 6: Write failing settings widget tests** for three theme buttons, masked token field with no reveal control, save/delete/reset confirmations, version display, Journal placeholder, and short error Snackbars.
+- [x] **Step 7: Implement Settings screen**; successful token save leaves the field masked and populated, storage failure leaves the entered value in the field until leaving Settings.
+- [x] **Step 8: Test persistence across repository recreation** and verify theme/token remain available after simulated app restart.
+- [x] **Step 9: Run**
 ```powershell
 flutter test test/core/storage test/features/settings
 ```
 Expected: all storage and Settings tests pass.
-- [ ] **Step 10: Commit** `feat: add persistent settings and secure token storage`.
+- [x] **Step 10: Commit** `feat: add persistent settings and secure token storage`.
 
 ## Task 6: Android lifecycle, system UI, and notification permission preparation
 
