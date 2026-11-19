@@ -14,10 +14,9 @@ class MoySkladApiManager {
     this.checkInterval = const Duration(minutes: 5),
     DateTime Function()? clock,
     Timer Function(Duration, void Function())? periodicTimer,
-    Future<void> Function(WarehouseLogEntry entry)? onEvent,
+    this.onEvent,
   }) : _clock = clock ?? DateTime.now,
-       _periodicTimer = periodicTimer ?? _defaultPeriodicTimer,
-       _onEvent = onEvent;
+       _periodicTimer = periodicTimer ?? _defaultPeriodicTimer;
 
   final SecureTokenStore tokenStore;
   final MoySkladApiClient apiClient;
@@ -25,7 +24,7 @@ class MoySkladApiManager {
   final Duration checkInterval;
   final DateTime Function() _clock;
   final Timer Function(Duration, void Function()) _periodicTimer;
-  final Future<void> Function(WarehouseLogEntry entry)? _onEvent;
+  final Future<void> Function(WarehouseLogEntry entry)? onEvent;
 
   final StreamController<ApiConnectionState> _states =
       StreamController<ApiConnectionState>.broadcast();
@@ -289,7 +288,7 @@ class MoySkladApiManager {
     String description, {
     int? httpStatusCode,
   }) async {
-    final sink = _onEvent;
+    final sink = onEvent;
     if (sink == null) return;
     try {
       await sink(
