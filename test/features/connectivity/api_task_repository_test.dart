@@ -94,6 +94,17 @@ void main() {
     expect(saved.response, {'result': 'ok'});
   });
 
+  test('global pause also blocks queues created before or after the pause', () async {
+    await repository.pauseAll(paused: true, reason: 'offline');
+    await repository.enqueue(
+      uid: 'created-during-pause', type: 'products', logicalQueue: 'catalog',
+      request: {'path': '/entity/product'},
+    );
+    expect(await repository.claimNext(), isNull);
+    await repository.pauseAll(paused: false);
+    expect((await repository.claimNext())?.task.uid, 'created-during-pause');
+  });
+
   test('watchdog marks a stale running task uncertain without retrying', () async {
     final start = DateTime(2026, 11, 20, 10);
     await repository.enqueue(

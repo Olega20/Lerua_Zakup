@@ -77,7 +77,7 @@ class ApiTaskRepository {
           AND (t.next_attempt_at IS NULL OR t.next_attempt_at <= ?)
           AND NOT EXISTS (
             SELECT 1 FROM api_queue_state q
-            WHERE q.logical_queue = t.logical_queue AND q.is_paused = 1
+            WHERE q.logical_queue IN (t.logical_queue, '__all__') AND q.is_paused = 1
           )
         ORDER BY t.fifo_sequence ASC LIMIT 1
       ''', [maximumAttempts, now]);
@@ -225,6 +225,7 @@ class ApiTaskRepository {
           'updated_at': now.millisecondsSinceEpoch,
         }, where: "id = ? AND status = 'running'", whereArgs: [id]);
         if (changed != 1) continue;
+        changedCount++;
         await txn.update('api_task_attempts', {
           'finished_at': now.millisecondsSinceEpoch,
           'outcome': 'uncertain',
@@ -241,7 +242,7 @@ class ApiTaskRepository {
           'created_at': now.millisecondsSinceEpoch,
         });
       }
-      return rows.length;
+      return changedCount;
     });
   }
 
