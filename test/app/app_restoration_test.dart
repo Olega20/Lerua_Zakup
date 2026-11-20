@@ -9,7 +9,10 @@ void main() {
     'uses an Android restoration scope and restorable calendar route',
     (tester) async {
       await tester.pumpWidget(
-        const LeruaZakupApp(appVersionOverride: '1.0.0+1'),
+        const LeruaZakupApp(
+          appVersionOverride: '1.0.0+1',
+          startApiTaskDispatcher: false,
+        ),
       );
 
       final app = tester.widget<MaterialApp>(find.byType(MaterialApp));
@@ -25,7 +28,12 @@ void main() {
   testWidgets('a fresh app instance without restoration starts on Home', (
     tester,
   ) async {
-    await tester.pumpWidget(const LeruaZakupApp(appVersionOverride: '1.0.0+1'));
+    await tester.pumpWidget(
+      const LeruaZakupApp(
+        appVersionOverride: '1.0.0+1',
+        startApiTaskDispatcher: false,
+      ),
+    );
 
     expect(find.text('Закупка'), findsOneWidget);
     expect(find.text('Настройки'), findsOneWidget);
@@ -38,6 +46,7 @@ void main() {
     var exitCalls = 0;
     await tester.pumpWidget(
       LeruaZakupApp(
+        startApiTaskDispatcher: false,
         appVersionOverride: '1.0.0+1',
         onExitRequested: () => exitCalls++,
       ),

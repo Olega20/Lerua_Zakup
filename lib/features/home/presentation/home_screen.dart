@@ -13,6 +13,7 @@ class HomeScreen extends StatefulWidget {
     required this.onShowPlaceholder,
     this.onDateSelected,
     this.connectivityStatuses,
+    this.onOpenOtherActions,
   });
 
   final DateTime now;
@@ -21,6 +22,7 @@ class HomeScreen extends StatefulWidget {
   final ValueChanged<String> onShowPlaceholder;
   final ValueChanged<DateTime>? onDateSelected;
   final Stream<ApiConnectionState>? connectivityStatuses;
+  final VoidCallback? onOpenOtherActions;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -130,9 +132,16 @@ class _HomeScreenState extends State<HomeScreen> with RestorationMixin {
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         child: _HomeActionButton(
                           label: label,
-                          onPressed: () => widget.onShowPlaceholder(
-                            'Функция находится в разработке',
-                          ),
+                          onPressed: () {
+                            if (label == 'Прочие действия' &&
+                                widget.onOpenOtherActions != null) {
+                              widget.onOpenOtherActions!.call();
+                            } else {
+                              widget.onShowPlaceholder(
+                                'Функция находится в разработке',
+                              );
+                            }
+                          },
                         ),
                       ),
                     ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../core/storage/secure_token_store.dart';
+import '../../../core/diagnostics/emergency_diagnostic_sink.dart';
 import '../domain/api_check_result.dart';
 import '../domain/api_connection_state.dart';
 import '../../warehouse_log/domain/warehouse_log_entry.dart';
@@ -284,18 +285,23 @@ class MoySkladApiManager {
     if (sink == null) return;
     final diagnostic = const WarehouseErrorClassifier().describe(error);
     try {
-      await sink(WarehouseLogEntry(
-        timestamp: _clock(),
-        level: WarehouseLogLevel.error,
-        type: diagnostic.type,
-        description: diagnostic.message,
-        component: 'MoySklad API Manager',
-        errorCode: diagnostic.code,
-        recommendedAction: diagnostic.recommendedAction,
-        technicalDetails: diagnostic.technicalDetails,
-      ));
-    } catch (_) {
-      // A failed diagnostic write must not hide the original connectivity error.
+      await sink(
+        WarehouseLogEntry(
+          timestamp: _clock(),
+          level: WarehouseLogLevel.error,
+          type: diagnostic.type,
+          description: diagnostic.message,
+          component: 'MoySklad API Manager',
+          errorCode: diagnostic.code,
+          recommendedAction: diagnostic.recommendedAction,
+          technicalDetails: diagnostic.technicalDetails,
+        ),
+      );
+    } catch (journalError) {
+      await EmergencyDiagnosticSink.record(
+        'MoySkladApiManager.failureJournal',
+        journalError,
+      );
     }
   }
 
@@ -317,8 +323,11 @@ class MoySkladApiManager {
           httpStatusCode: httpStatusCode,
         ),
       );
-    } catch (_) {
-      // Diagnostics must never interrupt connectivity checks or app startup.
+    } catch (journalError) {
+      await EmergencyDiagnosticSink.record(
+        'MoySkladApiManager.eventJournal',
+        journalError,
+      );
     }
   }
 

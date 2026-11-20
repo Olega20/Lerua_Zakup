@@ -68,6 +68,22 @@ class IoMoySkladHttpTransport implements MoySkladHttpTransport {
   }
 }
 
+class ApiResourceResult {
+  const ApiResourceResult({
+    required this.statusCode,
+    this.data,
+    this.retryAfter,
+    this.errorCode,
+  });
+  final int statusCode;
+  final Map<String, dynamic>? data;
+  final Duration? retryAfter;
+  final String? errorCode;
+  bool get isSuccess => statusCode >= 200 && statusCode < 300 && data != null;
+  bool get isRetryable =>
+      statusCode == 408 || statusCode == 429 || statusCode >= 500;
+}
+
 class MoySkladApiClient {
   MoySkladApiClient({
     MoySkladHttpTransport? transport,
@@ -142,6 +158,74 @@ class MoySkladApiClient {
     } catch (_) {
       // Never expose transport exception text: it may contain request details.
       return const ApiCheckResult(ApiCheckStatus.unavailable);
+    }
+  }
+
+  Future<ApiResourceResult> getResource(
+    String? token,
+    String path, {
+    Map<String, String> query = const {},
+  }) async {
+    final normalized = token?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return const ApiResourceResult(
+        statusCode: 401,
+        errorCode: 'TOKEN_MISSING',
+      );
+    }
+    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    final uri = Uri.https('api.moysklad.ru', normalizedPath, query);
+    try {
+      final response = await _transport.get(
+        uri,
+        timeout: timeout,
+        headers: {
+          HttpHeaders.authorizationHeader: 'Bearer $normalized',
+          HttpHeaders.acceptHeader: 'application/json',
+          HttpHeaders.acceptEncodingHeader: 'gzip',
+          'X-Lognex-Format-Metadata': 'true',
+        },
+      );
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        String? code;
+        try {
+          final decoded = jsonDecode(response.body);
+          if (decoded is Map) code = decoded['code']?.toString();
+        } catch (_) {}
+        return ApiResourceResult(
+          statusCode: response.statusCode,
+          retryAfter: _parseRetryAfter(response.headers['retry-after']),
+          errorCode: code?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''),
+        );
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        return ApiResourceResult(
+          statusCode: response.statusCode,
+          errorCode: 'INVALID_JSON_OBJECT',
+        );
+      }
+      return ApiResourceResult(statusCode: response.statusCode, data: decoded);
+    } on TimeoutException {
+      return const ApiResourceResult(
+        statusCode: 408,
+        errorCode: 'NETWORK_TIMEOUT',
+      );
+    } on SocketException {
+      return const ApiResourceResult(
+        statusCode: 503,
+        errorCode: 'NETWORK_UNAVAILABLE',
+      );
+    } on FormatException {
+      return const ApiResourceResult(
+        statusCode: 502,
+        errorCode: 'INVALID_RESPONSE',
+      );
+    } catch (_) {
+      return const ApiResourceResult(
+        statusCode: 503,
+        errorCode: 'TRANSPORT_ERROR',
+      );
     }
   }
 

@@ -57,6 +57,7 @@ void main() {
 
     await tester.pumpWidget(
       LeruaZakupApp(
+        startApiTaskDispatcher: false,
         settingsRepository: repository,
         appVersionOverride: '1.0.0+1',
       ),
@@ -101,6 +102,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(
       LeruaZakupApp(
+        startApiTaskDispatcher: false,
         settingsRepository: repository,
         appVersionOverride: '1.0.0+1',
       ),

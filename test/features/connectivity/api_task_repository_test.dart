@@ -41,11 +41,15 @@ void main() {
 
   test('claims tasks in one global FIFO order across logical queues', () async {
     await repository.enqueue(
-      uid: 'first', type: 'products', logicalQueue: 'catalog',
+      uid: 'first',
+      type: 'products',
+      logicalQueue: 'catalog',
       request: {'path': '/entity/product'},
     );
     await repository.enqueue(
-      uid: 'second', type: 'warehouses', logicalQueue: 'warehouses',
+      uid: 'second',
+      type: 'warehouses',
+      logicalQueue: 'warehouses',
       request: {'path': '/entity/store'},
     );
 
@@ -60,7 +64,9 @@ void main() {
 
   test('does not claim a task from a paused logical queue', () async {
     await repository.enqueue(
-      uid: 'paused', type: 'products', logicalQueue: 'catalog',
+      uid: 'paused',
+      type: 'products',
+      logicalQueue: 'catalog',
       request: {'path': '/entity/product'},
     );
     await repository.pauseQueue('catalog', paused: true, reason: 'manual');
@@ -69,18 +75,33 @@ void main() {
 
   test('redacts secrets from persisted request and response data', () async {
     final task = await repository.enqueue(
-      uid: 'safe', type: 'test', logicalQueue: 'test',
+      uid: 'safe',
+      type: 'test',
+      logicalQueue: 'test',
       request: {
         'path': '/entity/product',
         'headers': {'Authorization': 'Bearer hidden-value'},
         'token': 'hidden-value',
-        'nested': {'access_token': 'hidden-value', 'keep': 'yes'},
+        'nested': {
+          'access_token': 'hidden-value',
+          'keep': 'yes',
+          'items': [
+            {'text': 'Bearer hidden-value'},
+          ],
+        },
+        'diagnostic': 'Authorization: Bearer hidden-value; access_token=hidden-value; apiToken=hidden-value',
       },
     );
     expect(task.request, {
       'path': '/entity/product',
       'headers': <String, Object?>{},
-      'nested': {'keep': 'yes'},
+      'nested': {
+        'keep': 'yes',
+        'items': [
+          {'text': 'Bearer [СКРЫТО]'},
+        ],
+      },
+      'diagnostic': 'Authorization: Bearer [СКРЫТО]; access_token=[СКРЫТО]; apiToken=[СКРЫТО]',
     });
 
     final claim = await repository.claimNext();
@@ -94,20 +115,27 @@ void main() {
     expect(saved.response, {'result': 'ok'});
   });
 
-  test('global pause also blocks queues created before or after the pause', () async {
-    await repository.pauseAll(paused: true, reason: 'offline');
-    await repository.enqueue(
-      uid: 'created-during-pause', type: 'products', logicalQueue: 'catalog',
-      request: {'path': '/entity/product'},
-    );
-    expect(await repository.claimNext(), isNull);
-    await repository.pauseAll(paused: false);
-    expect((await repository.claimNext())?.task.uid, 'created-during-pause');
-  });
+  test(
+    'global pause also blocks queues created before or after the pause',
+    () async {
+      await repository.pauseAll(paused: true, reason: 'offline');
+      await repository.enqueue(
+        uid: 'created-during-pause',
+        type: 'products',
+        logicalQueue: 'catalog',
+        request: {'path': '/entity/product'},
+      );
+      expect(await repository.claimNext(), isNull);
+      await repository.pauseAll(paused: false);
+      expect((await repository.claimNext())?.task.uid, 'created-during-pause');
+    },
+  );
 
   test('global resume preserves a manually paused logical queue', () async {
     await repository.enqueue(
-      uid: 'manual-paused', type: 'products', logicalQueue: 'catalog',
+      uid: 'manual-paused',
+      type: 'products',
+      logicalQueue: 'catalog',
       request: {'path': '/entity/product'},
     );
     await repository.pauseQueue('catalog', paused: true, reason: 'manual');
@@ -118,83 +146,195 @@ void main() {
     expect((await repository.claimNext())?.task.uid, 'manual-paused');
   });
 
-  test('restart does not request confirmation when no tasks are waiting', () async {
-    expect(await repository.recoverAfterProcessRestart(), 0);
-    expect(await repository.requiresResumeConfirmation(), isFalse);
-  });
-
-  test('watchdog marks a stale running task uncertain without retrying', () async {
-    final start = DateTime(2026, 11, 20, 10);
+  test('system resume cannot clear a user global pause', () async {
     await repository.enqueue(
-      uid: 'stale', type: 'document.create', logicalQueue: 'documents',
-      request: {'path': '/entity/customerorder'},
-      clock: () => start,
-    );
-    await repository.claimNext(clock: () => start);
-
-    final changed = await repository.markStaleRunningUncertain(
-      clock: () => start.add(const Duration(minutes: 6)),
-    );
-
-    expect(changed, 1);
-    final task = (await repository.listTasks()).single;
-    expect(task.status, ApiTaskStatus.uncertain);
-    expect(task.attemptsCount, 1);
-    expect(await repository.claimNext(
-      clock: () => start.add(const Duration(minutes: 7)),
-    ), isNull);
-  });
-
-  test('restart marks in-flight request uncertain and waits for user confirmation', () async {
-    await repository.enqueue(
-      uid: 'in-flight', type: 'document.create', logicalQueue: 'documents',
-      request: {'path': '/entity/customerorder'},
-    );
-    await repository.enqueue(
-      uid: 'waiting', type: 'catalog.refresh', logicalQueue: 'catalog',
+      uid: 'user-paused',
+      type: 'products',
+      logicalQueue: 'catalog',
       request: {'path': '/entity/product'},
     );
-    final running = await repository.claimNext();
-    expect(running?.task.uid, 'in-flight');
-
-    final recovered = await repository.recoverAfterProcessRestart();
-    expect(recovered, 1);
-    expect(await repository.requiresResumeConfirmation(), isTrue);
-    expect((await repository.listTasks()).first.status, ApiTaskStatus.uncertain);
+    await repository.pauseAll(paused: true, reason: 'Пауза пользователя');
+    await repository.resumeGlobalIfReason('Нет интернет-соединения');
     expect(await repository.claimNext(), isNull);
-
-    await repository.confirmResumeAfterRestart();
-    expect(await repository.requiresResumeConfirmation(), isFalse);
-    expect((await repository.claimNext())?.task.uid, 'waiting');
+    await repository.pauseAll(paused: false);
+    expect((await repository.claimNext())?.task.uid, 'user-paused');
   });
 
-  test('third temporary failure becomes final and is not claimed again', () async {
-    final start = DateTime(2026, 11, 20, 10);
+  test('conditional resume clears only the matching system pause', () async {
     await repository.enqueue(
-      uid: 'retry-limit', type: 'catalog.refresh', logicalQueue: 'catalog',
+      uid: 'system-paused',
+      type: 'products',
+      logicalQueue: 'catalog',
       request: {'path': '/entity/product'},
-      clock: () => start,
     );
+    await repository.pauseAll(paused: true, reason: 'Нет интернет-соединения');
+    await repository.resumeGlobalIfReason('МойСклад временно недоступен');
+    expect(await repository.claimNext(), isNull);
+    await repository.resumeGlobalIfReason('Нет интернет-соединения');
+    expect((await repository.claimNext())?.task.uid, 'system-paused');
+  });
+  test(
+    'restart does not request confirmation when no tasks are waiting',
+    () async {
+      expect(await repository.recoverAfterProcessRestart(), 0);
+      expect(await repository.requiresResumeConfirmation(), isFalse);
+    },
+  );
 
-    for (var attempt = 1; attempt <= 3; attempt++) {
-      final claim = await repository.claimNext(
-        clock: () => start.add(Duration(minutes: attempt * 2)),
+  test(
+    'watchdog marks a stale running task uncertain without retrying',
+    () async {
+      final start = DateTime(2026, 11, 20, 10);
+      await repository.enqueue(
+        uid: 'stale',
+        type: 'document.create',
+        logicalQueue: 'documents',
+        request: {'path': '/entity/customerorder'},
+        clock: () => start,
       );
-      expect(claim?.attemptNumber, attempt);
+      await repository.claimNext(clock: () => start);
+
+      final changed = await repository.markStaleRunningUncertain(
+        clock: () => start.add(const Duration(minutes: 6)),
+      );
+
+      expect(changed, 1);
+      final task = (await repository.listTasks()).single;
+      expect(task.status, ApiTaskStatus.uncertain);
+      expect(task.attemptsCount, 1);
+      expect(
+        await repository.claimNext(
+          clock: () => start.add(const Duration(minutes: 7)),
+        ),
+        isNull,
+      );
+    },
+  );
+
+  test(
+    'restart marks in-flight request uncertain and waits for user confirmation',
+    () async {
+      await repository.enqueue(
+        uid: 'in-flight',
+        type: 'document.create',
+        logicalQueue: 'documents',
+        request: {'path': '/entity/customerorder'},
+      );
+      await repository.enqueue(
+        uid: 'waiting',
+        type: 'catalog.refresh',
+        logicalQueue: 'catalog',
+        request: {'path': '/entity/product'},
+      );
+      final running = await repository.claimNext();
+      expect(running?.task.uid, 'in-flight');
+
+      final recovered = await repository.recoverAfterProcessRestart();
+      expect(recovered, 1);
+      expect(await repository.requiresResumeConfirmation(), isTrue);
+      expect(
+        (await repository.listTasks()).first.status,
+        ApiTaskStatus.uncertain,
+      );
+      expect(await repository.claimNext(), isNull);
+
+      await repository.confirmResumeAfterRestart();
+      expect(await repository.requiresResumeConfirmation(), isFalse);
+      expect((await repository.claimNext())?.task.uid, 'waiting');
+    },
+  );
+
+  test('manual retry creates a new FIFO task and preserves the failed task history', () async {
+    await repository.enqueue(
+      uid: 'manual-original',
+      type: 'catalog',
+      logicalQueue: 'catalog',
+      request: {'method': 'GET', 'path': '/entity/product'},
+    );
+    final claim = await repository.claimNext();
+    await repository.finishAttempt(
+      taskId: claim!.task.id,
+      attemptNumber: claim.attemptNumber,
+      status: ApiTaskStatus.failed,
+      safeErrorCode: 'HTTP_400',
+      safeErrorMessage: 'Bad request',
+    );
+    final original = (await repository.listTasks()).single;
+    final newId = await repository.retryFailed(original.id);
+    final tasks = await repository.listTasks();
+    expect(tasks, hasLength(2));
+    expect(
+      tasks.firstWhere((t) => t.id == original.id).status,
+      ApiTaskStatus.failed,
+    );
+    final retry = tasks.firstWhere((t) => t.id == newId);
+    expect(retry.status, ApiTaskStatus.pending);
+    expect(retry.uid, contains(':manual:'));
+    expect(retry.request['path'], '/entity/product');
+  });
+
+  test(
+    'uncertain task can only be resolved after explicit manual review',
+    () async {
+      await repository.enqueue(
+        uid: 'uncertain-review',
+        type: 'write',
+        logicalQueue: 'operations',
+        request: {'method': 'POST', 'path': '/entity/demand'},
+      );
+      final claim = await repository.claimNext();
       await repository.finishAttempt(
         taskId: claim!.task.id,
         attemptNumber: claim.attemptNumber,
-        status: ApiTaskStatus.retryWait,
-        nextAttemptAt: start.add(Duration(minutes: attempt * 2 + 1)),
-        clock: () => start.add(Duration(minutes: attempt * 2)),
+        status: ApiTaskStatus.uncertain,
+        safeErrorCode: 'TIMEOUT',
+        safeErrorMessage: 'Unknown result',
       );
-    }
+      await repository.resolveUncertain(
+        claim.task.id,
+        confirmedSucceeded: false,
+      );
+      final task = (await repository.listTasks()).single;
+      expect(task.status, ApiTaskStatus.failed);
+      expect(task.attemptsCount, 1);
+    },
+  );
 
-    final task = (await repository.listTasks()).single;
-    expect(task.status, ApiTaskStatus.failed);
-    expect(task.attemptsCount, 3);
-    expect(await repository.claimNext(
-      clock: () => start.add(const Duration(minutes: 10)),
-    ), isNull);
-  });
+  test(
+    'third temporary failure becomes final and is not claimed again',
+    () async {
+      final start = DateTime(2026, 11, 20, 10);
+      await repository.enqueue(
+        uid: 'retry-limit',
+        type: 'catalog.refresh',
+        logicalQueue: 'catalog',
+        request: {'path': '/entity/product'},
+        clock: () => start,
+      );
+
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        final claim = await repository.claimNext(
+          clock: () => start.add(Duration(minutes: attempt * 2)),
+        );
+        expect(claim?.attemptNumber, attempt);
+        await repository.finishAttempt(
+          taskId: claim!.task.id,
+          attemptNumber: claim.attemptNumber,
+          status: ApiTaskStatus.retryWait,
+          nextAttemptAt: start.add(Duration(minutes: attempt * 2 + 1)),
+          clock: () => start.add(Duration(minutes: attempt * 2)),
+        );
+      }
+
+      final task = (await repository.listTasks()).single;
+      expect(task.status, ApiTaskStatus.failed);
+      expect(task.attemptsCount, 3);
+      expect(
+        await repository.claimNext(
+          clock: () => start.add(const Duration(minutes: 10)),
+        ),
+        isNull,
+      );
+    },
+  );
 }

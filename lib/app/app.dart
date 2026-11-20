@@ -21,6 +21,13 @@ import '../core/platform/storage_capacity_service.dart';
 import '../core/platform/storage_warning_controller.dart';
 import '../features/connectivity/data/moysklad_api_client.dart';
 import '../features/connectivity/data/moysklad_api_manager.dart';
+import '../features/connectivity/data/api_task_repository.dart';
+import '../features/connectivity/data/api_task_dispatcher.dart';
+import '../features/references/data/reference_data_repository.dart';
+import '../features/references/presentation/reference_screens.dart';
+import '../features/warehouse_journal/data/warehouse_journal_repository.dart';
+import '../features/backup/data/backup_service.dart';
+import '../core/diagnostics/emergency_diagnostic_sink.dart';
 import '../features/connectivity/data/platform_connectivity_source.dart';
 import '../features/connectivity/domain/api_connection_state.dart';
 import 'app_theme.dart';
@@ -32,12 +39,14 @@ class LeruaZakupApp extends StatefulWidget {
     this.warehouseLogRepository,
     this.appVersionOverride,
     this.onExitRequested,
+    this.startApiTaskDispatcher = false,
   });
 
   final SettingsRepository? settingsRepository;
   final WarehouseLogRepository? warehouseLogRepository;
   final String? appVersionOverride;
   final VoidCallback? onExitRequested;
+  final bool startApiTaskDispatcher;
 
   @override
   State<LeruaZakupApp> createState() => _LeruaZakupAppState();
@@ -49,14 +58,41 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   final SnackbarService _snackbarService = SnackbarService();
   late final PlatformConnectivitySource _connectivitySource =
       PlatformConnectivitySource();
+  late final FlutterSecureTokenStore _tokenStore = FlutterSecureTokenStore();
+  late final Stream<bool> _internetStream = _connectivitySource.hasInternet
+      .asBroadcastStream();
   late final MoySkladApiManager _apiManager = MoySkladApiManager(
-    tokenStore: FlutterSecureTokenStore(),
+    tokenStore: _tokenStore,
     apiClient: MoySkladApiClient(),
-    internet: _connectivitySource.hasInternet.asBroadcastStream(),
+    internet: _internetStream,
     onEvent: _warehouseLogRepository.append,
   );
   late final Stream<ApiConnectionState> _connectivityStatuses =
       _apiManager.states;
+  late final ApiTaskRepository _apiTaskRepository = ApiTaskRepository(
+    database: _appDatabase,
+  );
+  late final ApiTaskDispatcher _apiTaskDispatcher = ApiTaskDispatcher(
+    repository: _apiTaskRepository,
+    apiClient: MoySkladApiClient(),
+    tokenStore: _tokenStore,
+    internet: _internetStream,
+  );
+  late final ReferenceDataRepository _referenceDataRepository =
+      ReferenceDataRepository(
+        database: _appDatabase,
+        api: _apiTaskDispatcher,
+        warehouseLog: _warehouseLogRepository,
+      );
+  late final WarehouseJournalRepository _warehouseJournalRepository =
+      WarehouseJournalRepository(
+        database: _appDatabase,
+        warehouseLog: _warehouseLogRepository,
+      );
+  late final BackupService _backupService = BackupService(
+    database: _appDatabase,
+    warehouseLog: _warehouseLogRepository,
+  );
   late final AppDatabase _appDatabase = AppDatabase();
   late final WarehouseLogRepository _warehouseLogRepository =
       widget.warehouseLogRepository ??
@@ -84,6 +120,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   ThemeMode _themeMode = ThemeMode.light;
   Color _seedColor = AppTheme.defaultSeedColor;
   String _appVersion = '1.0.0+1';
+  Future<void>? _referenceSyncFuture;
+  StreamSubscription<bool>? _referenceSyncSubscription;
 
   @override
   void initState() {
@@ -94,12 +132,52 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       if (mounted) _checkStorageCapacity();
     });
     unawaited(_apiManager.start());
+    if (widget.startApiTaskDispatcher) {
+      unawaited(_startBackgroundServices());
+    }
     _initializeNotifications();
     _restoreSettings();
     if (widget.appVersionOverride != null) {
       _appVersion = widget.appVersionOverride!;
     } else {
       _loadVersion();
+    }
+  }
+
+  Future<void> _startBackgroundServices() async {
+    try {
+      await _apiTaskDispatcher.start();
+      _referenceSyncSubscription = _internetStream.listen((online) {
+        if (online) unawaited(_syncReferencesOnStartup());
+      });
+      await _backupService.ensureDailyBackup();
+      await Future<void>.delayed(const Duration(seconds: 2));
+      await _syncReferencesOnStartup();
+    } catch (error) {
+      await EmergencyDiagnosticSink.record('App.backgroundStartup', error);
+    }
+  }
+
+  Future<void> _syncReferencesOnStartup() {
+    final active = _referenceSyncFuture;
+    if (active != null) return active;
+    final future = _runReferenceSync();
+    _referenceSyncFuture = future;
+    return future.whenComplete(() => _referenceSyncFuture = null);
+  }
+
+  Future<void> _runReferenceSync() async {
+    try {
+      final token = await _tokenStore.readToken();
+      if (token == null || token.trim().isEmpty || !_apiManager.isOnline) {
+        return;
+      }
+      if (await _apiTaskRepository.requiresResumeConfirmation()) return;
+      await _referenceDataRepository.syncProducts();
+      await _referenceDataRepository.syncWarehouses();
+      await _referenceDataRepository.syncOrganizations();
+    } catch (error) {
+      await EmergencyDiagnosticSink.record('App.referenceStartupSync', error);
     }
   }
 
@@ -113,11 +191,16 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
 
   Future<void> _handleTokenSaved() async {
     await _apiManager.onTokenSaved();
+    if (widget.startApiTaskDispatcher) {
+      await _apiTaskDispatcher.onTokenSaved();
+    }
     if (!mounted || !_apiManager.isOnline) return;
     if (_apiManager.currentState != ApiConnectionState.connected) {
       _snackbarService.showGlobal(
         'Не удалось подтвердить подключение к МойСклад. Подробности в Журнале склада',
       );
+    } else if (widget.startApiTaskDispatcher) {
+      unawaited(_syncReferencesOnStartup());
     }
   }
 
@@ -187,7 +270,9 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _lifecycle.dispose();
+    unawaited(_referenceSyncSubscription?.cancel());
     unawaited(_apiManager.dispose());
+    unawaited(_apiTaskDispatcher.dispose());
     unawaited(_appDatabase.close());
     super.dispose();
   }
@@ -264,6 +349,20 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
             connectivityStatuses: _connectivityStatuses,
             onOpenCalendar: () => _openCalendar(context),
             onOpenSettings: () => _openSettings(context),
+            onOpenOtherActions: () {
+              final deps = _AppDependencies.of(context);
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => OtherActionsScreen(
+                    repository: deps.referenceDataRepository,
+                    api: deps.apiTaskDispatcher,
+                    journal: deps.warehouseJournalRepository,
+                    backupService: deps.backupService,
+                    onResumeConfirmed: _syncReferencesOnStartup,
+                  ),
+                ),
+              );
+            },
             onShowPlaceholder: (message) =>
                 _snackbarService.show(context, message),
           ),
@@ -273,6 +372,10 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     builder: (context, child) => _AppDependencies(
       repository: _settingsRepository,
       warehouseLogRepository: _warehouseLogRepository,
+      apiTaskDispatcher: _apiTaskDispatcher,
+      referenceDataRepository: _referenceDataRepository,
+      warehouseJournalRepository: _warehouseJournalRepository,
+      backupService: _backupService,
       appVersion: _appVersion,
       onThemeChanged: (mode) {
         if (mounted) setState(() => _themeMode = mode);
@@ -281,7 +384,10 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         if (mounted) setState(() => _seedColor = color);
       },
       onTokenSaved: () => unawaited(_handleTokenSaved()),
-      onTokenDeleted: _apiManager.onTokenDeleted,
+      onTokenDeleted: () {
+        _apiManager.onTokenDeleted();
+        unawaited(_apiTaskDispatcher.onTokenDeleted());
+      },
       child: Listener(
         behavior: HitTestBehavior.translucent,
         onPointerDown: (_) => _snackbarService.dismiss(),
@@ -295,6 +401,10 @@ class _AppDependencies extends InheritedWidget {
   const _AppDependencies({
     required this.repository,
     required this.warehouseLogRepository,
+    required this.apiTaskDispatcher,
+    required this.referenceDataRepository,
+    required this.warehouseJournalRepository,
+    required this.backupService,
     required this.appVersion,
     required this.onThemeChanged,
     required this.onSeedColorChanged,
@@ -305,6 +415,10 @@ class _AppDependencies extends InheritedWidget {
 
   final SettingsRepository repository;
   final WarehouseLogRepository warehouseLogRepository;
+  final ApiTaskDispatcher apiTaskDispatcher;
+  final ReferenceDataRepository referenceDataRepository;
+  final WarehouseJournalRepository warehouseJournalRepository;
+  final BackupService backupService;
   final String appVersion;
   final ValueChanged<ThemeMode> onThemeChanged;
   final ValueChanged<Color> onSeedColorChanged;

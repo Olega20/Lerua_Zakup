@@ -6,68 +6,110 @@ class AppDatabase {
   AppDatabase({this.databaseFactory, this.databasePath});
   final sqflite.DatabaseFactory? databaseFactory;
   final String? databasePath;
-  sqflite.DatabaseFactory get _factory => databaseFactory ?? sqflite.databaseFactory;
+  sqflite.DatabaseFactory get _factory =>
+      databaseFactory ?? sqflite.databaseFactory;
+  sqflite.DatabaseFactory get databaseFactoryInstance => _factory;
+  AppDatabase atPath(String path) =>
+      AppDatabase(databaseFactory: _factory, databasePath: path);
   Future<sqflite.Database>? _pending;
   Future<sqflite.Database> get database => _pending ??= _open();
+  Future<String> get databaseFilePath async =>
+      databasePath ??
+      p.join(await _factory.getDatabasesPath(), 'lerua_zakup.db');
 
   Future<sqflite.Database> _open() async {
-    final path = databasePath ?? p.join(await _factory.getDatabasesPath(), 'lerua_zakup.db');
-    final db = await _factory.openDatabase(path, options: sqflite.OpenDatabaseOptions(
-      version: 2,
-      onConfigure: (db) async {
-        await db.execute('PRAGMA foreign_keys = ON');
-        await db.execute('PRAGMA journal_mode = WAL');
-      },
-      onCreate: (db, version) async {
-        for (final sql in _schema) { await db.execute(sql); }
-        await db.insert('schema_migrations', {'version': version, 'applied_at': DateTime.now().millisecondsSinceEpoch});
-      },
-      onUpgrade: (db, oldVersion, newVersion) async {
-        if (oldVersion < 2) {
-          for (final column in [
-            'component TEXT', 'error_code TEXT', 'recommended_action TEXT',
-            'technical_details TEXT', 'correlation_id TEXT', 'operation_id TEXT',
-            'task_id TEXT', 'attempt_number INTEGER',
-          ]) {
-            await db.execute('ALTER TABLE warehouse_log ADD COLUMN $column');
+    final path = await databaseFilePath;
+    final db = await _factory.openDatabase(
+      path,
+      options: sqflite.OpenDatabaseOptions(
+        version: 2,
+        onConfigure: (db) async {
+          await db.execute('PRAGMA foreign_keys = ON');
+          await db.execute('PRAGMA journal_mode = WAL');
+        },
+        onCreate: (db, version) async {
+          for (final sql in _schema) {
+            await db.execute(sql);
           }
           await db.insert('schema_migrations', {
-            'version': 2, 'applied_at': DateTime.now().millisecondsSinceEpoch,
+            'version': version,
+            'applied_at': DateTime.now().millisecondsSinceEpoch,
           });
-        }
-      },
-    ));
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            for (final column in [
+              'component TEXT',
+              'error_code TEXT',
+              'recommended_action TEXT',
+              'technical_details TEXT',
+              'correlation_id TEXT',
+              'operation_id TEXT',
+              'task_id TEXT',
+              'attempt_number INTEGER',
+            ]) {
+              await db.execute('ALTER TABLE warehouse_log ADD COLUMN $column');
+            }
+            await db.insert('schema_migrations', {
+              'version': 2,
+              'applied_at': DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+        },
+      ),
+    );
     if (databasePath == null) await _importLegacyLog(db);
     return db;
   }
 
   Future<void> _importLegacyLog(sqflite.Database target) async {
     const marker = 'legacy_warehouse_log_imported';
-    if ((await target.query('app_settings', where: 'key = ?', whereArgs: [marker])).isNotEmpty) return;
-    final oldPath = p.join(await _factory.getDatabasesPath(), 'warehouse_log.db');
+    if ((await target.query(
+      'app_settings',
+      where: 'key = ?',
+      whereArgs: [marker],
+    )).isNotEmpty) {
+      return;
+    }
+    final oldPath = p.join(
+      await _factory.getDatabasesPath(),
+      'warehouse_log.db',
+    );
     if (await _factory.databaseExists(oldPath)) {
       final old = await _factory.openDatabase(oldPath);
       try {
-        final exists = await old.rawQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='warehouse_log'");
+        final exists = await old.rawQuery(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='warehouse_log'",
+        );
         if (exists.isNotEmpty) {
           final rows = await old.query('warehouse_log');
           await target.transaction((txn) async {
             for (final row in rows) {
               await txn.insert('warehouse_log', {
-                'timestamp': row['timestamp'], 'level': row['level'], 'event_type': row['event_type'],
-                'description': row['description'], 'http_status_code': row['http_status_code'],
+                'timestamp': row['timestamp'],
+                'level': row['level'],
+                'event_type': row['event_type'],
+                'description': row['description'],
+                'http_status_code': row['http_status_code'],
                 'api_error_code': row['api_error_code'],
               });
             }
           });
         }
-      } finally { await old.close(); }
+      } finally {
+        await old.close();
+      }
     }
-    await target.insert('app_settings', {'key': marker, 'value': '1', 'updated_at': DateTime.now().millisecondsSinceEpoch});
+    await target.insert('app_settings', {
+      'key': marker,
+      'value': '1',
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    });
   }
 
   Future<void> close() async {
-    final value = _pending; _pending = null;
+    final value = _pending;
+    _pending = null;
     if (value != null) await (await value).close();
   }
 

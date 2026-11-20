@@ -67,14 +67,19 @@ void main() {
     ]) {
       await tester.tap(find.text(label));
       await tester.pump();
-      expect(
-        find.text('Функция находится в разработке'),
-        findsOneWidget,
-        reason: label,
-      );
-      await tester.tapAt(const Offset(8, 8));
-      await tester.pump(const Duration(milliseconds: 400));
-      await tester.pump();
+      if (label == 'Прочие действия') {
+        await tester.pumpAndSettle();
+        expect(find.text('Актуальные товары МойСклад'), findsOneWidget);
+      } else {
+        expect(
+          find.text('Функция находится в разработке'),
+          findsOneWidget,
+          reason: label,
+        );
+        await tester.tapAt(const Offset(8, 8));
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.pump();
+      }
     }
   });
 
