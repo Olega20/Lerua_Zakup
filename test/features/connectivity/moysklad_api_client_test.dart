@@ -54,7 +54,7 @@ void main() {
 
       expect(result.status, ApiCheckStatus.connected);
       expect(transport.uri!.host, 'api.moysklad.ru');
-      expect(transport.uri!.path, '/api/remap/1.2/context/employee');
+      expect(transport.uri!.path, '/api/remap/1.2/context/employee/');
       String header(String name) => transport.headers!.entries
           .firstWhere((entry) => entry.key.toLowerCase() == name.toLowerCase())
           .value;

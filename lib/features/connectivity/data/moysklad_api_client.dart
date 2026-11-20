@@ -92,7 +92,7 @@ class MoySkladApiClient {
 
   static final Uri _employeeContextUri = Uri.https(
     'api.moysklad.ru',
-    '/api/remap/1.2/context/employee',
+    '/api/remap/1.2/context/employee/',
   );
 
   final MoySkladHttpTransport _transport;
