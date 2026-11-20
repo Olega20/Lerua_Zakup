@@ -54,7 +54,7 @@ void main() {
 
       expect(result.status, ApiCheckStatus.connected);
       expect(transport.uri!.host, 'api.moysklad.ru');
-      expect(transport.uri!.path, '/api/remap/1.2/context/employee/');
+      expect(transport.uri!.path, '/api/remap/1.2/context/employee');
       String header(String name) => transport.headers!.entries
           .firstWhere((entry) => entry.key.toLowerCase() == name.toLowerCase())
           .value;
@@ -96,6 +96,31 @@ void main() {
       }
     });
 
+    test(
+      'captures structured API and authentication error diagnostics',
+      () async {
+        final transport = FakeMoySkladHttpTransport(
+          () async => const MoySkladHttpResponse(
+            statusCode: 400,
+            body: '{"errors":[{"error":"Некорректный запрос","code":101,"error_message":"Неверный формат запроса"}]}',
+            headers: {
+              'x-lognex-auth': 'AUTH_ERROR',
+              'x-lognex-auth-message': 'Authentication diagnostic',
+            },
+          ),
+        );
+
+        final result = await MoySkladApiClient(transport: transport)
+            .checkConnection('token');
+
+        expect(result.status, ApiCheckStatus.unavailable);
+        expect(result.httpStatusCode, 400);
+        expect(result.apiErrorCode, '101');
+        expect(result.apiErrorMessage, 'Неверный формат запроса');
+        expect(result.authErrorCode, 'AUTH_ERROR');
+        expect(result.authErrorMessage, 'Authentication diagnostic');
+      },
+    );
     test('parses Retry-After without retaining response body', () async {
       final transport = FakeMoySkladHttpTransport(
         () async => const MoySkladHttpResponse(

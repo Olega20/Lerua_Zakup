@@ -92,7 +92,7 @@ class MoySkladApiClient {
 
   static final Uri _employeeContextUri = Uri.https(
     'api.moysklad.ru',
-    '/api/remap/1.2/context/employee/',
+    '/api/remap/1.2/context/employee',
   );
 
   final MoySkladHttpTransport _transport;
@@ -130,16 +130,27 @@ class MoySkladApiClient {
         );
       }
 
+      final apiError = _parseApiError(response.body);
+      final authErrorCode = response.headers['x-lognex-auth'];
+      final authErrorMessage = response.headers['x-lognex-auth-message'];
       if (response.statusCode == HttpStatus.unauthorized) {
-        return const ApiCheckResult(
+        return ApiCheckResult(
           ApiCheckStatus.unauthorized,
           httpStatusCode: HttpStatus.unauthorized,
+          apiErrorCode: apiError.$1,
+          apiErrorMessage: apiError.$2,
+          authErrorCode: authErrorCode,
+          authErrorMessage: authErrorMessage,
         );
       }
       if (response.statusCode == HttpStatus.forbidden) {
-        return const ApiCheckResult(
+        return ApiCheckResult(
           ApiCheckStatus.forbidden,
           httpStatusCode: HttpStatus.forbidden,
+          apiErrorCode: apiError.$1,
+          apiErrorMessage: apiError.$2,
+          authErrorCode: authErrorCode,
+          authErrorMessage: authErrorMessage,
         );
       }
       if (response.statusCode == HttpStatus.tooManyRequests) {
@@ -147,11 +158,19 @@ class MoySkladApiClient {
           ApiCheckStatus.rateLimited,
           httpStatusCode: HttpStatus.tooManyRequests,
           retryAfter: _parseRetryAfter(response.headers['retry-after']),
+          apiErrorCode: apiError.$1,
+          apiErrorMessage: apiError.$2,
+          authErrorCode: authErrorCode,
+          authErrorMessage: authErrorMessage,
         );
       }
       return ApiCheckResult(
         ApiCheckStatus.unavailable,
         httpStatusCode: response.statusCode,
+        apiErrorCode: apiError.$1,
+        apiErrorMessage: apiError.$2,
+        authErrorCode: authErrorCode,
+        authErrorMessage: authErrorMessage,
       );
     } on TimeoutException {
       return const ApiCheckResult(ApiCheckStatus.timeout);
@@ -226,6 +245,27 @@ class MoySkladApiClient {
         statusCode: 503,
         errorCode: 'TRANSPORT_ERROR',
       );
+    }
+  }
+
+  (String?, String?) _parseApiError(String body) {
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is! Map) return (null, null);
+      final errors = decoded['errors'];
+      if (errors is List && errors.isNotEmpty && errors.first is Map) {
+        final error = errors.first as Map;
+        final code = error['code']?.toString();
+        final message =
+            error['error_message']?.toString() ?? error['error']?.toString();
+        return (code?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''), message);
+      }
+      return (
+        decoded['code']?.toString(),
+        decoded['message']?.toString() ?? decoded['error']?.toString(),
+      );
+    } on FormatException {
+      return (null, null);
     }
   }
 

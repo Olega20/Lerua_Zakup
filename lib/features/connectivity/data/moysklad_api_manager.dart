@@ -213,6 +213,8 @@ class MoySkladApiManager {
         event.$2,
         event.$3,
         httpStatusCode: result.httpStatusCode,
+        apiErrorCode: result.apiErrorCode,
+        technicalDetails: _formatApiDiagnostic(result),
       );
       if (!_isCurrent(generation)) return;
       if (result.status == ApiCheckStatus.rateLimited) {
@@ -233,6 +235,18 @@ class MoySkladApiManager {
         _setState(ApiConnectionState.unavailable);
       }
     }
+  }
+
+  String? _formatApiDiagnostic(ApiCheckResult result) {
+    final details = <String>[
+      if (result.apiErrorMessage != null) result.apiErrorMessage!,
+      if (result.authErrorCode != null)
+        'X-Lognex-Auth: ${result.authErrorCode.toString()}',
+      if (result.authErrorMessage != null)
+        'X-Lognex-Auth-Message: ${result.authErrorMessage.toString()}',
+    ];
+    if (details.isEmpty) return null;
+    return sanitizeDiagnosticText(details.join('\n'));
   }
 
   (WarehouseLogLevel, WarehouseLogEventType, String) _eventForResult(
@@ -310,6 +324,8 @@ class MoySkladApiManager {
     WarehouseLogEventType type,
     String description, {
     int? httpStatusCode,
+    String? apiErrorCode,
+    String? technicalDetails,
   }) async {
     final sink = onEvent;
     if (sink == null) return;
@@ -321,6 +337,8 @@ class MoySkladApiManager {
           type: type,
           description: description,
           httpStatusCode: httpStatusCode,
+          apiErrorCode: apiErrorCode,
+          technicalDetails: technicalDetails,
         ),
       );
     } catch (journalError) {
