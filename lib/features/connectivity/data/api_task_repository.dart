@@ -8,6 +8,8 @@ import '../domain/api_task.dart';
 /// Durable task storage for one global FIFO dispatcher and multiple logical queues.
 /// Credentials and Authorization headers must never be included in request data.
 class ApiTaskRepository {
+  // Keep the public named argument stable for existing callers.
+  // ignore: prefer_initializing_formals
   ApiTaskRepository({required AppDatabase database}) : _database = database;
 
   final AppDatabase _database;
