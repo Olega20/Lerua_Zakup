@@ -246,6 +246,74 @@ class ApiTaskRepository {
     });
   }
 
+  /// Called once after process startup. In-flight requests are uncertain because
+  /// the app cannot know whether the remote service accepted them before exit.
+  /// All dispatch is globally paused until the user explicitly confirms resume.
+  Future<int> recoverAfterProcessRestart({
+    DateTime Function()? clock,
+  }) async {
+    final now = (clock ?? DateTime.now)().millisecondsSinceEpoch;
+    final db = await _db;
+    return db.transaction((txn) async {
+      final running = await txn.query('api_tasks',
+          where: "status = 'running'");
+      for (final row in running) {
+        final id = row['id'] as int;
+        await txn.update('api_tasks', {
+          'status': 'uncertain',
+          'finished_at': now,
+          'updated_at': now,
+        }, where: "id = ? AND status = 'running'", whereArgs: [id]);
+        await txn.update('api_task_attempts', {
+          'finished_at': now,
+          'outcome': 'uncertain',
+          'safe_error_code': 'PROCESS_RESTART',
+          'safe_error_message': 'Приложение было закрыто во время выполнения запроса',
+        }, where: 'task_id = ? AND attempt_number = ?',
+            whereArgs: [id, row['attempts_count']]);
+        await txn.insert('api_task_events', {
+          'task_id': id,
+          'event_type': 'process_restart',
+          'from_state': 'running',
+          'to_state': 'uncertain',
+          'message': 'После перезапуска результат запроса не подтверждён; повтор запрещён',
+          'created_at': now,
+        });
+      }
+      await txn.insert('api_queue_state', {
+        'logical_queue': '__all__',
+        'is_paused': 1,
+        'pause_reason': 'Требуется подтверждение после перезапуска',
+        'requires_resume_confirmation': 1,
+        'updated_at': now,
+      }, conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+      return running.length;
+    });
+  }
+
+  Future<bool> requiresResumeConfirmation() async {
+    final db = await _db;
+    final rows = await db.query('api_queue_state',
+        columns: ['requires_resume_confirmation'],
+        where: "logical_queue = '__all__'", limit: 1);
+    return rows.isNotEmpty && rows.single['requires_resume_confirmation'] == 1;
+  }
+
+  /// Explicit user action. Per-logical-queue manual pauses remain in force.
+  Future<void> confirmResumeAfterRestart({
+    DateTime Function()? clock,
+  }) async {
+    final now = (clock ?? DateTime.now)().millisecondsSinceEpoch;
+    final db = await _db;
+    await db.insert('api_queue_state', {
+      'logical_queue': '__all__',
+      'is_paused': 0,
+      'pause_reason': null,
+      'requires_resume_confirmation': 0,
+      'updated_at': now,
+    }, conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+  }
+
   Future<List<ApiTask>> listTasks({
     String? logicalQueue,
     Set<ApiTaskStatus>? statuses,

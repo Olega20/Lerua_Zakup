@@ -127,6 +127,29 @@ void main() {
     ), isNull);
   });
 
+  test('restart marks in-flight request uncertain and waits for user confirmation', () async {
+    await repository.enqueue(
+      uid: 'in-flight', type: 'document.create', logicalQueue: 'documents',
+      request: {'path': '/entity/customerorder'},
+    );
+    await repository.enqueue(
+      uid: 'waiting', type: 'catalog.refresh', logicalQueue: 'catalog',
+      request: {'path': '/entity/product'},
+    );
+    final running = await repository.claimNext();
+    expect(running?.task.uid, 'in-flight');
+
+    final recovered = await repository.recoverAfterProcessRestart();
+    expect(recovered, 1);
+    expect(await repository.requiresResumeConfirmation(), isTrue);
+    expect((await repository.listTasks()).first.status, ApiTaskStatus.uncertain);
+    expect(await repository.claimNext(), isNull);
+
+    await repository.confirmResumeAfterRestart();
+    expect(await repository.requiresResumeConfirmation(), isFalse);
+    expect((await repository.claimNext())?.task.uid, 'waiting');
+  });
+
   test('third temporary failure becomes final and is not claimed again', () async {
     final start = DateTime(2026, 11, 20, 10);
     await repository.enqueue(
