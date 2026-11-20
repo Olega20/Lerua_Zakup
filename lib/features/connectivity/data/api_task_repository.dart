@@ -77,7 +77,7 @@ class ApiTaskRepository {
           AND (t.next_attempt_at IS NULL OR t.next_attempt_at <= ?)
           AND NOT EXISTS (
             SELECT 1 FROM api_queue_state q
-            WHERE q.logical_queue IN (t.logical_queue, '__all__') AND q.is_paused = 1
+            WHERE q.logical_queue IN (t.logical_queue, '__all__') AND (q.is_paused = 1 OR q.requires_resume_confirmation = 1)
           )
         ORDER BY t.fifo_sequence ASC LIMIT 1
       ''', [maximumAttempts, now]);
@@ -194,14 +194,27 @@ class ApiTaskRepository {
     final now = (clock ?? DateTime.now)().millisecondsSinceEpoch;
     final db = await _db;
     await db.transaction((txn) async {
-      final rows = await txn.rawQuery('SELECT DISTINCT logical_queue FROM api_tasks');
-      for (final row in rows) {
+      final existing = await txn.query(
+        'api_queue_state',
+        where: "logical_queue = '__all__'",
+        limit: 1,
+      );
+      if (existing.isEmpty) {
         await txn.insert('api_queue_state', {
-          'logical_queue': row['logical_queue'],
+          'logical_queue': '__all__',
+          'is_paused': paused ? 1 : 0,
+          'pause_reason': paused ? reason : null,
+          'requires_resume_confirmation': 0,
+          'updated_at': now,
+        });
+      } else {
+        // Global pause is independent from logical queue pauses and the
+        // post-restart confirmation latch.
+        await txn.update('api_queue_state', {
           'is_paused': paused ? 1 : 0,
           'pause_reason': paused ? reason : null,
           'updated_at': now,
-        }, conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+        }, where: "logical_queue = '__all__'");
       }
     });
   }
@@ -215,6 +228,7 @@ class ApiTaskRepository {
     final cutoff = now.subtract(threshold).millisecondsSinceEpoch;
     final db = await _db;
     return db.transaction((txn) async {
+      var changedCount = 0;
       final rows = await txn.query('api_tasks',
           where: "status = 'running' AND started_at <= ?", whereArgs: [cutoff]);
       for (final row in rows) {
@@ -255,8 +269,9 @@ class ApiTaskRepository {
     final now = (clock ?? DateTime.now)().millisecondsSinceEpoch;
     final db = await _db;
     return db.transaction((txn) async {
-      final running = await txn.query('api_tasks',
-          where: "status = 'running'");
+      final activeTasks = await txn.query('api_tasks',
+          where: "status IN ('pending', 'retry_wait', 'running')");
+      final running = activeTasks.where((row) => row['status'] == 'running').toList();
       for (final row in running) {
         final id = row['id'] as int;
         await txn.update('api_tasks', {
@@ -280,13 +295,15 @@ class ApiTaskRepository {
           'created_at': now,
         });
       }
-      await txn.insert('api_queue_state', {
-        'logical_queue': '__all__',
-        'is_paused': 1,
-        'pause_reason': 'Требуется подтверждение после перезапуска',
-        'requires_resume_confirmation': 1,
-        'updated_at': now,
-      }, conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+      if (activeTasks.isNotEmpty) {
+        await txn.insert('api_queue_state', {
+          'logical_queue': '__all__',
+          'is_paused': 1,
+          'pause_reason': 'Требуется подтверждение после перезапуска',
+          'requires_resume_confirmation': 1,
+          'updated_at': now,
+        }, conflictAlgorithm: sqflite.ConflictAlgorithm.replace);
+      }
       return running.length;
     });
   }
@@ -410,10 +427,12 @@ class ApiTaskRepository {
   String? _safeCode(String? value) => value != null &&
       RegExp(r'^[A-Za-z0-9_.-]{1,64}$').hasMatch(value) ? value : null;
 
-  String _safeText(String value) => value
-      .replaceAll(RegExp(r'(bearer\s+)[A-Za-z0-9._~+/=-]+', caseSensitive: false), r'$1[СКРЫТО]')
-      .replaceAll(RegExp(r'((?:access[-_ ]?)?token\s*[:=]\s*)[^\s,;]+', caseSensitive: false), r'$1[СКРЫТО]')
-      .substring(0, value.length > 2000 ? 2000 : value.length);
+  String _safeText(String value) {
+    final safe = value
+        .replaceAll(RegExp(r'(bearer\\s+)[A-Za-z0-9._~+/=-]+', caseSensitive: false), r'$1[СКРЫТО]')
+        .replaceAll(RegExp(r'((?:access[-_ ]?)?token\\s*[:=]\\s*)[^\\s,;]+', caseSensitive: false), r'$1[СКРЫТО]');
+    return safe.length > 2000 ? safe.substring(0, 2000) : safe;
+  }
 
   String _eventMessage(ApiTaskStatus status, int attempt) => switch (status) {
     ApiTaskStatus.retryWait => 'Временная ошибка; задача ожидает повторной попытки после попытки $attempt',

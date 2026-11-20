@@ -105,6 +105,24 @@ void main() {
     expect((await repository.claimNext())?.task.uid, 'created-during-pause');
   });
 
+  test('global resume preserves a manually paused logical queue', () async {
+    await repository.enqueue(
+      uid: 'manual-paused', type: 'products', logicalQueue: 'catalog',
+      request: {'path': '/entity/product'},
+    );
+    await repository.pauseQueue('catalog', paused: true, reason: 'manual');
+    await repository.pauseAll(paused: true, reason: 'offline');
+    await repository.pauseAll(paused: false);
+    expect(await repository.claimNext(), isNull);
+    await repository.pauseQueue('catalog', paused: false);
+    expect((await repository.claimNext())?.task.uid, 'manual-paused');
+  });
+
+  test('restart does not request confirmation when no tasks are waiting', () async {
+    expect(await repository.recoverAfterProcessRestart(), 0);
+    expect(await repository.requiresResumeConfirmation(), isFalse);
+  });
+
   test('watchdog marks a stale running task uncertain without retrying', () async {
     final start = DateTime(2026, 11, 20, 10);
     await repository.enqueue(
