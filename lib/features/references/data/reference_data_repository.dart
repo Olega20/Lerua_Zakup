@@ -44,7 +44,9 @@ class ReferenceDataRepository {
       if (apiError?.attemptNumber != null) 'Попытка: ${apiError!.attemptNumber}',
       if (apiError?.httpStatusCode != null) 'HTTP: ${apiError!.httpStatusCode}',
       if (apiError?.safeErrorCode != null) 'Код API: ${apiError!.safeErrorCode}',
-      if (apiError?.safeErrorMessage != null) 'Ответ API: ${apiError!.safeErrorMessage}',
+      if (apiError?.safeErrorMessage != null) 'Сообщение API: ${apiError!.safeErrorMessage}',
+      if (apiError?.response != null)
+        'Фрагмент ответа API: ${jsonEncode(apiError!.response)}',
     ];
     final entry = WarehouseLogEntry(
       timestamp: DateTime.now(),
