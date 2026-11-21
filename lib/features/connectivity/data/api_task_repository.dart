@@ -672,6 +672,16 @@ class ApiTaskRepository {
     });
   }
 
+  Future<int> deleteAllTasks() async {
+    final db = await _db;
+    return db.transaction((txn) async {
+      final countRows = await txn.rawQuery('SELECT COUNT(*) AS count FROM api_tasks');
+      final count = countRows.single['count'] as int;
+      await txn.delete('api_tasks');
+      return count;
+    });
+  }
+
   ApiTask _fromRow(Map<String, Object?> row) {
     final request = jsonDecode(row['request_json'] as String) as Map;
     final responseJson = row['response_json'] as String?;
