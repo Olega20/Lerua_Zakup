@@ -1,0 +1,21 @@
+workflows:
+  lerua-zakup-verify-and-build:
+    name: Lerua Zakup - checks and release APK
+    max_build_duration: 60
+    instance_type: linux_x2
+    environment:
+      flutter: stable
+      java: 17
+    scripts:
+      - name: Install Flutter dependencies
+        script: flutter pub get
+      - name: Check Dart formatting
+        script: dart format --output=none --set-exit-if-changed .
+      - name: Run Flutter analyzer
+        script: flutter analyze
+      - name: Run Flutter tests
+        script: flutter test
+      - name: Build release APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/*.apk
