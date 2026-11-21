@@ -1349,13 +1349,24 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
                         (t) => ListTile(
                           title: Row(
                             children: [
-                              Expanded(child: Text(t.type)),
+                              Expanded(
+                                child: Text(
+                                  t.type,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
                               const SizedBox(width: 8),
-                              Text(
-                                _taskStatusLabel(t),
-                                style: TextStyle(
-                                  color: _taskStatusColor(t),
-                                  fontWeight: FontWeight.w600,
+                              Flexible(
+                                child: Text(
+                                  _taskStatusLabel(t),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.end,
+                                  style: TextStyle(
+                                    color: _taskStatusColor(t),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ),
                             ],
