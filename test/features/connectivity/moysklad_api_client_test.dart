@@ -11,20 +11,23 @@ class FakeMoySkladHttpTransport implements MoySkladHttpTransport {
   int calls = 0;
   Uri? uri;
   Map<String, String>? headers;
-  Duration? timeout;
+  Duration? connectionTimeout;
+  Duration? responseTimeout;
 
   @override
   Future<MoySkladHttpResponse> get(
     Uri uri, {
     required Map<String, String> headers,
-    required Duration timeout,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
   }) async {
     calls++;
     this.uri = uri;
     this.headers = headers;
-    this.timeout = timeout;
+    this.connectionTimeout = connectionTimeout;
+    this.responseTimeout = responseTimeout;
     return response == null
-        ? const MoySkladHttpResponse(statusCode: 200, body: '{"id":"safe"}')
+        ? const MoySkladHttpResponse(statusCode: 200, body: '{"rows":[]}')
         : response!();
   }
 }
@@ -46,7 +49,7 @@ void main() {
       expect(transport.calls, 0);
     });
 
-    test('sends the employee context GET with required headers', () async {
+    test('requests the inventory list with required headers and resilient timeouts', () async {
       final transport = FakeMoySkladHttpTransport(null);
       final client = MoySkladApiClient(transport: transport);
 
@@ -54,17 +57,24 @@ void main() {
 
       expect(result.status, ApiCheckStatus.connected);
       expect(transport.uri!.host, 'api.moysklad.ru');
-      expect(transport.uri!.path, '/api/remap/1.2/context/employee/');
+      expect(transport.uri!.path, '/api/remap/1.2/entity/inventory');
+      expect(transport.uri!.queryParameters, {
+        'limit': '1',
+        'offset': '0',
+        'order': 'created,desc',
+      });
       String header(String name) => transport.headers!.entries
           .firstWhere((entry) => entry.key.toLowerCase() == name.toLowerCase())
           .value;
       expect(header('Authorization'), 'Bearer secret-token');
       expect(header('Accept'), 'application/json');
       expect(header('Accept-Encoding'), 'gzip');
-      expect(transport.timeout, const Duration(seconds: 10));
+      expect(header('User-Agent'), 'LZakup Android app');
+      expect(transport.connectionTimeout, const Duration(seconds: 20));
+      expect(transport.responseTimeout, const Duration(seconds: 30));
     });
 
-    test('requires a JSON object for HTTP 200', () async {
+    test('requires an inventory rows collection for HTTP 200', () async {
       final transport = FakeMoySkladHttpTransport(
         () async =>
             const MoySkladHttpResponse(statusCode: 200, body: 'not-json'),
@@ -86,7 +96,7 @@ void main() {
         final transport = FakeMoySkladHttpTransport(
           () async => MoySkladHttpResponse(
             statusCode: testCase.$1,
-            body: '{"error":"details"}',
+            body: '{"rows":[]}',
           ),
         );
         final result = await MoySkladApiClient(transport: transport)
