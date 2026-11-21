@@ -40,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _tokenDirty = false;
+  bool _obscureToken = true;
 
   @override
   void initState() {
@@ -142,6 +143,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         setState(() {
           _hasToken = true;
           _tokenDirty = false;
+          _obscureToken = true;
           _tokenController.text = '••••••••';
         });
         widget.onTokenSaved?.call();
@@ -321,14 +323,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   TextField(
                     key: const ValueKey('api-token-field'),
                     controller: _tokenController,
-                    obscureText: true,
+                    obscureText: _obscureToken,
                     autocorrect: false,
                     enableSuggestions: false,
                     readOnly: _hasToken,
                     onChanged: (_) => setState(() => _tokenDirty = true),
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      border: const OutlineInputBorder(),
                       hintText: 'Введите API-токен',
+                      suffixIcon: _hasToken
+                          ? null
+                          : IconButton(
+                              key: const ValueKey('toggle-api-token-visibility'),
+                              tooltip: _obscureToken ? 'Показать токен' : 'Скрыть токен',
+                              icon: Icon(
+                                _obscureToken ? Icons.visibility : Icons.visibility_off,
+                              ),
+                              onPressed: () => setState(
+                                () => _obscureToken = !_obscureToken,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 10),
