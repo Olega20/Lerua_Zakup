@@ -68,7 +68,7 @@ class _WarehouseJournalScreenState extends State<WarehouseJournalScreen> {
   @override
   Widget build(BuildContext c) => Scaffold(
     appBar: AppBar(
-      title: const Text('Журнал складских операций'),
+      title: const Text('Журнал операций'),
       actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh))],
     ),
     body: loading
