@@ -68,11 +68,15 @@ class ApiResourceResult {
     this.data,
     this.retryAfter,
     this.errorCode,
+    this.errorMessage,
+    this.errorResponse,
   });
   final int statusCode;
   final Map<String, dynamic>? data;
   final Duration? retryAfter;
   final String? errorCode;
+  final String? errorMessage;
+  final Map<String, dynamic>? errorResponse;
   bool get isSuccess => statusCode >= 200 && statusCode < 300 && data != null;
   bool get isRetryable =>
       statusCode == 408 || statusCode == 429 || statusCode >= 500;
@@ -207,15 +211,22 @@ class MoySkladApiClient {
         },
       );
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        String? code;
+        final apiError = _parseApiError(response.body);
+        Map<String, dynamic>? errorResponse;
         try {
           final decoded = jsonDecode(response.body);
-          if (decoded is Map) code = decoded['code']?.toString();
-        } catch (_) {}
+          if (decoded is Map) {
+            errorResponse = Map<String, dynamic>.from(decoded);
+          }
+        } catch (_) {
+          // Keep the HTTP status and parsed error code when the body is not JSON.
+        }
         return ApiResourceResult(
           statusCode: response.statusCode,
           retryAfter: _parseRetryAfter(response.headers['retry-after'] ?? response.headers['x-lognex-retry-after']),
-          errorCode: code?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''),
+          errorCode: apiError.$1?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''),
+          errorMessage: apiError.$2,
+          errorResponse: errorResponse,
         );
       }
       final decoded = jsonDecode(response.body);
