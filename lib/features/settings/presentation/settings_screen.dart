@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../app/app_theme.dart';
 import '../../../core/feedback/snackbar_service.dart';
 import '../../warehouse_log/data/warehouse_log_repository.dart';
-import '../../warehouse_log/presentation/warehouse_log_screen.dart';
 import '../data/settings_repository.dart';
 import 'color_picker_dialog.dart';
 
