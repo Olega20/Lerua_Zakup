@@ -67,7 +67,7 @@ void main() {
           .firstWhere((entry) => entry.key.toLowerCase() == name.toLowerCase())
           .value;
       expect(header('Authorization'), 'Bearer secret-token');
-      expect(header('Accept'), 'application/json');
+      expect(header('Accept'), 'application/json;charset=utf-8');
       expect(header('Accept-Encoding'), 'gzip');
       expect(header('User-Agent'), 'LZakup Android app');
       expect(transport.connectionTimeout, const Duration(seconds: 20));
@@ -78,6 +78,21 @@ void main() {
       final transport = FakeMoySkladHttpTransport(
         () async =>
             const MoySkladHttpResponse(statusCode: 200, body: 'not-json'),
+      );
+
+      final result = await MoySkladApiClient(transport: transport)
+          .checkConnection('token');
+
+      expect(result.status, ApiCheckStatus.invalidResponse);
+      expect(result.httpStatusCode, 200);
+    });
+
+    test('rejects a successful response that is not an inventory collection', () async {
+      final transport = FakeMoySkladHttpTransport(
+        () async => const MoySkladHttpResponse(
+          statusCode: 200,
+          body: '{"id":"not-a-collection"}',
+        ),
       );
 
       final result = await MoySkladApiClient(transport: transport)
