@@ -36,8 +36,7 @@ class ReferenceDataRepository {
 
   Future<void> _recordError(String component, String code, Object error) async {
     final apiError = error is ApiTaskExecutionException ? error : null;
-    final errorCode = apiError?.safeErrorCode ??
-        (apiError == null ? code : 'API_TASK_${apiError.status.name.toUpperCase()}');
+    final errorCode = code;
     final details = <String>[
       'Тип исключения: ${error.runtimeType}',
       if (apiError == null)
