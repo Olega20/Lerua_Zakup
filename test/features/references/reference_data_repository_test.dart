@@ -27,6 +27,7 @@ class _FakeApi extends ApiTaskDispatcher {
         internet: const Stream<bool>.empty(),
       );
   bool failService = false;
+  List<Map<String, dynamic>> organizationRows = [];
   @override
   Future<Map<String, Object?>> requestGet({
     required String uid,
@@ -55,6 +56,12 @@ class _FakeApi extends ApiTaskDispatcher {
           },
         ],
         'meta': {'size': 1},
+      };
+    }
+    if (path == '/entity/organization') {
+      return {
+        'rows': organizationRows,
+        'meta': {'size': organizationRows.length},
       };
     }
     if (path == '/report/stock/all') {
@@ -207,4 +214,26 @@ void main() {
       expect(products.single['is_present'], 1);
     },
   );
+  test('organization refresh stores records using the existing local schema', () async {
+    api.organizationRows = [
+      {'id': 'org-1', 'name': 'ООО Пример', 'archived': false},
+    ];
+
+    await repository.syncOrganizations();
+
+    var organizations = await repository.organizations();
+    expect(organizations, hasLength(1));
+    expect(organizations.single['moysklad_id'], 'org-1');
+    expect(organizations.single['name'], 'ООО Пример');
+
+    api.organizationRows = [
+      {'id': 'org-1', 'name': 'ООО Пример Новое', 'archived': false},
+    ];
+    await repository.syncOrganizations();
+
+    organizations = await repository.organizations();
+    expect(organizations, hasLength(1));
+    expect(organizations.single['name'], 'ООО Пример Новое');
+  });
+
 }
