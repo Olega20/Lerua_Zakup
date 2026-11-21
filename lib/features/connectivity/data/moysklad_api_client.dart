@@ -20,7 +20,8 @@ abstract interface class MoySkladHttpTransport {
   Future<MoySkladHttpResponse> get(
     Uri uri, {
     required Map<String, String> headers,
-    required Duration timeout,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
   });
 }
 
@@ -34,38 +35,31 @@ class IoMoySkladHttpTransport implements MoySkladHttpTransport {
   Future<MoySkladHttpResponse> get(
     Uri uri, {
     required Map<String, String> headers,
-    required Duration timeout,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
   }) async {
     final client = _clientFactory()
-      ..connectionTimeout = timeout
+      ..connectionTimeout = connectionTimeout
       ..autoUncompress = true;
     try {
-      return await _performGet(client, uri, headers).timeout(timeout);
+      final request = await client.getUrl(uri).timeout(connectionTimeout);
+      headers.forEach(request.headers.set);
+      final response = await request.close().timeout(responseTimeout);
+      final body = await response.transform(utf8.decoder).join().timeout(responseTimeout);
+      final responseHeaders = <String, String>{};
+      response.headers.forEach((name, values) {
+        responseHeaders[name.toLowerCase()] = values.join(',');
+      });
+      return MoySkladHttpResponse(
+        statusCode: response.statusCode,
+        body: body,
+        headers: responseHeaders,
+      );
     } finally {
       client.close(force: true);
     }
   }
 
-  Future<MoySkladHttpResponse> _performGet(
-    HttpClient client,
-    Uri uri,
-    Map<String, String> headers,
-  ) async {
-    final request = await client.getUrl(uri);
-    request.followRedirects = false;
-    headers.forEach(request.headers.set);
-    final response = await request.close();
-    final body = await response.transform(utf8.decoder).join();
-    final responseHeaders = <String, String>{};
-    response.headers.forEach((name, values) {
-      responseHeaders[name.toLowerCase()] = values.join(',');
-    });
-    return MoySkladHttpResponse(
-      statusCode: response.statusCode,
-      body: body,
-      headers: responseHeaders,
-    );
-  }
 }
 
 class ApiResourceResult {
@@ -87,16 +81,19 @@ class ApiResourceResult {
 class MoySkladApiClient {
   MoySkladApiClient({
     MoySkladHttpTransport? transport,
-    this.timeout = const Duration(seconds: 10),
+    this.connectionTimeout = const Duration(seconds: 20),
+    this.responseTimeout = const Duration(seconds: 30),
   }) : _transport = transport ?? IoMoySkladHttpTransport();
 
-  static final Uri _employeeContextUri = Uri.https(
+  static final Uri _inventoryListUri = Uri.https(
     'api.moysklad.ru',
-    '/api/remap/1.2/context/employee/',
+    '/api/remap/1.2/entity/inventory',
+    {'limit': '1', 'offset': '0', 'order': 'created,desc'},
   );
 
   final MoySkladHttpTransport _transport;
-  final Duration timeout;
+  final Duration connectionTimeout;
+  final Duration responseTimeout;
 
   Future<ApiCheckResult> checkConnection(String? token) async {
     final normalizedToken = token?.trim();
@@ -106,23 +103,25 @@ class MoySkladApiClient {
 
     try {
       final response = await _transport.get(
-        _employeeContextUri,
-        timeout: timeout,
+        _inventoryListUri,
+        connectionTimeout: connectionTimeout,
+        responseTimeout: responseTimeout,
         headers: {
           HttpHeaders.authorizationHeader: 'Bearer $normalizedToken',
           HttpHeaders.acceptHeader: 'application/json',
           HttpHeaders.acceptEncodingHeader: 'gzip',
+          HttpHeaders.userAgentHeader: 'LZakup Android app',
         },
       );
 
       if (response.statusCode == HttpStatus.ok) {
         try {
           final decoded = jsonDecode(response.body);
-          if (decoded is Map<String, dynamic>) {
+          if (decoded is Map<String, dynamic> && decoded['rows'] is List) {
             return const ApiCheckResult(ApiCheckStatus.connected);
           }
         } on FormatException {
-          // A successful status without a valid JSON object is not a valid check.
+          // A successful status without a valid inventory collection is not a valid check.
         }
         return const ApiCheckResult(
           ApiCheckStatus.invalidResponse,
@@ -197,11 +196,13 @@ class MoySkladApiClient {
     try {
       final response = await _transport.get(
         uri,
-        timeout: timeout,
+        connectionTimeout: connectionTimeout,
+        responseTimeout: responseTimeout,
         headers: {
           HttpHeaders.authorizationHeader: 'Bearer $normalized',
           HttpHeaders.acceptHeader: 'application/json',
           HttpHeaders.acceptEncodingHeader: 'gzip',
+          HttpHeaders.userAgentHeader: 'LZakup Android app',
           'X-Lognex-Format-Metadata': 'true',
         },
       );
