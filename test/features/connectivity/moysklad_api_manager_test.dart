@@ -63,7 +63,7 @@ void main() {
       internet = StreamController<bool>.broadcast();
       tokenStore = FakeSecureTokenStore()..token = 'token';
       transport = FakeMoySkladTransport(
-        () async => const MoySkladHttpResponse(statusCode: 200, body: '{}'),
+        () async => const MoySkladHttpResponse(statusCode: 200, body: '{"rows":[]}'),
       );
       timers = [];
       manager = MoySkladApiManager(
@@ -125,7 +125,7 @@ void main() {
       internet.add(false);
       await Future<void>.delayed(Duration.zero);
       completer.complete(
-        const MoySkladHttpResponse(statusCode: 200, body: '{}'),
+        const MoySkladHttpResponse(statusCode: 200, body: '{"rows":[]}'),
       );
       await Future<void>.delayed(Duration.zero);
       await Future<void>.delayed(Duration.zero);
@@ -191,7 +191,7 @@ void main() {
       final second = manager.checkNow();
       expect(transport.calls, 1);
       completer.complete(
-        const MoySkladHttpResponse(statusCode: 200, body: '{}'),
+        const MoySkladHttpResponse(statusCode: 200, body: '{"rows":[]}'),
       );
       await second;
       expect(transport.calls, 2);
@@ -243,7 +243,7 @@ void main() {
       transport = FakeMoySkladTransport(
         () async => const MoySkladHttpResponse(
           statusCode: 429,
-          body: '{}',
+          body: '{"rows":[]}',
           headers: {'retry-after': '60'},
         ),
       );
