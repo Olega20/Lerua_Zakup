@@ -326,15 +326,17 @@ class ApiTaskDispatcher {
       reason: 'Очистка Менеджера API',
       clock: _clock,
     );
-    while (_pumping && !_disposed) {
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+    try {
+      while (_pumping && !_disposed) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
+      return await repository.deleteAllTasks();
+    } finally {
+      if (!wasPaused) {
+        await repository.pauseAll(paused: false, clock: _clock);
+        if (_online) unawaited(pump());
+      }
     }
-    final deleted = await repository.deleteAllTasks();
-    if (!wasPaused) {
-      await repository.pauseAll(paused: false, clock: _clock);
-      if (_online) unawaited(pump());
-    }
-    return deleted;
   }
 
   Future<void> onTokenSaved() async {
