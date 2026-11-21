@@ -146,6 +146,32 @@ void main() {
         expect(result.authErrorMessage, 'Authentication diagnostic');
       },
     );
+    test('adds the Remap API prefix to relative resource paths exactly once', () async {
+      final relativeTransport = FakeMoySkladHttpTransport(null);
+      final relativeClient = MoySkladApiClient(transport: relativeTransport);
+      final relativeResult = await relativeClient.getResource(
+        'token',
+        '/entity/organization',
+      );
+
+      expect(relativeResult.isSuccess, isTrue);
+      expect(
+        relativeTransport.uri!.path,
+        '/api/remap/1.2/entity/organization',
+      );
+
+      final absoluteTransport = FakeMoySkladHttpTransport(null);
+      final absoluteClient = MoySkladApiClient(transport: absoluteTransport);
+      await absoluteClient.getResource(
+        'token',
+        '/api/remap/1.2/entity/store',
+      );
+      expect(
+        absoluteTransport.uri!.path,
+        '/api/remap/1.2/entity/store',
+      );
+    });
+
     test('preserves structured organization endpoint error details', () async {
       final transport = FakeMoySkladHttpTransport(
         () async => const MoySkladHttpResponse(
@@ -158,6 +184,7 @@ void main() {
           .getResource('token', '/entity/organization');
 
       expect(result.statusCode, 403);
+      expect(transport.uri!.path, '/api/remap/1.2/entity/organization');
       expect(result.errorCode, '3004');
       expect(result.errorMessage, 'Нет прав на чтение организаций');
       expect(result.errorResponse?['errors'], isA<List>());
