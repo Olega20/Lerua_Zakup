@@ -108,7 +108,7 @@ class MoySkladApiClient {
         responseTimeout: responseTimeout,
         headers: {
           HttpHeaders.authorizationHeader: 'Bearer $normalizedToken',
-          HttpHeaders.acceptHeader: 'application/json',
+          HttpHeaders.acceptHeader: 'application/json;charset=utf-8',
           HttpHeaders.acceptEncodingHeader: 'gzip',
           HttpHeaders.userAgentHeader: 'LZakup Android app',
         },
@@ -156,7 +156,7 @@ class MoySkladApiClient {
         return ApiCheckResult(
           ApiCheckStatus.rateLimited,
           httpStatusCode: HttpStatus.tooManyRequests,
-          retryAfter: _parseRetryAfter(response.headers['retry-after']),
+          retryAfter: _parseRetryAfter(response.headers['retry-after'] ?? response.headers['x-lognex-retry-after']),
           apiErrorCode: apiError.$1,
           apiErrorMessage: apiError.$2,
           authErrorCode: authErrorCode,
@@ -200,7 +200,7 @@ class MoySkladApiClient {
         responseTimeout: responseTimeout,
         headers: {
           HttpHeaders.authorizationHeader: 'Bearer $normalized',
-          HttpHeaders.acceptHeader: 'application/json',
+          HttpHeaders.acceptHeader: 'application/json;charset=utf-8',
           HttpHeaders.acceptEncodingHeader: 'gzip',
           HttpHeaders.userAgentHeader: 'LZakup Android app',
           'X-Lognex-Format-Metadata': 'true',
@@ -214,7 +214,7 @@ class MoySkladApiClient {
         } catch (_) {}
         return ApiResourceResult(
           statusCode: response.statusCode,
-          retryAfter: _parseRetryAfter(response.headers['retry-after']),
+          retryAfter: _parseRetryAfter(response.headers['retry-after'] ?? response.headers['x-lognex-retry-after']),
           errorCode: code?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''),
         );
       }
