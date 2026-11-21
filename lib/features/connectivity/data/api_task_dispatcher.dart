@@ -270,7 +270,18 @@ class ApiTaskDispatcher {
         if (task.status == ApiTaskStatus.failed ||
             task.status == ApiTaskStatus.uncertain ||
             task.status == ApiTaskStatus.cancelled) {
-          throw ApiTaskExecutionException(task.status, task.response);
+          final history = await repository.taskHistory(task.id);
+          final attempts = history['attempts'] ?? const [];
+          final lastAttempt = attempts.isEmpty ? null : attempts.last;
+          throw ApiTaskExecutionException(
+            task.status,
+            task.response,
+            taskId: task.id,
+            attemptNumber: lastAttempt?['attempt_number'] as int?,
+            httpStatusCode: lastAttempt?['http_status_code'] as int?,
+            safeErrorCode: lastAttempt?['safe_error_code'] as String?,
+            safeErrorMessage: lastAttempt?['safe_error_message'] as String?,
+          );
         }
       }
       await Future<void>.delayed(const Duration(milliseconds: 250));
@@ -305,6 +316,24 @@ class ApiTaskDispatcher {
 
   Future<int> cancelPending({String? logicalQueue}) =>
       repository.cancelPending(logicalQueue: logicalQueue, clock: _clock);
+
+  Future<int> deleteAllTasks() async {
+    final wasPaused = await repository.isQueuePaused();
+    await repository.pauseAll(
+      paused: true,
+      reason: 'Очистка Менеджера API',
+      clock: _clock,
+    );
+    while (_pumping && !_disposed) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    final deleted = await repository.deleteAllTasks();
+    if (!wasPaused) {
+      await repository.pauseAll(paused: false, clock: _clock);
+      if (_online) unawaited(pump());
+    }
+    return deleted;
+  }
 
   Future<void> onTokenSaved() async {
     if (_online) {
