@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import '../../../core/storage/app_database.dart';
 import '../../../core/diagnostics/emergency_diagnostic_sink.dart';
 import '../../connectivity/data/api_task_dispatcher.dart';
+import '../../connectivity/domain/api_task_execution_exception.dart';
 import '../../warehouse_log/data/warehouse_log_repository.dart';
 import '../../warehouse_log/domain/warehouse_log_entry.dart';
 
@@ -34,15 +35,34 @@ class ReferenceDataRepository {
   }
 
   Future<void> _recordError(String component, String code, Object error) async {
+    final apiError = error is ApiTaskExecutionException ? error : null;
+    final errorCode = apiError?.safeErrorCode ??
+        (apiError == null ? code : 'API_TASK_${apiError.status.name.toUpperCase()}');
+    final details = <String>[
+      'Тип исключения: ${error.runtimeType}',
+      if (apiError?.taskId != null) 'Задача: ${apiError!.taskId}',
+      if (apiError?.attemptNumber != null) 'Попытка: ${apiError!.attemptNumber}',
+      if (apiError?.httpStatusCode != null) 'HTTP: ${apiError!.httpStatusCode}',
+      if (apiError?.safeErrorCode != null) 'Код API: ${apiError!.safeErrorCode}',
+      if (apiError?.safeErrorMessage != null) 'Ответ API: ${apiError!.safeErrorMessage}',
+    ];
     final entry = WarehouseLogEntry(
       timestamp: DateTime.now(),
       level: WarehouseLogLevel.error,
       type: WarehouseLogEventType.syncFailed,
       description: 'Не удалось выполнить операцию справочника: $component.',
       component: component,
-      errorCode: code,
-      recommendedAction: 'Проверьте соединение с МойСклад и целостность локальных данных; повторите действие.',
-      technicalDetails: error.runtimeType.toString(),
+      errorCode: errorCode,
+      httpStatusCode: apiError?.httpStatusCode,
+      apiErrorCode: apiError?.safeErrorCode,
+      taskId: apiError?.taskId?.toString(),
+      attemptNumber: apiError?.attemptNumber,
+      recommendedAction: apiError?.httpStatusCode == 403
+          ? 'Проверьте права Access Token на чтение организаций в МойСклад.'
+          : apiError?.httpStatusCode == 404
+          ? 'Проверьте доступность endpoint организаций и версию API.'
+          : 'Проверьте подробности ответа API и локальной базы данных; повторите действие после устранения причины.',
+      technicalDetails: details.join('; '),
     );
     try {
       if (warehouseLog == null) {
