@@ -26,7 +26,8 @@ class FakeMoySkladTransport implements MoySkladHttpTransport {
   Future<MoySkladHttpResponse> get(
     Uri uri, {
     required Map<String, String> headers,
-    required Duration timeout,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
   }) {
     calls++;
     return handler();
