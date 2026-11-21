@@ -146,6 +146,23 @@ void main() {
         expect(result.authErrorMessage, 'Authentication diagnostic');
       },
     );
+    test('preserves structured organization endpoint error details', () async {
+      final transport = FakeMoySkladHttpTransport(
+        () async => const MoySkladHttpResponse(
+          statusCode: 403,
+          body: '{"errors":[{"code":3004,"error_message":"Нет прав на чтение организаций"}]}',
+        ),
+      );
+
+      final result = await MoySkladApiClient(transport: transport)
+          .getResource('token', '/entity/organization');
+
+      expect(result.statusCode, 403);
+      expect(result.errorCode, '3004');
+      expect(result.errorMessage, 'Нет прав на чтение организаций');
+      expect(result.errorResponse?['errors'], isA<List>());
+    });
+
     test('parses Retry-After without retaining response body', () async {
       final transport = FakeMoySkladHttpTransport(
         () async => const MoySkladHttpResponse(
