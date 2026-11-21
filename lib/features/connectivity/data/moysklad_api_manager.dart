@@ -270,7 +270,7 @@ class MoySkladApiManager {
     ApiCheckStatus.forbidden => (
       WarehouseLogLevel.warning,
       WarehouseLogEventType.forbidden,
-      'У токена нет прав на проверку контекста',
+      'У токена нет прав на чтение списка инвентаризаций',
     ),
     ApiCheckStatus.rateLimited => (
       WarehouseLogLevel.warning,
