@@ -118,17 +118,23 @@ void main() {
     expect(colorChanges, isNotEmpty);
   });
 
-  testWidgets('token input is always obscured and has no reveal control', (
+  testWidgets('token input can be revealed and hidden before saving', (
     tester,
   ) async {
     await tester.pumpWidget(app());
     await tester.pumpAndSettle();
-    final field = tester.widget<TextField>(
-      find.byKey(const ValueKey('api-token-field')),
-    );
-    expect(field.obscureText, isTrue);
-    expect(find.byIcon(Icons.visibility), findsNothing);
-    expect(find.byIcon(Icons.visibility_off), findsNothing);
+    final fieldFinder = find.byKey(const ValueKey('api-token-field'));
+    await tester.enterText(fieldFinder, 'temporary-token');
+    expect(tester.widget<TextField>(fieldFinder).obscureText, isTrue);
+
+    await tester.tap(find.byKey(const ValueKey('toggle-api-token-visibility')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(fieldFinder).obscureText, isFalse);
+    expect(find.text('temporary-token'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('toggle-api-token-visibility')));
+    await tester.pumpAndSettle();
+    expect(tester.widget<TextField>(fieldFinder).obscureText, isTrue);
   });
 
   testWidgets('saves token masked and leaves field populated with mask', (
@@ -149,6 +155,7 @@ void main() {
     );
     expect(field.obscureText, isTrue);
     expect(field.controller!.text, isNot('secrettoken'));
+    expect(find.byKey(const ValueKey('toggle-api-token-visibility')), findsNothing);
   });
 
   testWidgets('empty token is not saved', (tester) async {
