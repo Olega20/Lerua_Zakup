@@ -6,6 +6,8 @@ import '../../connectivity/data/api_task_dispatcher.dart';
 import '../../connectivity/domain/api_task.dart';
 import '../../warehouse_journal/data/warehouse_journal_repository.dart';
 import '../../warehouse_journal/presentation/warehouse_journal_screen.dart';
+import '../../warehouse_log/data/warehouse_log_repository.dart';
+import '../../warehouse_log/presentation/warehouse_log_screen.dart';
 import '../../backup/data/backup_service.dart';
 import '../../backup/presentation/backup_screen.dart';
 import '../data/reference_data_repository.dart';
@@ -17,12 +19,14 @@ class OtherActionsScreen extends StatelessWidget {
     required this.api,
     required this.journal,
     required this.backupService,
+    required this.warehouseLogRepository,
     this.onResumeConfirmed,
   });
   final ReferenceDataRepository repository;
   final ApiTaskDispatcher api;
   final WarehouseJournalRepository journal;
   final BackupService backupService;
+  final WarehouseLogRepository warehouseLogRepository;
   final Future<void> Function()? onResumeConfirmed;
   @override
   Widget build(BuildContext c) => Scaffold(
@@ -67,8 +71,19 @@ class OtherActionsScreen extends StatelessWidget {
           ),
         ),
         ListTile(
+          leading: const Icon(Icons.article_outlined),
+          title: const Text('Журнал склада'),
+          subtitle: const Text('Диагностика API, синхронизации и ошибок'),
+          onTap: () => Navigator.push(
+            c,
+            MaterialPageRoute<void>(
+              builder: (_) => WarehouseLogScreen(repository: warehouseLogRepository),
+            ),
+          ),
+        ),
+        ListTile(
           leading: const Icon(Icons.menu_book_outlined),
-          title: const Text('Журнал складских операций'),
+          title: const Text('Журнал операций'),
           subtitle: const Text(
             'История локально сохранённых операций и событий',
           ),
