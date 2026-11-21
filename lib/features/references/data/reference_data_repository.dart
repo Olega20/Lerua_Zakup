@@ -40,6 +40,8 @@ class ReferenceDataRepository {
         (apiError == null ? code : 'API_TASK_${apiError.status.name.toUpperCase()}');
     final details = <String>[
       'Тип исключения: ${error.runtimeType}',
+      if (apiError == null)
+        'Подробности: ${sanitizeDiagnosticText(error.toString())}',
       if (apiError?.taskId != null) 'Задача: ${apiError!.taskId}',
       if (apiError?.attemptNumber != null) 'Попытка: ${apiError!.attemptNumber}',
       if (apiError?.httpStatusCode != null) 'HTTP: ${apiError!.httpStatusCode}',
@@ -60,7 +62,7 @@ class ReferenceDataRepository {
       taskId: apiError?.taskId?.toString(),
       attemptNumber: apiError?.attemptNumber,
       recommendedAction: apiError?.httpStatusCode == 403
-          ? 'Проверьте права Access Token на чтение организаций в МойСклад.'
+          ? 'Проверьте права Access Token на чтение справочника «$component» в МойСклад.'
           : apiError?.httpStatusCode == 404
           ? 'Проверьте доступность endpoint организаций и версию API.'
           : 'Проверьте подробности ответа API и локальной базы данных; повторите действие после устранения причины.',
