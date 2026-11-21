@@ -195,7 +195,10 @@ class MoySkladApiClient {
         errorCode: 'TOKEN_MISSING',
       );
     }
-    final normalizedPath = path.startsWith('/') ? path : '/$path';
+    final relativePath = path.startsWith('/') ? path : '/$path';
+    final normalizedPath = relativePath.startsWith('/api/remap/1.2/')
+        ? relativePath
+        : '/api/remap/1.2$relativePath';
     final uri = Uri.https('api.moysklad.ru', normalizedPath, query);
     try {
       final response = await _transport.get(
