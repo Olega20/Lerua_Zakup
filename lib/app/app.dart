@@ -358,6 +358,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
                     api: deps.apiTaskDispatcher,
                     journal: deps.warehouseJournalRepository,
                     backupService: deps.backupService,
+                    warehouseLogRepository: deps.warehouseLogRepository,
                     onResumeConfirmed: _syncReferencesOnStartup,
                   ),
                 ),
