@@ -175,10 +175,10 @@ class ApiTaskDispatcher {
             taskId: claim.task.id,
             attemptNumber: claim.attemptNumber,
             status: ApiTaskStatus.retryWait,
-            response: result.data,
+            response: result.errorResponse ?? result.data,
             httpStatusCode: result.statusCode,
             safeErrorCode: result.errorCode ?? 'TEMPORARY_API_ERROR',
-            safeErrorMessage: _messageFor(result.statusCode),
+            safeErrorMessage: result.errorMessage ?? _messageFor(result.statusCode),
             nextAttemptAt: _clock().add(delay),
             clock: _clock,
           );
@@ -206,10 +206,10 @@ class ApiTaskDispatcher {
             taskId: claim.task.id,
             attemptNumber: claim.attemptNumber,
             status: ApiTaskStatus.failed,
-            response: result.data,
+            response: result.errorResponse ?? result.data,
             httpStatusCode: result.statusCode,
             safeErrorCode: result.errorCode ?? 'API_REJECTED',
-            safeErrorMessage: _messageFor(result.statusCode),
+            safeErrorMessage: result.errorMessage ?? _messageFor(result.statusCode),
             clock: _clock,
           );
           _activeClaim = null;
