@@ -357,24 +357,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: Text(_saving ? 'Сохранение…' : 'Сохранить'),
                     ),
                   const SizedBox(height: 28),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Журнал склада'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () {
-                      final repository = widget.warehouseLogRepository;
-                      if (repository == null) {
-                        _message('Журнал временно недоступен');
-                        return;
-                      }
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) =>
-                              WarehouseLogScreen(repository: repository),
-                        ),
-                      );
-                    },
-                  ),
                   const SizedBox(height: 12),
                   OutlinedButton(
                     onPressed: _resetSettings,
