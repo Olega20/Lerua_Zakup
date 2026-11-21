@@ -1178,17 +1178,103 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
     );
   }
 
+  String _taskStatusLabel(ApiTask task) {
+    if ((paused || queuePauses[task.logicalQueue] == true) &&
+        (task.status == ApiTaskStatus.pending ||
+            task.status == ApiTaskStatus.retryWait)) {
+      return 'Остановлена';
+    }
+    return switch (task.status) {
+      ApiTaskStatus.pending => 'В очереди',
+      ApiTaskStatus.running => 'Выполняется',
+      ApiTaskStatus.retryWait => 'Ожидает повтора',
+      ApiTaskStatus.succeeded => 'Успешно',
+      ApiTaskStatus.failed => 'Ошибка',
+      ApiTaskStatus.uncertain => 'Результат не подтверждён',
+      ApiTaskStatus.cancelled => 'Остановлена',
+    };
+  }
+
+  Color _taskStatusColor(ApiTask task) {
+    if ((paused || queuePauses[task.logicalQueue] == true) &&
+        (task.status == ApiTaskStatus.pending ||
+            task.status == ApiTaskStatus.retryWait)) {
+      return Colors.red;
+    }
+    return switch (task.status) {
+      ApiTaskStatus.succeeded => Colors.green,
+      ApiTaskStatus.failed ||
+      ApiTaskStatus.uncertain ||
+      ApiTaskStatus.cancelled => Colors.red,
+      ApiTaskStatus.pending ||
+      ApiTaskStatus.running ||
+      ApiTaskStatus.retryWait => Colors.blue,
+    };
+  }
+
   Future<void> pause(bool v) async {
     await widget.api.setGlobalPaused(v);
-    setState(() => paused = v);
     await load();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(v ? 'Все очереди остановлены' : 'Все очереди запущены'),
+        ),
+      );
+  }
+
+  Future<void> deleteAllTasks() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Удалить все задачи?'),
+        content: const Text(
+          'Будут удалены все задачи Менеджера API, включая историю попыток и событий. Это действие нельзя отменить.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Удалить все'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      final deleted = await widget.api.deleteAllTasks();
+      await load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text('Удалено задач: $deleted')),
+        );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось удалить задачи: $error')),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext c) => Scaffold(
     appBar: AppBar(
       title: const Text('Менеджер API'),
-      actions: [IconButton(onPressed: load, icon: const Icon(Icons.refresh))],
+      actions: [
+        IconButton(
+          tooltip: 'Удалить все задачи',
+          onPressed: loading || tasks.isEmpty ? null : deleteAllTasks,
+          icon: const Icon(Icons.delete_sweep_outlined),
+        ),
+        IconButton(onPressed: load, icon: const Icon(Icons.refresh)),
+      ],
     ),
     body: loading
         ? const Center(child: CircularProgressIndicator())
@@ -1246,7 +1332,19 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
                   children: tasks
                       .map(
                         (t) => ListTile(
-                          title: Text(t.type),
+                          title: Row(
+                            children: [
+                              Expanded(child: Text(t.type)),
+                              const SizedBox(width: 8),
+                              Text(
+                                _taskStatusLabel(t),
+                                style: TextStyle(
+                                  color: _taskStatusColor(t),
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                           subtitle: Text(
                             '${t.uid}\nПопытки: ${t.attemptsCount} • FIFO: ${t.fifoSequence}',
                           ),
