@@ -45,7 +45,10 @@ class IoMoySkladHttpTransport implements MoySkladHttpTransport {
       final request = await client.getUrl(uri).timeout(connectionTimeout);
       headers.forEach(request.headers.set);
       final response = await request.close().timeout(responseTimeout);
-      final body = await response.transform(utf8.decoder).join().timeout(responseTimeout);
+      final body = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(responseTimeout);
       final responseHeaders = <String, String>{};
       response.headers.forEach((name, values) {
         responseHeaders[name.toLowerCase()] = values.join(',');
@@ -59,7 +62,6 @@ class IoMoySkladHttpTransport implements MoySkladHttpTransport {
       client.close(force: true);
     }
   }
-
 }
 
 class ApiResourceResult {
@@ -160,7 +162,10 @@ class MoySkladApiClient {
         return ApiCheckResult(
           ApiCheckStatus.rateLimited,
           httpStatusCode: HttpStatus.tooManyRequests,
-          retryAfter: _parseRetryAfter(response.headers['retry-after'] ?? response.headers['x-lognex-retry-after']),
+          retryAfter: _parseRetryAfter(
+            response.headers['retry-after'] ??
+                response.headers['x-lognex-retry-after'],
+          ),
           apiErrorCode: apiError.$1,
           apiErrorMessage: apiError.$2,
           authErrorCode: authErrorCode,
@@ -226,7 +231,10 @@ class MoySkladApiClient {
         }
         return ApiResourceResult(
           statusCode: response.statusCode,
-          retryAfter: _parseRetryAfter(response.headers['retry-after'] ?? response.headers['x-lognex-retry-after']),
+          retryAfter: _parseRetryAfter(
+            response.headers['retry-after'] ??
+                response.headers['x-lognex-retry-after'],
+          ),
           errorCode: apiError.$1?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''),
           errorMessage: apiError.$2,
           errorResponse: errorResponse,

@@ -155,7 +155,10 @@ void main() {
     );
     expect(field.obscureText, isTrue);
     expect(field.controller!.text, isNot('secrettoken'));
-    expect(find.byKey(const ValueKey('toggle-api-token-visibility')), findsNothing);
+    expect(
+      find.byKey(const ValueKey('toggle-api-token-visibility')),
+      findsNothing,
+    );
   });
 
   testWidgets('empty token is not saved', (tester) async {

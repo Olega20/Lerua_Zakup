@@ -337,30 +337,36 @@ void main() {
       );
     },
   );
-  test('deleteAllTasks removes tasks and cascades their attempt history', () async {
-    await repository.enqueue(
-      uid: 'delete-me',
-      type: 'catalog.refresh',
-      logicalQueue: 'catalog',
-      request: {'method': 'GET', 'path': '/entity/organization'},
-    );
-    final claim = await repository.claimNext();
-    await repository.finishAttempt(
-      taskId: claim!.task.id,
-      attemptNumber: claim.attemptNumber,
-      status: ApiTaskStatus.failed,
-      safeErrorCode: 'HTTP_403',
-      safeErrorMessage: 'Forbidden',
-    );
+  test(
+    'deleteAllTasks removes tasks and cascades their attempt history',
+    () async {
+      await repository.enqueue(
+        uid: 'delete-me',
+        type: 'catalog.refresh',
+        logicalQueue: 'catalog',
+        request: {'method': 'GET', 'path': '/entity/organization'},
+      );
+      final claim = await repository.claimNext();
+      await repository.finishAttempt(
+        taskId: claim!.task.id,
+        attemptNumber: claim.attemptNumber,
+        status: ApiTaskStatus.failed,
+        safeErrorCode: 'HTTP_403',
+        safeErrorMessage: 'Forbidden',
+      );
 
-    expect(await repository.deleteAllTasks(), 1);
-    expect(await repository.listTasks(), isEmpty);
+      expect(await repository.deleteAllTasks(), 1);
+      expect(await repository.listTasks(), isEmpty);
 
-    final db = await database.database;
-    for (final table in ['api_task_attempts', 'api_task_events', 'journal_api_task_links']) {
-      final rows = await db.rawQuery('SELECT COUNT(*) AS count FROM $table');
-      expect(rows.single['count'], 0, reason: '$table should be empty');
-    }
-  });
-
+      final db = await database.database;
+      for (final table in [
+        'api_task_attempts',
+        'api_task_events',
+        'journal_api_task_links',
+      ]) {
+        final rows = await db.rawQuery('SELECT COUNT(*) AS count FROM $table');
+        expect(rows.single['count'], 0, reason: '$table should be empty');
+      }
+    },
+  );
 }

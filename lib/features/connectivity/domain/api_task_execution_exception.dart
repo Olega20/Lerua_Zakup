@@ -24,7 +24,8 @@ class ApiTaskExecutionException implements Exception {
     final message = safeErrorMessage;
     if (message != null && message.isNotEmpty) return message;
     final code = safeErrorCode;
-    if (code != null && code.isNotEmpty) return 'API task ${status.name} ($code)';
+    if (code != null && code.isNotEmpty)
+      return 'API task ${status.name} ($code)';
     return 'API task completed with status ${status.name}';
   }
 }

@@ -42,10 +42,13 @@ class ReferenceDataRepository {
       if (apiError == null)
         'Подробности: ${sanitizeDiagnosticText(error.toString())}',
       if (apiError?.taskId != null) 'Задача: ${apiError!.taskId}',
-      if (apiError?.attemptNumber != null) 'Попытка: ${apiError!.attemptNumber}',
+      if (apiError?.attemptNumber != null)
+        'Попытка: ${apiError!.attemptNumber}',
       if (apiError?.httpStatusCode != null) 'HTTP: ${apiError!.httpStatusCode}',
-      if (apiError?.safeErrorCode != null) 'Код API: ${apiError!.safeErrorCode}',
-      if (apiError?.safeErrorMessage != null) 'Сообщение API: ${apiError!.safeErrorMessage}',
+      if (apiError?.safeErrorCode != null)
+        'Код API: ${apiError!.safeErrorCode}',
+      if (apiError?.safeErrorMessage != null)
+        'Сообщение API: ${apiError!.safeErrorMessage}',
       if (apiError?.response != null)
         'Фрагмент ответа API: ${jsonEncode(apiError!.response)}',
     ];

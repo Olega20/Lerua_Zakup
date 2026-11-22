@@ -77,7 +77,8 @@ class OtherActionsScreen extends StatelessWidget {
           onTap: () => Navigator.push(
             c,
             MaterialPageRoute<void>(
-              builder: (_) => WarehouseLogScreen(repository: warehouseLogRepository),
+              builder: (_) =>
+                  WarehouseLogScreen(repository: warehouseLogRepository),
             ),
           ),
         ),
@@ -1267,9 +1268,7 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text('Удалено задач: $deleted')),
-        );
+        ..showSnackBar(SnackBar(content: Text('Удалено задач: $deleted')));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

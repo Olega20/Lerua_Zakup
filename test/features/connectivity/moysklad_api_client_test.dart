@@ -87,20 +87,23 @@ void main() {
       expect(result.httpStatusCode, 200);
     });
 
-    test('rejects a successful response that is not an inventory collection', () async {
-      final transport = FakeMoySkladHttpTransport(
-        () async => const MoySkladHttpResponse(
-          statusCode: 200,
-          body: '{"id":"not-a-collection"}',
-        ),
-      );
+    test(
+      'rejects a successful response that is not an inventory collection',
+      () async {
+        final transport = FakeMoySkladHttpTransport(
+          () async => const MoySkladHttpResponse(
+            statusCode: 200,
+            body: '{"id":"not-a-collection"}',
+          ),
+        );
 
-      final result = await MoySkladApiClient(transport: transport)
-          .checkConnection('token');
+        final result = await MoySkladApiClient(transport: transport)
+            .checkConnection('token');
 
-      expect(result.status, ApiCheckStatus.invalidResponse);
-      expect(result.httpStatusCode, 200);
-    });
+        expect(result.status, ApiCheckStatus.invalidResponse);
+        expect(result.httpStatusCode, 200);
+      },
+    );
 
     test('maps authentication and server status codes safely', () async {
       for (final testCase in [
@@ -146,31 +149,31 @@ void main() {
         expect(result.authErrorMessage, 'Authentication diagnostic');
       },
     );
-    test('adds the Remap API prefix to relative resource paths exactly once', () async {
-      final relativeTransport = FakeMoySkladHttpTransport(null);
-      final relativeClient = MoySkladApiClient(transport: relativeTransport);
-      final relativeResult = await relativeClient.getResource(
-        'token',
-        '/entity/organization',
-      );
+    test(
+      'adds the Remap API prefix to relative resource paths exactly once',
+      () async {
+        final relativeTransport = FakeMoySkladHttpTransport(null);
+        final relativeClient = MoySkladApiClient(transport: relativeTransport);
+        final relativeResult = await relativeClient.getResource(
+          'token',
+          '/entity/organization',
+        );
 
-      expect(relativeResult.isSuccess, isTrue);
-      expect(
-        relativeTransport.uri!.path,
-        '/api/remap/1.2/entity/organization',
-      );
+        expect(relativeResult.isSuccess, isTrue);
+        expect(
+          relativeTransport.uri!.path,
+          '/api/remap/1.2/entity/organization',
+        );
 
-      final absoluteTransport = FakeMoySkladHttpTransport(null);
-      final absoluteClient = MoySkladApiClient(transport: absoluteTransport);
-      await absoluteClient.getResource(
-        'token',
-        '/api/remap/1.2/entity/store',
-      );
-      expect(
-        absoluteTransport.uri!.path,
-        '/api/remap/1.2/entity/store',
-      );
-    });
+        final absoluteTransport = FakeMoySkladHttpTransport(null);
+        final absoluteClient = MoySkladApiClient(transport: absoluteTransport);
+        await absoluteClient.getResource(
+          'token',
+          '/api/remap/1.2/entity/store',
+        );
+        expect(absoluteTransport.uri!.path, '/api/remap/1.2/entity/store');
+      },
+    );
 
     test('preserves structured organization endpoint error details', () async {
       final transport = FakeMoySkladHttpTransport(

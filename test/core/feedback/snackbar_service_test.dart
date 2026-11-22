@@ -24,7 +24,8 @@ void main() {
     await tester.pump();
     expect(find.text('Сообщение'), findsOneWidget);
     final snackbar = tester.getRect(find.byType(SnackBar));
-    final screenHeight = tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    final screenHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
     expect(snackbar.bottom, lessThanOrEqualTo(screenHeight));
     expect(snackbar.bottom, greaterThan(screenHeight - 100));
   });
@@ -51,7 +52,9 @@ void main() {
     expect(find.text('Временное'), findsNothing);
   });
 
-  testWidgets('dismisses the snackbar after a tap anywhere on the screen', (tester) async {
+  testWidgets('dismisses the snackbar after a tap anywhere on the screen', (
+    tester,
+  ) async {
     final service = SnackbarService();
     await tester.pumpWidget(
       MaterialApp(

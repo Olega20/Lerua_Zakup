@@ -178,7 +178,8 @@ class ApiTaskDispatcher {
             response: result.errorResponse ?? result.data,
             httpStatusCode: result.statusCode,
             safeErrorCode: result.errorCode ?? 'TEMPORARY_API_ERROR',
-            safeErrorMessage: result.errorMessage ?? _messageFor(result.statusCode),
+            safeErrorMessage:
+                result.errorMessage ?? _messageFor(result.statusCode),
             nextAttemptAt: _clock().add(delay),
             clock: _clock,
           );
@@ -209,7 +210,8 @@ class ApiTaskDispatcher {
             response: result.errorResponse ?? result.data,
             httpStatusCode: result.statusCode,
             safeErrorCode: result.errorCode ?? 'API_REJECTED',
-            safeErrorMessage: result.errorMessage ?? _messageFor(result.statusCode),
+            safeErrorMessage:
+                result.errorMessage ?? _messageFor(result.statusCode),
             clock: _clock,
           );
           _activeClaim = null;

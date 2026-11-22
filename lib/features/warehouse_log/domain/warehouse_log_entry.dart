@@ -1,17 +1,43 @@
 enum WarehouseLogLevel { info, warning, error }
+
 enum WarehouseLogEventType {
-  checkStarted, checkSucceeded, missingToken, unauthorized, forbidden,
-  rateLimited, timeout, invalidResponse, apiUnavailable, internetLost,
-  internetRestored, tokenSaved, tokenDeleted, databaseError, syncFailed,
-  apiTaskFailed, apiTaskUncertain, unexpectedError,
+  checkStarted,
+  checkSucceeded,
+  missingToken,
+  unauthorized,
+  forbidden,
+  rateLimited,
+  timeout,
+  invalidResponse,
+  apiUnavailable,
+  internetLost,
+  internetRestored,
+  tokenSaved,
+  tokenDeleted,
+  databaseError,
+  syncFailed,
+  apiTaskFailed,
+  apiTaskUncertain,
+  unexpectedError,
 }
 
 class WarehouseLogEntry {
   const WarehouseLogEntry({
-    this.id, required this.timestamp, required this.level, required this.type,
-    required this.description, this.httpStatusCode, this.apiErrorCode,
-    this.component, this.errorCode, this.recommendedAction, this.technicalDetails,
-    this.correlationId, this.operationId, this.taskId, this.attemptNumber,
+    this.id,
+    required this.timestamp,
+    required this.level,
+    required this.type,
+    required this.description,
+    this.httpStatusCode,
+    this.apiErrorCode,
+    this.component,
+    this.errorCode,
+    this.recommendedAction,
+    this.technicalDetails,
+    this.correlationId,
+    this.operationId,
+    this.taskId,
+    this.attemptNumber,
   });
   final int? id;
   final DateTime timestamp;
@@ -31,30 +57,54 @@ class WarehouseLogEntry {
 
   String toSafeText() {
     final date = timestamp.toLocal();
-    final stamp = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} '
+    final stamp =
+        '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} '
         '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}:${date.second.toString().padLeft(2, '0')}';
     return [
-      stamp, warehouseLogLevelLabel(level), warehouseLogEventLabel(type),
+      stamp,
+      warehouseLogLevelLabel(level),
+      warehouseLogEventLabel(type),
       sanitizeDiagnosticText(description),
       if (component != null) 'Компонент: ${sanitizeDiagnosticText(component!)}',
-      if (errorCode != null) 'Код ошибки: ${sanitizeDiagnosticText(errorCode!)}',
+      if (errorCode != null)
+        'Код ошибки: ${sanitizeDiagnosticText(errorCode!)}',
       if (httpStatusCode != null) 'HTTP: $httpStatusCode',
-      if (apiErrorCode != null) 'Код API: ${sanitizeDiagnosticText(apiErrorCode!)}',
+      if (apiErrorCode != null)
+        'Код API: ${sanitizeDiagnosticText(apiErrorCode!)}',
       if (attemptNumber != null) 'Попытка: $attemptNumber',
-      if (operationId != null) 'Операция: ${sanitizeDiagnosticText(operationId!)}',
+      if (operationId != null)
+        'Операция: ${sanitizeDiagnosticText(operationId!)}',
       if (taskId != null) 'Задача: ${sanitizeDiagnosticText(taskId!)}',
-      if (correlationId != null) 'Связь: ${sanitizeDiagnosticText(correlationId!)}',
-      if (recommendedAction != null) 'Что сделать: ${sanitizeDiagnosticText(recommendedAction!)}',
-      if (technicalDetails != null) 'Технические сведения: ${sanitizeDiagnosticText(technicalDetails!)}',
+      if (correlationId != null)
+        'Связь: ${sanitizeDiagnosticText(correlationId!)}',
+      if (recommendedAction != null)
+        'Что сделать: ${sanitizeDiagnosticText(recommendedAction!)}',
+      if (technicalDetails != null)
+        'Технические сведения: ${sanitizeDiagnosticText(technicalDetails!)}',
     ].join('\n');
   }
 }
 
 String sanitizeDiagnosticText(String value) {
   var safe = value
-      .replaceAll(RegExp(r'(authorization\s*[:=]\s*bearer\s+)[^\s,;]+', caseSensitive: false), r'$1[СКРЫТО]')
-      .replaceAll(RegExp(r'(bearer\s+)[A-Za-z0-9._~+/=-]+', caseSensitive: false), r'$1[СКРЫТО]')
-      .replaceAll(RegExp(r'((?:access[-_ ]?)?token\s*[:=]\s*)[^\s,;]+', caseSensitive: false), r'$1[СКРЫТО]');
+      .replaceAll(
+        RegExp(
+          r'(authorization\s*[:=]\s*bearer\s+)[^\s,;]+',
+          caseSensitive: false,
+        ),
+        r'$1[СКРЫТО]',
+      )
+      .replaceAll(
+        RegExp(r'(bearer\s+)[A-Za-z0-9._~+/=-]+', caseSensitive: false),
+        r'$1[СКРЫТО]',
+      )
+      .replaceAll(
+        RegExp(
+          r'((?:access[-_ ]?)?token\s*[:=]\s*)[^\s,;]+',
+          caseSensitive: false,
+        ),
+        r'$1[СКРЫТО]',
+      );
   if (safe.length > 4000) safe = '${safe.substring(0, 4000)}…';
   return safe;
 }

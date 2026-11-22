@@ -333,10 +333,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       suffixIcon: _hasToken
                           ? null
                           : IconButton(
-                              key: const ValueKey('toggle-api-token-visibility'),
-                              tooltip: _obscureToken ? 'Показать токен' : 'Скрыть токен',
+                              key: const ValueKey(
+                                'toggle-api-token-visibility',
+                              ),
+                              tooltip: _obscureToken
+                                  ? 'Показать токен'
+                                  : 'Скрыть токен',
                               icon: Icon(
-                                _obscureToken ? Icons.visibility : Icons.visibility_off,
+                                _obscureToken
+                                    ? Icons.visibility
+                                    : Icons.visibility_off,
                               ),
                               onPressed: () => setState(
                                 () => _obscureToken = !_obscureToken,

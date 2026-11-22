@@ -63,7 +63,8 @@ void main() {
       internet = StreamController<bool>.broadcast();
       tokenStore = FakeSecureTokenStore()..token = 'token';
       transport = FakeMoySkladTransport(
-        () async => const MoySkladHttpResponse(statusCode: 200, body: '{"rows":[]}'),
+        () async =>
+            const MoySkladHttpResponse(statusCode: 200, body: '{"rows":[]}'),
       );
       timers = [];
       manager = MoySkladApiManager(

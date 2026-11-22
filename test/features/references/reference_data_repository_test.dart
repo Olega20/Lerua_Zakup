@@ -214,26 +214,28 @@ void main() {
       expect(products.single['is_present'], 1);
     },
   );
-  test('organization refresh stores records using the existing local schema', () async {
-    api.organizationRows = [
-      {'id': 'org-1', 'name': 'ООО Пример', 'archived': false},
-    ];
+  test(
+    'organization refresh stores records using the existing local schema',
+    () async {
+      api.organizationRows = [
+        {'id': 'org-1', 'name': 'ООО Пример', 'archived': false},
+      ];
 
-    await repository.syncOrganizations();
+      await repository.syncOrganizations();
 
-    var organizations = await repository.organizations();
-    expect(organizations, hasLength(1));
-    expect(organizations.single['moysklad_id'], 'org-1');
-    expect(organizations.single['name'], 'ООО Пример');
+      var organizations = await repository.organizations();
+      expect(organizations, hasLength(1));
+      expect(organizations.single['moysklad_id'], 'org-1');
+      expect(organizations.single['name'], 'ООО Пример');
 
-    api.organizationRows = [
-      {'id': 'org-1', 'name': 'ООО Пример Новое', 'archived': false},
-    ];
-    await repository.syncOrganizations();
+      api.organizationRows = [
+        {'id': 'org-1', 'name': 'ООО Пример Новое', 'archived': false},
+      ];
+      await repository.syncOrganizations();
 
-    organizations = await repository.organizations();
-    expect(organizations, hasLength(1));
-    expect(organizations.single['name'], 'ООО Пример Новое');
-  });
-
+      organizations = await repository.organizations();
+      expect(organizations, hasLength(1));
+      expect(organizations.single['name'], 'ООО Пример Новое');
+    },
+  );
 }

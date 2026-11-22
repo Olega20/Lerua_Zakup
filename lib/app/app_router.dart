@@ -14,16 +14,16 @@ enum AppDestination {
 
 extension AppDestinationTitle on AppDestination {
   String get title => switch (this) {
-        AppDestination.home => 'Главная',
-        AppDestination.fullCalendar => 'Календарь',
-        AppDestination.settings => 'Настройки',
-        AppDestination.purchase => 'Закупка',
-        AppDestination.order => 'Заказ',
-        AppDestination.transfer => 'Перемещение',
-        AppDestination.inventory => 'Инвентаризация',
-        AppDestination.otherActions => 'Прочие действия',
-        AppDestination.warehouseLog => 'Журнал склада',
-      };
+    AppDestination.home => 'Главная',
+    AppDestination.fullCalendar => 'Календарь',
+    AppDestination.settings => 'Настройки',
+    AppDestination.purchase => 'Закупка',
+    AppDestination.order => 'Заказ',
+    AppDestination.transfer => 'Перемещение',
+    AppDestination.inventory => 'Инвентаризация',
+    AppDestination.otherActions => 'Прочие действия',
+    AppDestination.warehouseLog => 'Журнал склада',
+  };
 }
 
 class AppRouter {
@@ -50,10 +50,10 @@ class AppRouter {
     navigatorKey.currentState
         ?.pushNamed<void>('/${destination.name}', arguments: destination)
         .then((_) {
-      if (_stack.length > 1 && _stack.last == destination) {
-        _stack.removeLast();
-      }
-    });
+          if (_stack.length > 1 && _stack.last == destination) {
+            _stack.removeLast();
+          }
+        });
   }
 
   void replace(AppDestination destination) {
@@ -61,12 +61,15 @@ class AppRouter {
     _stack.removeLast();
     _stack.add(destination);
     navigatorKey.currentState
-        ?.pushReplacementNamed<void, void>('/${destination.name}', arguments: destination)
+        ?.pushReplacementNamed<void, void>(
+          '/${destination.name}',
+          arguments: destination,
+        )
         .then((_) {
-      if (_stack.length > 1 && _stack.last == destination) {
-        _stack.removeLast();
-      }
-    });
+          if (_stack.length > 1 && _stack.last == destination) {
+            _stack.removeLast();
+          }
+        });
   }
 
   void pop<T extends Object?>([T? result]) {
@@ -83,7 +86,7 @@ class DestinationPlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(title: Text(destination.title)),
-        body: const Center(child: Text('Функция находится в разработке')),
-      );
+    appBar: AppBar(title: Text(destination.title)),
+    body: const Center(child: Text('Функция находится в разработке')),
+  );
 }

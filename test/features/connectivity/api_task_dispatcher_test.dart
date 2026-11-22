@@ -35,47 +35,54 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
 
-  test('requestGet exposes HTTP error details from task attempt history', () async {
-    final database = AppDatabase(
-      databaseFactory: databaseFactoryFfi,
-      databasePath: inMemoryDatabasePath,
-    );
-    final internet = StreamController<bool>.broadcast();
-    final dispatcher = ApiTaskDispatcher(
-      repository: ApiTaskRepository(database: database),
-      apiClient: MoySkladApiClient(transport: _ForbiddenTransport()),
-      tokenStore: _TokenStore(),
-      internet: internet.stream,
-    );
-
-    try {
-      await dispatcher.start();
-      internet.add(true);
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-
-      await expectLater(
-        dispatcher.requestGet(
-          uid: 'organization-test',
-          type: 'organizations',
-          logicalQueue: 'organizations',
-          path: '/entity/organization',
-        ),
-        throwsA(
-          isA<ApiTaskExecutionException>()
-              .having((e) => e.httpStatusCode, 'HTTP status', 403)
-              .having((e) => e.safeErrorCode, 'API error code', '3004')
-              .having(
-                (e) => e.safeErrorMessage,
-                'API error message',
-                'Нет прав на чтение организаций',
-              )
-              .having((e) => e.response?['errors'], 'response body', isA<List>()),
-        ),
+  test(
+    'requestGet exposes HTTP error details from task attempt history',
+    () async {
+      final database = AppDatabase(
+        databaseFactory: databaseFactoryFfi,
+        databasePath: inMemoryDatabasePath,
       );
-    } finally {
-      await dispatcher.dispose();
-      await internet.close();
-      await database.close();
-    }
-  });
+      final internet = StreamController<bool>.broadcast();
+      final dispatcher = ApiTaskDispatcher(
+        repository: ApiTaskRepository(database: database),
+        apiClient: MoySkladApiClient(transport: _ForbiddenTransport()),
+        tokenStore: _TokenStore(),
+        internet: internet.stream,
+      );
+
+      try {
+        await dispatcher.start();
+        internet.add(true);
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+
+        await expectLater(
+          dispatcher.requestGet(
+            uid: 'organization-test',
+            type: 'organizations',
+            logicalQueue: 'organizations',
+            path: '/entity/organization',
+          ),
+          throwsA(
+            isA<ApiTaskExecutionException>()
+                .having((e) => e.httpStatusCode, 'HTTP status', 403)
+                .having((e) => e.safeErrorCode, 'API error code', '3004')
+                .having(
+                  (e) => e.safeErrorMessage,
+                  'API error message',
+                  'Нет прав на чтение организаций',
+                )
+                .having(
+                  (e) => e.response?['errors'],
+                  'response body',
+                  isA<List>(),
+                ),
+          ),
+        );
+      } finally {
+        await dispatcher.dispose();
+        await internet.close();
+        await database.close();
+      }
+    },
+  );
 }

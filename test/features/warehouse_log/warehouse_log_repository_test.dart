@@ -73,20 +73,22 @@ void main() {
     });
 
     test('persists structured error details and redacts credentials', () async {
-      await repository.append(WarehouseLogEntry(
-        timestamp: DateTime(2026, 11, 20),
-        level: WarehouseLogLevel.error,
-        type: WarehouseLogEventType.apiTaskFailed,
-        description: 'Request failed token=secret-value',
-        component: 'MoySklad API Manager',
-        errorCode: 'HTTP_503',
-        recommendedAction: 'Проверьте соединение',
-        technicalDetails: 'Authorization: Bearer abc.def',
-        correlationId: 'corr-1',
-        operationId: 'op-1',
-        taskId: 'task-1',
-        attemptNumber: 2,
-      ));
+      await repository.append(
+        WarehouseLogEntry(
+          timestamp: DateTime(2026, 11, 20),
+          level: WarehouseLogLevel.error,
+          type: WarehouseLogEventType.apiTaskFailed,
+          description: 'Request failed token=secret-value',
+          component: 'MoySklad API Manager',
+          errorCode: 'HTTP_503',
+          recommendedAction: 'Проверьте соединение',
+          technicalDetails: 'Authorization: Bearer abc.def',
+          correlationId: 'corr-1',
+          operationId: 'op-1',
+          taskId: 'task-1',
+          attemptNumber: 2,
+        ),
+      );
 
       final entry = (await repository.latest()).single;
       expect(entry.component, 'MoySklad API Manager');
