@@ -39,6 +39,27 @@ void main() {
     expect((await repository.listTasks()).length, 1);
   });
 
+  test(
+    'finds a task by UID even beyond the old 500-task scan window',
+    () async {
+      for (var i = 0; i < 505; i++) {
+        await repository.enqueue(
+          uid: 'history-$i',
+          type: 'reference_page',
+          logicalQueue: 'catalog',
+          request: {'path': '/entity/product', 'offset': '$i'},
+        );
+      }
+
+      expect(await repository.getTaskByUid('history-504'), isNotNull);
+      expect(
+        (await repository.listTasks(limit: 500))
+            .any((task) => task.uid == 'history-504'),
+        isFalse,
+      );
+    },
+  );
+
   test('claims tasks in one global FIFO order across logical queues', () async {
     await repository.enqueue(
       uid: 'first',

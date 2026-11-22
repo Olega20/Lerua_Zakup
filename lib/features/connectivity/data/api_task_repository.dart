@@ -391,7 +391,7 @@ class ApiTaskRepository {
 
   /// Called once after process startup. In-flight requests are uncertain because
   /// the app cannot know whether the remote service accepted them before exit.
-  /// All dispatch is globally paused until the user explicitly confirms resume.
+  /// The dispatcher clears persisted pauses after recovery; pending tasks resume automatically.
   Future<int> recoverAfterProcessRestart({DateTime Function()? clock}) async {
     final now = (clock ?? DateTime.now)().millisecondsSinceEpoch;
     final db = await _db;
@@ -525,6 +525,17 @@ class ApiTaskRepository {
       orderBy: 'created_at,id',
     );
     return {'attempts': attempts, 'events': events};
+  }
+
+  Future<ApiTask?> getTaskByUid(String uid) async {
+    final db = await _db;
+    final rows = await db.query(
+      'api_tasks',
+      where: 'task_uid = ?',
+      whereArgs: [uid],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : _fromRow(rows.single);
   }
 
   Future<List<ApiTask>> listTasks({

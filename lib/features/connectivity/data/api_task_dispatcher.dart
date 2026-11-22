@@ -318,14 +318,7 @@ class ApiTaskDispatcher {
     );
     final deadline = _clock().add(timeout);
     while (_clock().isBefore(deadline) && !_disposed) {
-      final tasks = await repository.listTasks(limit: 500);
-      ApiTask? task;
-      for (final candidate in tasks) {
-        if (candidate.uid == uid) {
-          task = candidate;
-          break;
-        }
-      }
+      final task = await repository.getTaskByUid(uid);
       if (task != null) {
         if (task.status == ApiTaskStatus.succeeded) {
           return task.response ?? <String, Object?>{};
