@@ -59,6 +59,8 @@ class ApiTaskDispatcher {
     }
     try {
       await repository.recoverAfterProcessRestart(clock: _clock);
+      // Queue pauses are session-scoped: every logical queue resumes on app start.
+      await repository.resumeAllQueuesAfterProcessRestart(clock: _clock);
       if (_disposed) return;
       _ready = true;
       if (_hasConnectivityState) _applyConnectivityState(_online);

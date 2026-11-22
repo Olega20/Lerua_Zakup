@@ -174,6 +174,48 @@ void main() {
     expect((await repository.claimNext())?.task.uid, 'system-paused');
   });
   test(
+    'startup resumes every logical queue and clears restart confirmation',
+    () async {
+      await repository.enqueue(
+        uid: 'paused-catalog',
+        type: 'catalog.refresh',
+        logicalQueue: 'catalog',
+        request: {'path': '/entity/product'},
+      );
+      await repository.enqueue(
+        uid: 'paused-suppliers',
+        type: 'suppliers.refresh',
+        logicalQueue: 'suppliers',
+        request: {'path': '/entity/counterparty'},
+      );
+      await repository.pauseQueue(
+        'catalog',
+        paused: true,
+        reason: 'Пауза пользователя',
+      );
+      await repository.pauseQueue(
+        'suppliers',
+        paused: true,
+        reason: 'Пауза пользователя',
+      );
+      await repository.pauseAll(
+        paused: true,
+        reason: 'Требуется подтверждение после перезапуска',
+      );
+
+      await repository.recoverAfterProcessRestart();
+      await repository.resumeAllQueuesAfterProcessRestart();
+
+      expect(await repository.requiresResumeConfirmation(), isFalse);
+      expect(await repository.isQueuePaused(), isFalse);
+      expect(await repository.isQueuePaused('catalog'), isFalse);
+      expect(await repository.isQueuePaused('suppliers'), isFalse);
+      expect((await repository.claimNext())?.task.uid, 'paused-catalog');
+      expect((await repository.claimNext())?.task.uid, 'paused-suppliers');
+    },
+  );
+
+  test(
     'restart does not request confirmation when no tasks are waiting',
     () async {
       expect(await repository.recoverAfterProcessRestart(), 0);

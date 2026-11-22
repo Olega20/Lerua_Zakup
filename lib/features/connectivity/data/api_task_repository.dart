@@ -458,6 +458,21 @@ class ApiTaskRepository {
     });
   }
 
+  /// Clears all persisted queue pauses when the application starts.
+  /// Manual pauses remain effective only for the current app session.
+  Future<void> resumeAllQueuesAfterProcessRestart({
+    DateTime Function()? clock,
+  }) async {
+    final now = (clock ?? DateTime.now)().millisecondsSinceEpoch;
+    final db = await _db;
+    await db.update('api_queue_state', {
+      'is_paused': 0,
+      'pause_reason': null,
+      'requires_resume_confirmation': 0,
+      'updated_at': now,
+    });
+  }
+
   Future<bool> requiresResumeConfirmation() async {
     final db = await _db;
     final rows = await db.query(
