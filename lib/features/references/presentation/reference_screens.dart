@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -423,70 +424,118 @@ class ProductReviewScreen extends StatefulWidget {
 
 class _ProductReviewScreenState extends State<ProductReviewScreen> {
   late int i = widget.index;
+  bool saving = false;
   Map<String, Object?> get r => widget.items[i];
-  Future<void> assign(String s) async {
-    await widget.repository.setProductStatus([r['id'] as int], s);
-    if (!mounted) return;
-    if (i < widget.items.length - 1) {
-      setState(() => i++);
-    } else {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Список обработан')));
+
+  Future<void> assign(String status) async {
+    if (saving) return;
+    setState(() => saving = true);
+    try {
+      await widget.repository.setProductStatus([r['id'] as int], status);
+      if (!mounted) return;
+      if (i < widget.items.length - 1) {
+        setState(() => i++);
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '\u0421\u043f\u0438\u0441\u043e\u043a \u043e\u0431\u0440\u0430\u0431\u043e\u0442\u0430\u043d',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              '\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c \u0430\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u043e\u0441\u0442\u044c \u0442\u043e\u0432\u0430\u0440\u0430',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
     }
   }
 
   @override
   Widget build(BuildContext c) => Scaffold(
-    appBar: AppBar(title: Text('Товар ${i + 1} из ${widget.items.length}')),
-    body: Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    appBar: AppBar(
+      title: Text(
+        '\u0422\u043e\u0432\u0430\u0440 ${i + 1} \u0438\u0437 ${widget.items.length}',
+      ),
+    ),
+    body: SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.all(20),
         children: [
-          Text(r['name'] as String, style: Theme.of(c).textTheme.headlineSmall),
+          Text(
+            r['name']?.toString() ?? '\u0422\u043e\u0432\u0430\u0440 \u0431\u0435\u0437 \u043d\u0430\u0437\u0432\u0430\u043d\u0438\u044f',
+            style: Theme.of(c).textTheme.headlineSmall,
+          ),
           const SizedBox(height: 16),
-          Text('Остаток: ${r['stock']} ${r['uom_name']}'),
-          const Spacer(),
+          Text(
+            '\u041e\u0441\u0442\u0430\u0442\u043e\u043a: ${r['stock'] ?? 0} ${r['uom_name'] ?? '\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e'}',
+          ),
+          const SizedBox(height: 32),
           FilledButton(
-            onPressed: () => assign('relevant'),
-            child: const Text('Актуальный'),
+            onPressed: saving ? null : () => assign('relevant'),
+            child: const Text(
+              '\u0410\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u044b\u0439',
+            ),
           ),
           OutlinedButton(
-            onPressed: () => assign('irrelevant'),
-            child: const Text('Не актуальный'),
+            onPressed: saving ? null : () => assign('irrelevant'),
+            child: const Text(
+              '\u041d\u0435 \u0430\u043a\u0442\u0443\u0430\u043b\u044c\u043d\u044b\u0439',
+            ),
           ),
           TextButton(
-            onPressed: () => assign('unassigned'),
-            child: const Text('Нераспределённый'),
+            onPressed: saving ? null : () => assign('unassigned'),
+            child: const Text(
+              '\u041d\u0435\u0440\u0430\u0441\u043f\u0440\u0435\u0434\u0435\u043b\u0451\u043d\u043d\u044b\u0439',
+            ),
           ),
-          const Spacer(),
+          const SizedBox(height: 24),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
-                  onPressed: i == 0 ? null : () => setState(() => i--),
-                  child: const Text('Назад'),
+                  onPressed: i == 0 || saving
+                      ? null
+                      : () => setState(() => i--),
+                  child: const Text('\u041d\u0430\u0437\u0430\u0434'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: FilledButton(
-                  onPressed: () {
-                    if (i == widget.items.length - 1) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Обработка списка завершена'),
-                        ),
-                      );
-                    } else {
-                      setState(() => i++);
-                    }
-                  },
-                  child: const Text('Вперёд'),
+                  onPressed: saving
+                      ? null
+                      : () {
+                          if (i == widget.items.length - 1) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  '\u041e\u0431\u0440\u0430\u0431\u043e\u0442\u043a\u0430 \u0441\u043f\u0438\u0441\u043a\u0430 \u0437\u0430\u0432\u0435\u0440\u0448\u0435\u043d\u0430',
+                                ),
+                              ),
+                            );
+                          } else {
+                            setState(() => i++);
+                          }
+                        },
+                  child: const Text('\u0412\u043f\u0435\u0440\u0451\u0434'),
                 ),
               ),
             ],
           ),
+          if (saving)
+            const Padding(
+              padding: EdgeInsets.only(top: 16),
+              child: LinearProgressIndicator(),
+            ),
         ],
       ),
     ),
@@ -842,6 +891,8 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
   List<Map<String, dynamic>> remote = [];
   List<Map<String, Object?>> local = [];
   bool current = true, busy = false;
+  Timer? _searchTimer;
+  int _searchGeneration = 0;
   @override
   void initState() {
     super.initState();
@@ -855,22 +906,62 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
     if (mounted) setState(() => local = r);
   }
 
-  Future<void> search(String q) async {
+  void search(String q) {
+    _searchTimer?.cancel();
+    final generation = ++_searchGeneration;
     if (q.trim().length < 2) {
-      setState(() => remote = []);
+      setState(() {
+        remote = [];
+        busy = false;
+      });
       return;
     }
-    setState(() => busy = true);
-    try {
-      final r = await widget.repository.searchSuppliers(q);
-      if (mounted) setState(() => remote = r);
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Поиск не выполнен')));
+    setState(() {
+      remote = [];
+      busy = true;
+    });
+    _searchTimer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final r = await widget.repository.searchSuppliers(q);
+        if (mounted && generation == _searchGeneration) {
+          setState(() => remote = r);
+        }
+      } catch (_) {
+        if (mounted && generation == _searchGeneration) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                '\u041f\u043e\u0438\u0441\u043a \u043d\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d',
+              ),
+            ),
+          );
+        }
+      } finally {
+        if (mounted && generation == _searchGeneration) {
+          setState(() => busy = false);
+        }
       }
-    }
-    if (mounted) setState(() => busy = false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchTimer?.cancel();
+    ctl.dispose();
+    super.dispose();
+  }
+
+  Future<void> openLocal(Map<String, Object?> supplier) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute<void>(
+        builder: (_) => SupplierCardScreen(
+          repository: widget.repository,
+          supplier: supplier,
+        ),
+      ),
+    );
+    await load();
   }
 
   Future<void> open(Map<String, dynamic> r) async {
@@ -955,15 +1046,7 @@ class _SuppliersScreenState extends State<SuppliersScreen> {
                     (r) => ListTile(
                       title: Text(r['name'] as String),
                       subtitle: Text(r['phone'] as String? ?? ''),
-                      onTap: () => Navigator.push(
-                        c,
-                        MaterialPageRoute<void>(
-                          builder: (_) => SupplierCardScreen(
-                            repository: widget.repository,
-                            supplier: r,
-                          ),
-                        ),
-                      ),
+                      onTap: () => openLocal(r),
                     ),
                   )
                   .toList(),
@@ -989,9 +1072,11 @@ class SupplierCardScreen extends StatefulWidget {
 
 class _SupplierCardScreenState extends State<SupplierCardScreen> {
   List<Map<String, Object?>> methods = [], details = [];
+  late String relevanceStatus;
   @override
   void initState() {
     super.initState();
+    relevanceStatus = widget.supplier['relevance_status'] as String;
     load();
   }
 
@@ -1022,7 +1107,7 @@ class _SupplierCardScreenState extends State<SupplierCardScreen> {
           ),
           Text(widget.supplier['phone'] as String? ?? 'Телефон не указан'),
           DropdownButtonFormField<String>(
-            initialValue: widget.supplier['relevance_status'] as String,
+            initialValue: relevanceStatus,
             decoration: const InputDecoration(labelText: 'Статус'),
             items: const [
               DropdownMenuItem(value: 'current', child: Text('Актуальный')),
@@ -1034,7 +1119,7 @@ class _SupplierCardScreenState extends State<SupplierCardScreen> {
                   widget.supplier['id'] as int,
                   v,
                 );
-                if (mounted) Navigator.pop(context);
+                if (mounted) setState(() => relevanceStatus = v);
               }
             },
           ),
@@ -1342,106 +1427,105 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
                 ),
               ),
               Expanded(
-                child: ListView(
-                  children: tasks
-                      .map(
-                        (t) => ListTile(
-                          title: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  t.type,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                child: ListView.builder(
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final t = tasks[index];
+                    return ListTile(
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              t.type,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _taskStatusLabel(t),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                              style: TextStyle(
+                                color: _taskStatusColor(t),
+                                fontWeight: FontWeight.w600,
                               ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  _taskStatusLabel(t),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.end,
-                                  style: TextStyle(
-                                    color: _taskStatusColor(t),
-                                    fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                      subtitle: Text(
+                        '${t.uid}\nПопытки: ${t.attemptsCount} • FIFO: ${t.fifoSequence}',
+                      ),
+                      isThreeLine: true,
+                      trailing: PopupMenuButton<String>(
+                        tooltip: 'Действия с задачей',
+                        onSelected: (action) async {
+                          if (action == 'details') {
+                            await showTaskDetails(t);
+                          } else if (action == 'retry') {
+                            await widget.api.retryFailed(t.id);
+                          } else if (action == 'success' ||
+                              action == 'failed') {
+                            final confirmed = await showDialog<bool>(
+                              context: context,
+                              builder: (c) => AlertDialog(
+                                title: const Text('Подтвердить результат'),
+                                content: const Text(
+                                  'Вы проверили состояние операции непосредственно в МойСклад?',
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(c, false),
+                                    child: const Text('Нет'),
                                   ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          subtitle: Text(
-                            '${t.uid}\nПопытки: ${t.attemptsCount} • FIFO: ${t.fifoSequence}',
-                          ),
-                          isThreeLine: true,
-                          trailing: PopupMenuButton<String>(
-                            tooltip: 'Действия с задачей',
-                            onSelected: (action) async {
-                              if (action == 'details') {
-                                await showTaskDetails(t);
-                              } else if (action == 'retry') {
-                                await widget.api.retryFailed(t.id);
-                              } else if (action == 'success' ||
-                                  action == 'failed') {
-                                final confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (c) => AlertDialog(
-                                    title: const Text('Подтвердить результат'),
-                                    content: const Text(
-                                      'Вы проверили состояние операции непосредственно в МойСклад?',
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () =>
-                                            Navigator.pop(c, false),
-                                        child: const Text('Нет'),
-                                      ),
-                                      FilledButton(
-                                        onPressed: () => Navigator.pop(c, true),
-                                        child: const Text('Да, проверил'),
-                                      ),
-                                    ],
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(c, true),
+                                    child: const Text('Да, проверил'),
                                   ),
-                                );
-                                if (confirmed == true) {
-                                  await widget.api.resolveUncertain(
-                                    t.id,
-                                    confirmedSucceeded: action == 'success',
-                                  );
-                                }
-                              }
-                              await load();
-                            },
-                            itemBuilder: (c) => [
-                              const PopupMenuItem(
-                                value: 'details',
-                                child: Text('Детали и история'),
+                                ],
                               ),
-                              if (t.status == ApiTaskStatus.failed)
-                                const PopupMenuItem(
-                                  value: 'retry',
-                                  child: Text('Повторить вручную'),
-                                ),
-                              if (t.status == ApiTaskStatus.uncertain) ...[
-                                const PopupMenuItem(
-                                  value: 'success',
-                                  child: Text('Подтвердить выполнение'),
-                                ),
-                                const PopupMenuItem(
-                                  value: 'failed',
-                                  child: Text('Подтвердить отсутствие'),
-                                ),
-                              ],
-                              PopupMenuItem(
-                                value: 'status',
-                                enabled: false,
-                                child: Text(t.status.name),
-                              ),
-                            ],
+                            );
+                            if (confirmed == true) {
+                              await widget.api.resolveUncertain(
+                                t.id,
+                                confirmedSucceeded: action == 'success',
+                              );
+                            }
+                          }
+                          await load();
+                        },
+                        itemBuilder: (c) => [
+                          const PopupMenuItem(
+                            value: 'details',
+                            child: Text('Детали и история'),
                           ),
-                        ),
-                      )
-                      .toList(),
+                          if (t.status == ApiTaskStatus.failed)
+                            const PopupMenuItem(
+                              value: 'retry',
+                              child: Text('Повторить вручную'),
+                            ),
+                          if (t.status == ApiTaskStatus.uncertain) ...[
+                            const PopupMenuItem(
+                              value: 'success',
+                              child: Text('Подтвердить выполнение'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'failed',
+                              child: Text('Подтвердить отсутствие'),
+                            ),
+                          ],
+                          PopupMenuItem(
+                            value: 'status',
+                            enabled: false,
+                            child: Text(t.status.name),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ],

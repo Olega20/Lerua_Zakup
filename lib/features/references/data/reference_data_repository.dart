@@ -239,6 +239,34 @@ class ReferenceDataRepository {
         final quantity = (stockRow['quantity'] as num?)?.toDouble();
         if (id != null && quantity != null) stockById[id] = quantity;
       }
+      final uomNames = <String, String>{};
+      for (final row in rows) {
+        final uom = row['uom'];
+        if (uom is! Map) continue;
+        final directName = uom['name']?.toString().trim();
+        if (directName != null && directName.isNotEmpty) continue;
+        final meta = uom['meta'];
+        final href = meta is Map ? meta['href']?.toString() : null;
+        if (href == null) continue;
+        final segments = Uri.tryParse(href)?.pathSegments
+            .where((segment) => segment.isNotEmpty)
+            .toList();
+        if (segments == null || segments.isEmpty) continue;
+        final uomId = segments.last;
+        if (uomNames.containsKey(uomId)) continue;
+        try {
+          final details = await api.requestGet(
+            uid: 'catalog-uom:$uomId:${DateTime.now().microsecondsSinceEpoch}',
+            type: 'reference_item',
+            logicalQueue: 'catalog',
+            path: '/entity/uom/$uomId',
+          );
+          final name = details['name']?.toString().trim();
+          if (name != null && name.isNotEmpty) uomNames[uomId] = name;
+        } catch (_) {
+          // Missing unit metadata must not abort an otherwise valid catalog sync.
+        }
+      }
       final normalized = <Map<String, Object?>>[];
       for (final r in rows) {
         if ([
@@ -257,8 +285,10 @@ class ReferenceDataRepository {
           'kind': service ? 'service' : 'product',
           'stock': stockById[id] ?? (r['stock'] as num?)?.toDouble() ?? 0,
           'uom_name': uom is Map
-              ? (uom['name']?.toString() ?? 'Не указано')
-              : 'Не указано',
+              ? (uom['name']?.toString().trim().isNotEmpty == true
+                    ? uom['name'].toString().trim()
+                    : _uomNameFromHref(uom, uomNames))
+              : '\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e',
           'is_archived': r['archived'] == true ? 1 : 0,
           'raw_sync_json': jsonEncode(r),
         });
@@ -334,6 +364,22 @@ class ReferenceDataRepository {
       );
       rethrow;
     }
+  }
+
+  String _uomNameFromHref(Map uom, Map<String, String> names) {
+    final meta = uom['meta'];
+    final href = meta is Map ? meta['href']?.toString() : null;
+    if (href == null) {
+      return '\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e';
+    }
+    final segments = Uri.tryParse(href)?.pathSegments
+        .where((segment) => segment.isNotEmpty)
+        .toList();
+    if (segments == null || segments.isEmpty) {
+      return '\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e';
+    }
+    return names[segments.last] ??
+        '\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e';
   }
 
   Future<int> consumeUnarchivedProductCount() async {

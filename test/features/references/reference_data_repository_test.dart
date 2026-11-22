@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/core/storage/app_database.dart';
 import 'package:lerua_zakup/core/storage/secure_token_store.dart';
@@ -7,6 +8,7 @@ import 'package:lerua_zakup/features/connectivity/data/api_task_dispatcher.dart'
 import 'package:lerua_zakup/features/connectivity/data/api_task_repository.dart';
 import 'package:lerua_zakup/features/connectivity/data/moysklad_api_client.dart';
 import 'package:lerua_zakup/features/references/data/reference_data_repository.dart';
+import 'package:lerua_zakup/features/references/presentation/reference_screens.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _TokenStore implements SecureTokenStore {
@@ -47,6 +49,8 @@ class _FakeApi extends ApiTaskDispatcher {
         internet: const Stream<bool>.empty(),
       );
   bool failService = false;
+  bool omitProductUomName = false;
+  int supplierSearchRequests = 0;
   int warehouseRequests = 0;
   List<Map<String, dynamic>> organizationRows = [];
   @override
@@ -70,7 +74,13 @@ class _FakeApi extends ApiTaskDispatcher {
             'name': 'Крепёж',
             'archived': false,
             'productType': 'GOOD',
-            'uom': {'name': 'шт'},
+            'uom': omitProductUomName
+                ? {
+                    'meta': {
+                      'href': 'https://api.moysklad.ru/api/remap/1.2/entity/uom/uom-1',
+                    },
+                  }
+                : {'name': '\u0448\u0442'},
             'meta': {
               'href':
                   'https://api.moysklad.ru/api/remap/1.2/entity/product/p-1',
@@ -79,6 +89,22 @@ class _FakeApi extends ApiTaskDispatcher {
         ],
         'meta': {'size': 1},
       };
+    }
+    if (path == '/entity/counterparty') {
+      supplierSearchRequests++;
+      return {
+        'rows': [
+          {
+            'id': 'supplier-search-1',
+            'name': '\u041f\u043e\u0441\u0442\u0430\u0432\u0449\u0438\u043a \u0442\u0435\u0441\u0442\u043e\u0432\u044b\u0439',
+            'phone': '123',
+          },
+        ],
+        'meta': {'size': 1},
+      };
+    }
+    if (path == '/entity/uom/uom-1') {
+      return {'name': '\u0448\u0442'};
     }
     if (path == '/entity/organization') {
       return {
@@ -154,6 +180,30 @@ void main() {
       expect(warehouses.single['name'], 'Склад напрямую');
     },
   );
+
+  testWidgets('supplier search waits for typing to pause', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(home: SuppliersScreen(repository: repository)),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextField),
+      '\u0418\u043c\u043f\u0443\u043b',
+    );
+    await tester.pump(const Duration(milliseconds: 450));
+    expect(api.supplierSearchRequests, 0);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    await tester.pumpAndSettle();
+    expect(api.supplierSearchRequests, 1);
+    expect(
+      find.text(
+        '\u041f\u043e\u0441\u0442\u0430\u0432\u0449\u0438\u043a \u0442\u0435\u0441\u0442\u043e\u0432\u044b\u0439',
+      ),
+      findsOneWidget,
+    );
+  });
 
   test('storage locations are local and unique case-insensitively within a warehouse', () async {
     final sql = await db.database;
@@ -241,6 +291,18 @@ void main() {
       expect(refreshed['name'], 'Новое имя');
       expect(refreshed['phone'], '222');
       expect(refreshed['payment_method_id'], method);
+    },
+  );
+
+  test(
+    'product refresh resolves a missing UOM name from its metadata link',
+    () async {
+      api.omitProductUomName = true;
+
+      await repository.syncProducts();
+
+      final products = await repository.products();
+      expect(products.single['uom_name'], '\u0448\u0442');
     },
   );
 
