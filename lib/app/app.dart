@@ -322,7 +322,6 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         onSeedColorChanged: dependencies.onSeedColorChanged,
         onTokenSaved: dependencies.onTokenSaved,
         onTokenDeleted: dependencies.onTokenDeleted,
-        warehouseLogRepository: dependencies.warehouseLogRepository,
       ),
     );
   }

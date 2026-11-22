@@ -83,7 +83,7 @@ void main() {
     }
   });
 
-  testWidgets('Settings opens the diagnostic warehouse journal', (
+  testWidgets('Other actions opens the diagnostic warehouse journal', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -96,10 +96,9 @@ void main() {
       ),
     );
 
-    await tester.tap(find.text('Настройки'));
+    await tester.tap(find.text('Прочие действия'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Настройки'), findsOneWidget);
     expect(find.text('Журнал склада'), findsOneWidget);
     await tester.tap(find.text('Журнал склада'));
     await tester.pumpAndSettle();

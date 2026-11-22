@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../app/app_theme.dart';
 import '../../../core/feedback/snackbar_service.dart';
-import '../../warehouse_log/data/warehouse_log_repository.dart';
 import '../data/settings_repository.dart';
 import 'color_picker_dialog.dart';
 
@@ -15,7 +14,6 @@ class SettingsScreen extends StatefulWidget {
     this.onSeedColorChanged,
     this.onTokenSaved,
     this.onTokenDeleted,
-    this.warehouseLogRepository,
   });
 
   final SettingsRepository repository;
@@ -24,7 +22,6 @@ class SettingsScreen extends StatefulWidget {
   final ValueChanged<Color>? onSeedColorChanged;
   final VoidCallback? onTokenSaved;
   final VoidCallback? onTokenDeleted;
-  final WarehouseLogRepository? warehouseLogRepository;
 
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
