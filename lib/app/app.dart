@@ -77,6 +77,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
     apiClient: MoySkladApiClient(),
     tokenStore: _tokenStore,
     internet: _internetStream,
+    connectivitySnapshot: () => _apiManager.isOnline,
   );
   late final ReferenceDataRepository _referenceDataRepository =
       ReferenceDataRepository(
@@ -123,7 +124,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   Color _seedColor = AppTheme.defaultSeedColor;
   String _appVersion = '1.0.0+1';
   Future<void>? _referenceSyncFuture;
-  StreamSubscription<bool>? _referenceSyncSubscription;
+  StreamSubscription<ApiConnectionState>? _referenceSyncSubscription;
 
   @override
   void initState() {
@@ -148,10 +149,14 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
 
   Future<void> _startBackgroundServices() async {
     try {
-      await _apiTaskDispatcher.start();
-      _referenceSyncSubscription = _internetStream.listen((online) {
-        if (online) unawaited(_syncReferencesOnStartup());
+      // Listen to the replayed API state before asynchronous queue recovery.
+      // Reference sync starts only after the API itself is confirmed reachable.
+      _referenceSyncSubscription = _connectivityStatuses.listen((state) {
+        if (state == ApiConnectionState.connected) {
+          unawaited(_syncReferencesOnStartup());
+        }
       });
+      await _apiTaskDispatcher.start();
       await _backupService.ensureDailyBackup();
       await Future<void>.delayed(const Duration(seconds: 2));
       await _syncReferencesOnStartup();
@@ -171,7 +176,9 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
   Future<void> _runReferenceSync() async {
     try {
       final token = await _tokenStore.readToken();
-      if (token == null || token.trim().isEmpty || !_apiManager.isOnline) {
+      if (token == null ||
+          token.trim().isEmpty ||
+          _apiManager.currentState != ApiConnectionState.connected) {
         return;
       }
       if (await _apiTaskRepository.requiresResumeConfirmation()) return;

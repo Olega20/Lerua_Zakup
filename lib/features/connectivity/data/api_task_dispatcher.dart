@@ -15,6 +15,7 @@ class ApiTaskDispatcher {
     required this.apiClient,
     required this.tokenStore,
     required this.internet,
+    this.connectivitySnapshot,
     DateTime Function()? clock,
   }) : _clock = clock ?? DateTime.now;
 
@@ -23,23 +24,56 @@ class ApiTaskDispatcher {
   final SecureTokenStore tokenStore;
   final Stream<bool> internet;
   final DateTime Function() _clock;
+  final bool Function()? connectivitySnapshot;
 
   StreamSubscription<bool>? _subscription;
   Timer? _pumpTimer;
   Timer? _watchdogTimer;
   Timer? _rateLimitTimer;
+  Future<void>? _startFuture;
   bool _online = false;
-  bool _started = false;
+  bool _hasConnectivityState = false;
+  bool _ready = false;
   bool _pumping = false;
+  bool _pumpRequested = false;
   bool _disposed = false;
+  Future<void> _connectivityUpdate = Future<void>.value();
   int _tokenGeneration = 0;
   ApiTaskClaim? _activeClaim;
 
-  Future<void> start() async {
-    if (_started) return;
-    _started = true;
-    await repository.recoverAfterProcessRestart(clock: _clock);
+  Future<void> start() {
+    if (_disposed) return Future<void>.value();
+    return _startFuture ??= _start();
+  }
+
+  Future<void> _start() async {
+    // Subscribe before the asynchronous database recovery. The connectivity
+    // stream is broadcast and does not replay its last value to late listeners.
     _subscription = internet.distinct().listen(_onInternet);
+    // The API manager may already have received the broadcast event before
+    // this dispatcher was started. Read its current snapshot after subscribing.
+    final snapshot = connectivitySnapshot?.call();
+    if (snapshot != null) {
+      _online = snapshot;
+      _hasConnectivityState = true;
+    }
+    try {
+      await repository.recoverAfterProcessRestart(clock: _clock);
+      if (_disposed) return;
+      _ready = true;
+      if (_hasConnectivityState) _applyConnectivityState(_online);
+      _startTimers();
+    } catch (_) {
+      await _subscription?.cancel();
+      _subscription = null;
+      _startFuture = null;
+      rethrow;
+    }
+  }
+
+  void _startTimers() {
+    _pumpTimer?.cancel();
+    _watchdogTimer?.cancel();
     _pumpTimer = Timer.periodic(
       const Duration(seconds: 3),
       (_) => unawaited(pump()),
@@ -58,25 +92,39 @@ class ApiTaskDispatcher {
 
   void _onInternet(bool online) {
     _online = online;
-    if (!online) {
-      _rateLimitTimer?.cancel();
-      unawaited(
-        repository.pauseAll(
-          paused: true,
-          reason: 'Нет интернет-соединения',
-          clock: _clock,
-        ),
-      );
-    } else {
-      _rateLimitTimer?.cancel();
-      unawaited(
-        repository.resumeGlobalIfReason(
-          'Нет интернет-соединения',
-          clock: _clock,
-        ),
-      );
-      unawaited(pump());
-    }
+    _hasConnectivityState = true;
+    // During recovery only retain the newest state. Applying pause/resume
+    // concurrently with recovery could overwrite the recovered queue state.
+    if (_ready && !_disposed) _applyConnectivityState(online);
+  }
+
+  void _applyConnectivityState(bool online) {
+    if (!online) _rateLimitTimer?.cancel();
+    _connectivityUpdate = _connectivityUpdate
+        .then((_) async {
+          // Coalesce rapid changes and apply only the latest known state, in order.
+          if (_disposed || online != _online) return;
+          if (!online) {
+            await repository.pauseAll(
+              paused: true,
+              reason: 'Нет интернет-соединения',
+              clock: _clock,
+            );
+          } else {
+            _rateLimitTimer?.cancel();
+            await repository.resumeGlobalIfReason(
+              'Нет интернет-соединения',
+              clock: _clock,
+            );
+            if (_online && !_disposed) await pump();
+          }
+        })
+        .catchError((Object error) async {
+          await EmergencyDiagnosticSink.record(
+            'ApiTaskDispatcher.connectivity',
+            error,
+          );
+        });
   }
 
   Future<void> enqueueGet({
@@ -95,11 +143,15 @@ class ApiTaskDispatcher {
       journalEntryIds: journalEntryIds,
       clock: _clock,
     );
-    unawaited(pump());
+    if (_ready && _online) unawaited(pump());
   }
 
   Future<void> pump() async {
-    if (_disposed || !_online || _pumping) return;
+    if (_disposed || !_ready || !_online) return;
+    if (_pumping) {
+      _pumpRequested = true;
+      return;
+    }
     _pumping = true;
     try {
       final tokenGeneration = _tokenGeneration;
@@ -229,6 +281,11 @@ class ApiTaskDispatcher {
       await EmergencyDiagnosticSink.record('ApiTaskDispatcher.pump', error);
     } finally {
       _pumping = false;
+      final shouldPumpAgain = _pumpRequested;
+      _pumpRequested = false;
+      if (shouldPumpAgain && !_disposed && _ready && _online) {
+        unawaited(pump());
+      }
     }
   }
 
@@ -408,39 +465,45 @@ class ApiTaskDispatcher {
       reason: 'Обслуживание базы данных',
       clock: _clock,
     );
+    _ready = false;
     _pumpTimer?.cancel();
     _watchdogTimer?.cancel();
     _rateLimitTimer?.cancel();
     await _subscription?.cancel();
     _subscription = null;
     _online = false;
+    _hasConnectivityState = false;
   }
 
   Future<void> resumeAfterDatabaseMaintenance() async {
     if (_disposed) return;
-    await repository.recoverAfterProcessRestart(clock: _clock);
+    _ready = false;
     _subscription = internet.distinct().listen(_onInternet);
-    _pumpTimer = Timer.periodic(
-      const Duration(seconds: 3),
-      (_) => unawaited(pump()),
-    );
-    _watchdogTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
-      try {
-        await repository.markStaleRunningUncertain(clock: _clock);
-      } catch (error) {
-        await EmergencyDiagnosticSink.record(
-          'ApiTaskDispatcher.watchdog',
-          error,
-        );
-      }
-    });
+    final snapshot = connectivitySnapshot?.call();
+    if (snapshot != null) {
+      _online = snapshot;
+      _hasConnectivityState = true;
+    }
+    await repository.recoverAfterProcessRestart(clock: _clock);
+    if (_disposed) return;
+    _ready = true;
+    if (_online) {
+      await repository.resumeGlobalIfReason(
+        'Обслуживание базы данных',
+        clock: _clock,
+      );
+    }
+    if (_hasConnectivityState) _applyConnectivityState(_online);
+    _startTimers();
   }
 
   Future<void> dispose() async {
     _disposed = true;
+    _ready = false;
     _pumpTimer?.cancel();
     _watchdogTimer?.cancel();
     _rateLimitTimer?.cancel();
     await _subscription?.cancel();
+    await _connectivityUpdate;
   }
 }
