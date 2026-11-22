@@ -41,3 +41,17 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Local secrets and signing credentials
+.env
+.env.*
+!.env.example
+*.jks
+*.keystore
+key.properties
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+service-account*.json
+credentials*.json
