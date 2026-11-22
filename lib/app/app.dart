@@ -82,6 +82,8 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
       ReferenceDataRepository(
         database: _appDatabase,
         api: _apiTaskDispatcher,
+        directApiClient: MoySkladApiClient(),
+        tokenStore: _tokenStore,
         warehouseLog: _warehouseLogRepository,
       );
   late final WarehouseJournalRepository _warehouseJournalRepository =

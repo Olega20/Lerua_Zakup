@@ -11,11 +11,31 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _TokenStore implements SecureTokenStore {
   @override
-  Future<String?> readToken() async => null;
+  Future<String?> readToken() async => 'test-token';
   @override
   Future<void> writeToken(String value) async {}
   @override
   Future<void> deleteToken() async {}
+}
+
+class _FakeDirectTransport implements MoySkladHttpTransport {
+  int calls = 0;
+  Uri? lastUri;
+
+  @override
+  Future<MoySkladHttpResponse> get(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
+  }) async {
+    calls++;
+    lastUri = uri;
+    return const MoySkladHttpResponse(
+      statusCode: 200,
+      body: '{"rows":[{"id":"direct-store-1","name":"Склад напрямую","archived":false}],"meta":{"size":1}}',
+    );
+  }
 }
 
 class _FakeApi extends ApiTaskDispatcher {
@@ -27,6 +47,7 @@ class _FakeApi extends ApiTaskDispatcher {
         internet: const Stream<bool>.empty(),
       );
   bool failService = false;
+  int warehouseRequests = 0;
   List<Map<String, dynamic>> organizationRows = [];
   @override
   Future<Map<String, Object?>> requestGet({
@@ -37,6 +58,7 @@ class _FakeApi extends ApiTaskDispatcher {
     Map<String, String> query = const {},
     Duration timeout = const Duration(minutes: 3),
   }) async {
+    if (path == '/entity/store') warehouseRequests++;
     if (failService && path == '/entity/service') {
       throw StateError('network');
     }
@@ -90,6 +112,7 @@ void main() {
   sqfliteFfiInit();
   late AppDatabase db;
   late _FakeApi api;
+  late _FakeDirectTransport directTransport;
   late ReferenceDataRepository repository;
   setUp(() async {
     db = AppDatabase(
@@ -97,7 +120,13 @@ void main() {
       databasePath: inMemoryDatabasePath,
     );
     api = _FakeApi(db);
-    repository = ReferenceDataRepository(database: db, api: api);
+    directTransport = _FakeDirectTransport();
+    repository = ReferenceDataRepository(
+      database: db,
+      api: api,
+      directApiClient: MoySkladApiClient(transport: directTransport),
+      tokenStore: _TokenStore(),
+    );
     final sql = await db.database;
     await sql.insert('warehouses', {'moysklad_id': 'w-1', 'name': 'Склад 1'});
     await sql.insert('warehouses', {'moysklad_id': 'w-2', 'name': 'Склад 2'});
@@ -105,6 +134,26 @@ void main() {
   tearDown(() async {
     await db.close();
   });
+
+  test(
+    'warehouse sync fetches directly without using the API task dispatcher',
+    () async {
+      await repository.syncWarehouses();
+
+      expect(directTransport.calls, 1);
+      expect(directTransport.lastUri!.path, '/api/remap/1.2/entity/store');
+      expect(directTransport.lastUri!.queryParameters, {
+        'limit': '100',
+        'offset': '0',
+        'filter': 'archived=false',
+      });
+      expect(api.warehouseRequests, 0);
+      final warehouses = await repository.warehouses();
+      expect(warehouses, hasLength(1));
+      expect(warehouses.single['moysklad_id'], 'direct-store-1');
+      expect(warehouses.single['name'], 'Склад напрямую');
+    },
+  );
 
   test('storage locations are local and unique case-insensitively within a warehouse', () async {
     final sql = await db.database;

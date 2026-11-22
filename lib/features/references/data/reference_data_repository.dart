@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:sqflite/sqflite.dart';
 
 import '../../../core/storage/app_database.dart';
+import '../../../core/storage/secure_token_store.dart';
+import '../../connectivity/data/moysklad_api_client.dart';
+import '../../connectivity/domain/api_task.dart';
 import '../../../core/diagnostics/emergency_diagnostic_sink.dart';
 import '../../connectivity/data/api_task_dispatcher.dart';
 import '../../connectivity/domain/api_task_execution_exception.dart';
@@ -13,10 +16,14 @@ class ReferenceDataRepository {
   ReferenceDataRepository({
     required this.database,
     required this.api,
+    required this.directApiClient,
+    required this.tokenStore,
     this.warehouseLog,
   });
   final AppDatabase database;
   final ApiTaskDispatcher api;
+  final MoySkladApiClient directApiClient;
+  final SecureTokenStore tokenStore;
   final WarehouseLogRepository? warehouseLog;
   Future<void>? _productSyncFuture;
   Future<Database> get _db => database.database;
@@ -107,6 +114,55 @@ class ReferenceDataRepository {
       }
       result.addAll(
         rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)),
+      );
+      final meta = data['meta'];
+      final size = meta is Map ? (meta['size'] as num?)?.toInt() : null;
+      if (rows.length < limit ||
+          (size != null && offset + rows.length >= size)) {
+        break;
+      }
+      offset += rows.length;
+    }
+    return result;
+  }
+
+  /// Temporary diagnostic path: fetches pages directly through the HTTP client,
+  /// without enqueueing or waiting for the API task dispatcher.
+  Future<List<Map<String, dynamic>>> _allDirect(
+    String path, {
+    String? filter,
+  }) async {
+    final token = await tokenStore.readToken();
+    if (token == null || token.trim().isEmpty) {
+      throw StateError('Не сохранён Access Token');
+    }
+    const limit = 100;
+    var offset = 0;
+    final result = <Map<String, dynamic>>[];
+    while (true) {
+      final query = <String, String>{'limit': '$limit', 'offset': '$offset'};
+      if (filter != null) query['filter'] = filter;
+      final response = await directApiClient.getResource(
+        token,
+        path,
+        query: query,
+      );
+      if (!response.isSuccess) {
+        throw ApiTaskExecutionException(
+          ApiTaskStatus.failed,
+          response.errorResponse ?? response.data,
+          httpStatusCode: response.statusCode,
+          safeErrorCode: response.errorCode,
+          safeErrorMessage: response.errorMessage,
+        );
+      }
+      final data = response.data!;
+      final rows = data['rows'];
+      if (rows is! List) {
+        throw const FormatException('В ответе МойСклад отсутствует rows');
+      }
+      result.addAll(
+        rows.whereType<Map>().map((row) => Map<String, dynamic>.from(row)),
       );
       final meta = data['meta'];
       final size = meta is Map ? (meta['size'] as num?)?.toInt() : null;
@@ -358,12 +414,7 @@ class ReferenceDataRepository {
 
   Future<void> syncWarehouses() async {
     try {
-      final rows = await _all(
-        '/entity/store',
-        'warehouses',
-        'warehouses',
-        filter: 'archived=false',
-      );
+      final rows = await _allDirect('/entity/store', filter: 'archived=false');
       final db = await _db, now = DateTime.now().millisecondsSinceEpoch;
       await db.transaction((t) async {
         await t.update('warehouses', {'is_present': 0});
