@@ -541,10 +541,20 @@ void main() {
     expect(zeroLine['actual_quantity'], 0);
     expect(zeroLine['include_in_inventory'], 1);
     expect((await repository.inventorySessions()).single['status'], 'draft');
+    var journalEntries = await journal.latestEntries();
+    expect(journalEntries.single['summary'], 'Инвентаризация • Склад 1');
+    var journalEvents = await journal.events(
+      journalEntries.single['id'] as int,
+    );
+    expect(journalEvents.single['event_type'], 'draft_created');
 
     await repository.deleteInventoryDraft(sessionId);
     expect(await repository.inventorySessions(), isEmpty);
     expect(await repository.inventoryLines(sessionId), isEmpty);
+    journalEntries = await journal.latestEntries();
+    expect(journalEntries.single['state'], 'cancelled');
+    journalEvents = await journal.events(journalEntries.single['id'] as int);
+    expect(journalEvents.last['event_type'], 'draft_deleted');
   });
 
   testWidgets(
