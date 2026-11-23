@@ -10,6 +10,7 @@ import 'package:lerua_zakup/features/connectivity/domain/api_task.dart';
 import 'package:lerua_zakup/features/connectivity/data/moysklad_api_client.dart';
 import 'package:lerua_zakup/features/references/data/reference_data_repository.dart';
 import 'package:lerua_zakup/features/references/presentation/reference_screens.dart';
+import 'package:lerua_zakup/features/references/presentation/inventory_screens.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _TokenStore implements SecureTokenStore {
@@ -467,6 +468,69 @@ void main() {
     await repository.deleteInventoryDraft(sessionId);
     expect(await repository.inventorySessions(), isEmpty);
     expect(await repository.inventoryLines(sessionId), isEmpty);
+  });
+
+  testWidgets('inventory keypad saves counts and list mode remains switchable', (
+    tester,
+  ) async {
+    final sql = await db.database;
+    final organizationId = await sql.insert('organizations', {
+      'moysklad_id': 'inventory-ui-org',
+      'name': 'Организация UI',
+    });
+    final warehouseId = (await sql.query(
+      'warehouses',
+      where: 'moysklad_id=?',
+      whereArgs: ['w-1'],
+      limit: 1,
+    )).single['id'] as int;
+    await repository.saveStorageLocation(warehouseId, 'Зона UI');
+    final locationId =
+        (await repository.storageLocations(warehouseId)).single['id'] as int;
+    final productId = await sql.insert('products', {
+      'moysklad_id': 'inventory-ui-product',
+      'name': 'Товар UI',
+      'kind': 'product',
+      'uom_name': 'шт',
+    });
+    await repository.assignProductsToStorageLocation(
+      [productId],
+      warehouseId,
+      locationId,
+    );
+    final sessionId = await repository.createInventoryDraft(
+      organizationId: organizationId,
+      warehouseId: warehouseId,
+      storageLocationIds: [locationId],
+    );
+
+    await tester.view.setPhysicalSize(const Size(420, 900));
+    await tester.view.devicePixelRatio = 1;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: InventorySessionScreen(
+          repository: repository,
+          sessionId: sessionId,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(FilledButton, '1').first);
+    await tester.pumpAndSettle();
+    expect(
+      (await repository.inventoryLines(sessionId)).single['actual_quantity'],
+      1,
+    );
+
+    await tester.tap(find.byTooltip('Список товаров'));
+    await tester.pumpAndSettle();
+    expect(find.text('Товар UI'), findsOneWidget);
+    expect(find.textContaining('Факт: 1 шт'), findsOneWidget);
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
   });
 
   test('sends the completed local inventory to MoySklad and stores its document id', () async {
