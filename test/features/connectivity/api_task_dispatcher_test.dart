@@ -6,6 +6,7 @@ import 'package:lerua_zakup/core/storage/secure_token_store.dart';
 import 'package:lerua_zakup/features/connectivity/data/api_task_dispatcher.dart';
 import 'package:lerua_zakup/features/connectivity/data/api_task_repository.dart';
 import 'package:lerua_zakup/features/connectivity/data/moysklad_api_client.dart';
+import 'package:lerua_zakup/features/connectivity/domain/api_task.dart';
 import 'package:lerua_zakup/features/connectivity/domain/api_task_execution_exception.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
