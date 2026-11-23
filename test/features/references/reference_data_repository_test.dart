@@ -424,14 +424,10 @@ void main() {
       'moysklad_id': 'overview-w-2',
       'name': 'Склад Без отчёта',
     });
-    final location1 = await repository.saveStorageLocation(
-      warehouse1,
-      'Стеллаж А',
-    );
-    final location2 = await repository.saveStorageLocation(
-      warehouse2,
-      'Зона Б',
-    );
+    await repository.saveStorageLocation(warehouse1, 'Стеллаж А');
+    await repository.saveStorageLocation(warehouse2, 'Зона Б');
+    final location1 = (await repository.storageLocations(warehouse1)).single['id'] as int;
+    final location2 = (await repository.storageLocations(warehouse2)).single['id'] as int;
     await sql.insert('product_warehouse_stock', {
       'product_id': productWithStock,
       'warehouse_moysklad_id': 'overview-w-1',
