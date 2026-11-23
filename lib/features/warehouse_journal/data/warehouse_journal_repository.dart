@@ -329,6 +329,70 @@ class WarehouseJournalRepository {
     }
   }
 
+  Future<void> recordInventoryEvent({
+    required String entryUid,
+    required String summary,
+    required String state,
+    required String eventType,
+    required String message,
+    Map<String, Object?> snapshot = const {},
+    String level = 'info',
+  }) async {
+    final db = await _db;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    try {
+      await db.transaction((txn) async {
+        final existing = await txn.query(
+          'warehouse_journal_entries',
+          where: 'entry_uid = ?',
+          whereArgs: [entryUid],
+          limit: 1,
+        );
+        int journalId;
+        String? previousState;
+        if (existing.isEmpty) {
+          journalId = await txn.insert('warehouse_journal_entries', {
+            'entry_uid': entryUid,
+            'entry_type': 'inventory',
+            'operation_id': null,
+            'state': state,
+            'summary': summary,
+            'snapshot_json': jsonEncode(snapshot),
+            'created_at': now,
+            'updated_at': now,
+          });
+        } else {
+          journalId = existing.first['id'] as int;
+          previousState = existing.first['state']?.toString();
+          await txn.update(
+            'warehouse_journal_entries',
+            {
+              'state': state,
+              'summary': summary,
+              'snapshot_json': jsonEncode(snapshot),
+              'updated_at': now,
+            },
+            where: 'id = ?',
+            whereArgs: [journalId],
+          );
+        }
+        await txn.insert('warehouse_journal_events', {
+          'journal_entry_id': journalId,
+          'event_type': eventType,
+          'from_state': previousState,
+          'to_state': state,
+          'level': level,
+          'message': message,
+          'details_json': jsonEncode(snapshot),
+          'created_at': now,
+        });
+      });
+    } catch (error) {
+      await _recordError('Запись события инвентаризации в Журнал', error);
+      rethrow;
+    }
+  }
+
   Future<List<Map<String, Object?>>> latestEntries({int limit = 300}) async {
     final db = await _db;
     return db.query(
