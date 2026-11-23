@@ -194,6 +194,9 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(home: SuppliersScreen(repository: repository)),
     );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -204,6 +207,9 @@ void main() {
     expect(api.supplierSearchRequests, 0);
 
     await tester.pump(const Duration(milliseconds: 100));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
     await tester.pumpAndSettle();
     expect(api.supplierSearchRequests, 1);
     expect(
