@@ -28,8 +28,6 @@ class _FakeDirectTransport
     implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
   int calls = 0;
   Uri? lastUri;
-  List<Map<String, dynamic>> inventoryRows = [];
-  List<Map<String, dynamic>> inventoryPositionRows = [];
 
   @override
   Future<MoySkladHttpResponse> get(
@@ -155,18 +153,6 @@ class _FakeApi extends ApiTaskDispatcher {
     Duration timeout = const Duration(minutes: 3),
   }) async {
     if (path == '/entity/store') warehouseRequests++;
-    if (path == '/entity/inventory') {
-      return {
-        'rows': inventoryRows,
-        'meta': {'size': inventoryRows.length},
-      };
-    }
-    if (path.startsWith('/entity/inventory/') && path.endsWith('/positions')) {
-      return {
-        'rows': inventoryPositionRows,
-        'meta': {'size': inventoryPositionRows.length},
-      };
-    }
     if (failService && path == '/entity/service') {
       throw StateError('network');
     }
@@ -290,6 +276,7 @@ void main() {
 
       expect(remote.single['id'], 'remote-inventory-1');
       expect(await repository.inventorySessions(), isEmpty);
+      expect(await api.listTasks(), isEmpty);
     },
   );
 
