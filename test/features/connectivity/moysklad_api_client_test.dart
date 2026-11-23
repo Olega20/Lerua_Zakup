@@ -80,7 +80,7 @@ void main() {
         expect(transport.postedUri!.path, '/api/remap/1.2/entity/inventory');
         expect(transport.postedBody, {'name': 'Проверка', 'positions': []});
         expect(
-          transport.postedHeaders!['Authorization'],
+          transport.postedHeaders!['authorization'],
           'Bearer secret-token',
         );
       },
