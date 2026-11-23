@@ -411,8 +411,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     if (text.isNotEmpty && (value == null || !value.isFinite || value < 0)) {
       throw const FormatException('Введите корректное количество');
     }
-    await widget.repository.saveInventoryCount(line['id'] as int, value);
     line['actual_quantity'] = value;
+    await widget.repository.saveInventoryCount(line['id'] as int, value);
+    if (mounted) setState(() {});
   }
 
   void _digit(String value) {
@@ -443,6 +444,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   }
 
   void _clear() {
+    accumulator = null;
+    pendingOperator = null;
+    replaceOnNextDigit = false;
     quantityController.clear();
     _persistCurrentQuietly();
     setState(() {});
@@ -641,7 +645,19 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     return Scaffold(
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
-        title: Text('${index + 1} из ${lines.length}'),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('${index + 1} из ${lines.length}'),
+            Text(
+              '${session?['warehouse_name_snapshot']} • ${session?['organization_name_snapshot']}',
+              style: Theme.of(context).textTheme.labelSmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: listMode ? 'Поштучный режим' : 'Список товаров',
