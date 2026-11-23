@@ -48,7 +48,10 @@ class _SuccessTransport implements MoySkladHttpTransport {
 }
 
 class _WriteSuccessTransport
-    implements MoySkladHttpTransport, MoySkladHttpWriteTransport, MoySkladHttpUpdateTransport {
+    implements
+        MoySkladHttpTransport,
+        MoySkladHttpWriteTransport,
+        MoySkladHttpUpdateTransport {
   int postRequests = 0;
   Object? postedBody;
 
@@ -117,131 +120,143 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
 
-  test('dispatcher sends POST once and persists the successful response', () async {
-    final database = AppDatabase(
-      databaseFactory: databaseFactoryFfi,
-      databasePath: inMemoryDatabasePath,
-    );
-    final internet = StreamController<bool>.broadcast();
-    final transport = _WriteSuccessTransport();
-    final repository = ApiTaskRepository(database: database);
-    final dispatcher = ApiTaskDispatcher(
-      repository: repository,
-      apiClient: MoySkladApiClient(transport: transport),
-      tokenStore: _TokenStore(),
-      internet: internet.stream,
-      connectivitySnapshot: () => true,
-    );
-
-    try {
-      await dispatcher.start();
-      final response = await dispatcher.requestPost(
-        uid: 'inventory-write-1',
-        type: 'inventory_create',
-        logicalQueue: 'inventory',
-        path: '/entity/inventory',
-        body: {'name': 'Инвентаризация', 'positions': []},
+  test(
+    'dispatcher sends POST once and persists the successful response',
+    () async {
+      final database = AppDatabase(
+        databaseFactory: databaseFactoryFfi,
+        databasePath: inMemoryDatabasePath,
+      );
+      final internet = StreamController<bool>.broadcast();
+      final transport = _WriteSuccessTransport();
+      final repository = ApiTaskRepository(database: database);
+      final dispatcher = ApiTaskDispatcher(
+        repository: repository,
+        apiClient: MoySkladApiClient(transport: transport),
+        tokenStore: _TokenStore(),
+        internet: internet.stream,
+        connectivitySnapshot: () => true,
       );
 
-      expect(response['id'], 'inventory-1');
-      expect(transport.postRequests, 1);
-      expect(transport.postedBody, {'name': 'Инвентаризация', 'positions': []});
-      final task = (await repository.listTasks()).single;
-      expect(task.status, ApiTaskStatus.succeeded);
-      expect(task.attemptsCount, 1);
-    } finally {
-      await dispatcher.dispose();
-      await internet.close();
-      await database.close();
-    }
-  });
+      try {
+        await dispatcher.start();
+        final response = await dispatcher.requestPost(
+          uid: 'inventory-write-1',
+          type: 'inventory_create',
+          logicalQueue: 'inventory',
+          path: '/entity/inventory',
+          body: {'name': 'Инвентаризация', 'positions': []},
+        );
 
-  test('dispatcher sends PUT once and persists the updated position response', () async {
-    final database = AppDatabase(
-      databaseFactory: databaseFactoryFfi,
-      databasePath: inMemoryDatabasePath,
-    );
-    final internet = StreamController<bool>.broadcast();
-    final transport = _WriteSuccessTransport();
-    final repository = ApiTaskRepository(database: database);
-    final dispatcher = ApiTaskDispatcher(
-      repository: repository,
-      apiClient: MoySkladApiClient(transport: transport),
-      tokenStore: _TokenStore(),
-      internet: internet.stream,
-      connectivitySnapshot: () => true,
-    );
+        expect(response['id'], 'inventory-1');
+        expect(transport.postRequests, 1);
+        expect(transport.postedBody, {
+          'name': 'Инвентаризация',
+          'positions': [],
+        });
+        final task = (await repository.listTasks()).single;
+        expect(task.status, ApiTaskStatus.succeeded);
+        expect(task.attemptsCount, 1);
+      } finally {
+        await dispatcher.dispose();
+        await internet.close();
+        await database.close();
+      }
+    },
+  );
 
-    try {
-      await dispatcher.start();
-      final response = await dispatcher.requestPut(
-        uid: 'inventory-position-update-1',
-        type: 'inventory_position_update',
-        logicalQueue: 'inventory',
-        path: '/entity/inventory/inventory-1/positions/position-1',
-        body: {'quantity': 7},
+  test(
+    'dispatcher sends PUT once and persists the updated position response',
+    () async {
+      final database = AppDatabase(
+        databaseFactory: databaseFactoryFfi,
+        databasePath: inMemoryDatabasePath,
+      );
+      final internet = StreamController<bool>.broadcast();
+      final transport = _WriteSuccessTransport();
+      final repository = ApiTaskRepository(database: database);
+      final dispatcher = ApiTaskDispatcher(
+        repository: repository,
+        apiClient: MoySkladApiClient(transport: transport),
+        tokenStore: _TokenStore(),
+        internet: internet.stream,
+        connectivitySnapshot: () => true,
       );
 
-      expect(response['id'], 'inventory-position-1');
-      expect(transport.putRequests, 1);
-      expect(transport.putBody, {'quantity': 7});
-      final task = (await repository.listTasks()).single;
-      expect(task.status, ApiTaskStatus.succeeded);
-      expect(task.attemptsCount, 1);
-    } finally {
-      await dispatcher.dispose();
-      await internet.close();
-      await database.close();
-    }
-  });
+      try {
+        await dispatcher.start();
+        final response = await dispatcher.requestPut(
+          uid: 'inventory-position-update-1',
+          type: 'inventory_position_update',
+          logicalQueue: 'inventory',
+          path: '/entity/inventory/inventory-1/positions/position-1',
+          body: {'quantity': 7},
+        );
 
-  test('ambiguous POST is marked uncertain and is never automatically retried', () async {
-    final database = AppDatabase(
-      databaseFactory: databaseFactoryFfi,
-      databasePath: inMemoryDatabasePath,
-    );
-    final internet = StreamController<bool>.broadcast();
-    final transport = _AmbiguousWriteTransport();
-    final repository = ApiTaskRepository(database: database);
-    final dispatcher = ApiTaskDispatcher(
-      repository: repository,
-      apiClient: MoySkladApiClient(transport: transport),
-      tokenStore: _TokenStore(),
-      internet: internet.stream,
-      connectivitySnapshot: () => true,
-    );
+        expect(response['id'], 'inventory-position-1');
+        expect(transport.putRequests, 1);
+        expect(transport.putBody, {'quantity': 7});
+        final task = (await repository.listTasks()).single;
+        expect(task.status, ApiTaskStatus.succeeded);
+        expect(task.attemptsCount, 1);
+      } finally {
+        await dispatcher.dispose();
+        await internet.close();
+        await database.close();
+      }
+    },
+  );
 
-    try {
-      await dispatcher.start();
-      Future<Map<String, Object?>> send() => dispatcher.requestPost(
-        uid: 'inventory-write-ambiguous',
-        type: 'inventory_create',
-        logicalQueue: 'inventory',
-        path: '/entity/inventory',
-        body: {'name': 'Инвентаризация', 'positions': []},
+  test(
+    'ambiguous POST is marked uncertain and is never automatically retried',
+    () async {
+      final database = AppDatabase(
+        databaseFactory: databaseFactoryFfi,
+        databasePath: inMemoryDatabasePath,
+      );
+      final internet = StreamController<bool>.broadcast();
+      final transport = _AmbiguousWriteTransport();
+      final repository = ApiTaskRepository(database: database);
+      final dispatcher = ApiTaskDispatcher(
+        repository: repository,
+        apiClient: MoySkladApiClient(transport: transport),
+        tokenStore: _TokenStore(),
+        internet: internet.stream,
+        connectivitySnapshot: () => true,
       );
 
-      await expectLater(
-        send(),
-        throwsA(
-          isA<ApiTaskExecutionException>().having(
-            (error) => error.status,
-            'status',
-            ApiTaskStatus.uncertain,
+      try {
+        await dispatcher.start();
+        Future<Map<String, Object?>> send() => dispatcher.requestPost(
+          uid: 'inventory-write-ambiguous',
+          type: 'inventory_create',
+          logicalQueue: 'inventory',
+          path: '/entity/inventory',
+          body: {'name': 'Инвентаризация', 'positions': []},
+        );
+
+        await expectLater(
+          send(),
+          throwsA(
+            isA<ApiTaskExecutionException>().having(
+              (error) => error.status,
+              'status',
+              ApiTaskStatus.uncertain,
+            ),
           ),
-        ),
-      );
-      await expectLater(send(), throwsA(isA<ApiTaskExecutionException>()));
-      expect(transport.postRequests, 1);
-      final task = (await repository.listTasks()).single;
-      expect(task.status, ApiTaskStatus.uncertain);
-      expect(task.attemptsCount, 1);
-    } finally {
-      await dispatcher.dispose();
-      await internet.close();
-      await database.close();
-    }
-  });
+        );
+        await expectLater(send(), throwsA(isA<ApiTaskExecutionException>()));
+        expect(transport.postRequests, 1);
+        final task = (await repository.listTasks()).single;
+        expect(task.status, ApiTaskStatus.uncertain);
+        expect(task.attemptsCount, 1);
+      } finally {
+        await dispatcher.dispose();
+        await internet.close();
+        await database.close();
+      }
+    },
+  );
 
   test('dispatcher subscribes before recovery and receives an immediate online event', () async {
     final database = AppDatabase(

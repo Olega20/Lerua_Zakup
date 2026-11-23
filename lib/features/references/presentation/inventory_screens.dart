@@ -184,7 +184,9 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
                 Card(
                   child: ListTile(
                     leading: const Icon(Icons.cloud_off_outlined),
-                    title: const Text('Не удалось загрузить документы МойСклад'),
+                    title: const Text(
+                      'Не удалось загрузить документы МойСклад',
+                    ),
                     subtitle: Text(remoteLoadError!),
                     trailing: IconButton(
                       tooltip: 'Повторить',
@@ -230,7 +232,8 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
                             IconButton(
                               tooltip: 'Удалить черновик',
                               icon: const Icon(Icons.delete_outline),
-                              onPressed: () => deleteDraft(session['id'] as int),
+                              onPressed: () =>
+                                  deleteDraft(session['id'] as int),
                             ),
                           const Icon(Icons.chevron_right),
                         ],
@@ -255,20 +258,26 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
               ...remoteInventories.map((inventory) {
                 final name = inventory['name']?.toString() ?? 'Инвентаризация';
                 final store = _inventoryRelatedName(inventory['store']);
-                final organization = _inventoryRelatedName(inventory['organization']);
-                final moment = inventory['moment']?.toString() ??
-                    inventory['created']?.toString() ?? '';
+                final organization = _inventoryRelatedName(
+                  inventory['organization'],
+                );
+                final moment =
+                    inventory['moment']?.toString() ??
+                    inventory['created']?.toString() ??
+                    '';
                 final state = _inventoryRelatedName(inventory['state']);
                 return Card(
                   child: ListTile(
                     leading: const Icon(Icons.cloud_done_outlined),
                     title: Text(name),
-                    subtitle: Text([
-                      if (store.isNotEmpty) store,
-                      if (organization.isNotEmpty) organization,
-                      if (moment.isNotEmpty) moment.replaceFirst('T', ' '),
-                      if (state.isNotEmpty) state,
-                    ].join(' • ')),
+                    subtitle: Text(
+                      [
+                        if (store.isNotEmpty) store,
+                        if (organization.isNotEmpty) organization,
+                        if (moment.isNotEmpty) moment.replaceFirst('T', ' '),
+                        if (state.isNotEmpty) state,
+                      ].join(' • '),
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => openMoySkladInventory(inventory),
                   ),
@@ -885,7 +894,6 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   }
 }
 
-
 class MoySkladInventoryScreen extends StatefulWidget {
   const MoySkladInventoryScreen({
     super.key,
@@ -1091,8 +1099,7 @@ class _MoySkladInventoryScreenState extends State<MoySkladInventoryScreen> {
                       ? const Center(child: Text('В документе нет позиций'))
                       : ListView.separated(
                           itemCount: positions.length,
-                          separatorBuilder: (_, _) =>
-                              const Divider(height: 1),
+                          separatorBuilder: (_, _) => const Divider(height: 1),
                           itemBuilder: (context, index) {
                             final position = positions[index];
                             final assortment = position['assortment'];

@@ -565,7 +565,8 @@ class ReferenceDataRepository {
       summary: documentName,
       state: 'updated',
       eventType: 'position_updated',
-      message: 'Изменена позиция «$productName»: фактическое количество $quantity',
+      message:
+          'Изменена позиция «$productName»: фактическое количество $quantity',
       snapshot: {
         'moysklad_inventory_id': inventoryId,
         'position_id': positionId,
@@ -685,52 +686,54 @@ class ReferenceDataRepository {
     }
     final now = DateTime.now().millisecondsSinceEpoch;
     final uid = _newInventoryUid();
-    return db.transaction((txn) async {
-      final sessionId = await txn.insert('inventory_sessions', {
-        'session_uid': uid,
-        'organization_id': organizationId,
-        'organization_moysklad_id_snapshot': organization['moysklad_id'],
-        'organization_name_snapshot': organization['name'],
-        'warehouse_id': warehouseId,
-        'warehouse_moysklad_id_snapshot': warehouse['moysklad_id'],
-        'warehouse_name_snapshot': warehouse['name'],
-        'selected_location_ids_json': jsonEncode(selectedIds),
-        'status': 'draft',
-        'created_at': now,
-        'updated_at': now,
-      });
-      for (var i = 0; i < products.length; i++) {
-        final product = products[i];
-        await txn.insert('inventory_lines', {
-          'session_id': sessionId,
-          'product_id': product['product_id'],
-          'product_moysklad_id_snapshot': product['moysklad_id'],
-          'product_kind_snapshot': product['kind'],
-          'product_name_snapshot': product['name'],
-          'uom_name_snapshot': product['uom_name'],
-          'expected_stock': product['expected_stock'],
-          'actual_quantity': null,
-          'include_in_inventory': 1,
-          'sort_order': i,
+    return db
+        .transaction((txn) async {
+          final sessionId = await txn.insert('inventory_sessions', {
+            'session_uid': uid,
+            'organization_id': organizationId,
+            'organization_moysklad_id_snapshot': organization['moysklad_id'],
+            'organization_name_snapshot': organization['name'],
+            'warehouse_id': warehouseId,
+            'warehouse_moysklad_id_snapshot': warehouse['moysklad_id'],
+            'warehouse_name_snapshot': warehouse['name'],
+            'selected_location_ids_json': jsonEncode(selectedIds),
+            'status': 'draft',
+            'created_at': now,
+            'updated_at': now,
+          });
+          for (var i = 0; i < products.length; i++) {
+            final product = products[i];
+            await txn.insert('inventory_lines', {
+              'session_id': sessionId,
+              'product_id': product['product_id'],
+              'product_moysklad_id_snapshot': product['moysklad_id'],
+              'product_kind_snapshot': product['kind'],
+              'product_name_snapshot': product['name'],
+              'uom_name_snapshot': product['uom_name'],
+              'expected_stock': product['expected_stock'],
+              'actual_quantity': null,
+              'include_in_inventory': 1,
+              'sort_order': i,
+            });
+          }
+          return sessionId;
+        })
+        .then((sessionId) async {
+          await warehouseJournal?.recordInventoryEvent(
+            entryUid: 'inventory:$uid',
+            summary: 'Инвентаризация • ${warehouse['name']}',
+            state: 'draft',
+            eventType: 'draft_created',
+            message: 'Создан локальный черновик инвентаризации',
+            snapshot: {
+              'session_uid': uid,
+              'organization': organization['name'],
+              'warehouse': warehouse['name'],
+              'products_count': products.length,
+            },
+          );
+          return sessionId;
         });
-      }
-      return sessionId;
-    }).then((sessionId) async {
-      await warehouseJournal?.recordInventoryEvent(
-        entryUid: 'inventory:$uid',
-        summary: 'Инвентаризация • ${warehouse['name']}',
-        state: 'draft',
-        eventType: 'draft_created',
-        message: 'Создан локальный черновик инвентаризации',
-        snapshot: {
-          'session_uid': uid,
-          'organization': organization['name'],
-          'warehouse': warehouse['name'],
-          'products_count': products.length,
-        },
-      );
-      return sessionId;
-    });
   }
 
   Future<void> saveInventoryCount(int lineId, double? quantity) async {

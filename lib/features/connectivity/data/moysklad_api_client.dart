@@ -46,7 +46,10 @@ abstract interface class MoySkladHttpUpdateTransport {
 }
 
 class IoMoySkladHttpTransport
-    implements MoySkladHttpTransport, MoySkladHttpWriteTransport, MoySkladHttpUpdateTransport {
+    implements
+        MoySkladHttpTransport,
+        MoySkladHttpWriteTransport,
+        MoySkladHttpUpdateTransport {
   IoMoySkladHttpTransport({HttpClient Function()? clientFactory})
     : _clientFactory = clientFactory ?? HttpClient.new;
 

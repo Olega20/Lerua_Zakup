@@ -141,10 +141,12 @@ class _FakeApi extends ApiTaskDispatcher {
   }) async {
     if (path == '/entity/store') warehouseRequests++;
     if (path == '/entity/inventory') {
-      return {'rows': inventoryRows, 'meta': {'size': inventoryRows.length}};
+      return {
+        'rows': inventoryRows,
+        'meta': {'size': inventoryRows.length},
+      };
     }
-    if (path.startsWith('/entity/inventory/') &&
-        path.endsWith('/positions')) {
+    if (path.startsWith('/entity/inventory/') && path.endsWith('/positions')) {
       return {
         'rows': inventoryPositionRows,
         'meta': {'size': inventoryPositionRows.length},
@@ -258,20 +260,23 @@ void main() {
     await db.close();
   });
 
-  test('remote MoySklad inventories are fetched live and not stored locally', () async {
-    api.inventoryRows = [
-      {
-        'id': 'remote-inventory-1',
-        'name': 'Пересчёт склада',
-        'store': {'name': 'Склад 1'},
-      },
-    ];
+  test(
+    'remote MoySklad inventories are fetched live and not stored locally',
+    () async {
+      api.inventoryRows = [
+        {
+          'id': 'remote-inventory-1',
+          'name': 'Пересчёт склада',
+          'store': {'name': 'Склад 1'},
+        },
+      ];
 
-    final remote = await repository.moySkladInventories();
+      final remote = await repository.moySkladInventories();
 
-    expect(remote.single['id'], 'remote-inventory-1');
-    expect(await repository.inventorySessions(), isEmpty);
-  });
+      expect(remote.single['id'], 'remote-inventory-1');
+      expect(await repository.inventorySessions(), isEmpty);
+    },
+  );
 
   test('remote inventory position updates use PUT and are journaled', () async {
     api.inventoryPositionRows = [

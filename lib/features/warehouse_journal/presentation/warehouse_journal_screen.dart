@@ -80,7 +80,9 @@ class _WarehouseJournalScreenState extends State<WarehouseJournalScreen> {
                 .map(
                   (r) => ListTile(
                     title: Text(r['summary'] as String),
-                    subtitle: Text('${_entryTypeLabel(r['entry_type'])} • ${_journalStateLabel(r['state'])}'),
+                    subtitle: Text(
+                      '${_entryTypeLabel(r['entry_type'])} • ${_journalStateLabel(r['state'])}',
+                    ),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => details(r),
                   ),
