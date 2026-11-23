@@ -60,6 +60,34 @@ class FakeMoySkladWriteTransport extends FakeMoySkladHttpTransport
   }
 }
 
+class FakeMoySkladUpdateTransport extends FakeMoySkladHttpTransport
+    implements MoySkladHttpUpdateTransport {
+  FakeMoySkladUpdateTransport() : super(null);
+
+  int putCalls = 0;
+  Object? putBody;
+  Uri? putUri;
+  Map<String, String>? putHeaders;
+
+  @override
+  Future<MoySkladHttpResponse> put(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Object body,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
+  }) async {
+    putCalls++;
+    putUri = uri;
+    putBody = body;
+    putHeaders = headers;
+    return const MoySkladHttpResponse(
+      statusCode: 200,
+      body: '{"id":"inventory-1"}',
+    );
+  }
+}
+
 void main() {
   group('MoySkladApiClient', () {
     test(
@@ -85,6 +113,26 @@ void main() {
         );
       },
     );
+
+    test('updates an inventory position with authenticated PUT', () async {
+      final transport = FakeMoySkladUpdateTransport();
+      final client = MoySkladApiClient(transport: transport);
+
+      final result = await client.putResource(
+        'secret-token',
+        '/entity/inventory/inventory-1/positions/position-1',
+        {'quantity': 12},
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(transport.putCalls, 1);
+      expect(
+        transport.putUri!.path,
+        '/api/remap/1.2/entity/inventory/inventory-1/positions/position-1',
+      );
+      expect(transport.putBody, {'quantity': 12});
+      expect(transport.putHeaders!['authorization'], 'Bearer secret-token');
+    });
 
     test('does not send a request when token is absent or blank', () async {
       final transport = FakeMoySkladHttpTransport(null);
