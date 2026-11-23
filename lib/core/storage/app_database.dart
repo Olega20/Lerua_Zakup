@@ -22,7 +22,7 @@ class AppDatabase {
     final db = await _factory.openDatabase(
       path,
       options: sqflite.OpenDatabaseOptions(
-        version: 5,
+        version: 6,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
           await db.execute('PRAGMA journal_mode = WAL');
@@ -88,6 +88,21 @@ class AppDatabase {
             );
             await db.insert('schema_migrations', {
               'version': 5,
+              'applied_at': DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+          if (oldVersion < 6) {
+            await db.execute(
+              '''CREATE TABLE inventory_sessions(id INTEGER PRIMARY KEY AUTOINCREMENT, session_uid TEXT NOT NULL UNIQUE, organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT, organization_moysklad_id_snapshot TEXT NOT NULL, organization_name_snapshot TEXT NOT NULL, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id) ON DELETE RESTRICT, warehouse_moysklad_id_snapshot TEXT NOT NULL, warehouse_name_snapshot TEXT NOT NULL, selected_location_ids_json TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','syncing','sync_failed','completed')), moysklad_id TEXT, moysklad_href TEXT, sync_error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER)''',
+            );
+            await db.execute(
+              '''CREATE TABLE inventory_lines(id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL REFERENCES inventory_sessions(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT, product_moysklad_id_snapshot TEXT NOT NULL, product_kind_snapshot TEXT NOT NULL, product_name_snapshot TEXT NOT NULL, uom_name_snapshot TEXT NOT NULL, expected_stock REAL, actual_quantity REAL, include_in_inventory INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL, counted_at INTEGER, UNIQUE(session_id,product_id))''',
+            );
+            await db.execute(
+              'CREATE INDEX inventory_lines_session_order_idx ON inventory_lines(session_id,sort_order)',
+            );
+            await db.insert('schema_migrations', {
+              'version': 6,
               'applied_at': DateTime.now().millisecondsSinceEpoch,
             });
           }
@@ -168,6 +183,9 @@ class AppDatabase {
     '''CREATE TABLE product_supplier_assignments(id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE, supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT, assigned_at INTEGER NOT NULL)''',
     'CREATE INDEX product_supplier_assignments_supplier_idx ON product_supplier_assignments(supplier_id)',
     'CREATE INDEX suppliers_name_idx ON suppliers(name COLLATE NOCASE)',
+    '''CREATE TABLE inventory_sessions(id INTEGER PRIMARY KEY AUTOINCREMENT, session_uid TEXT NOT NULL UNIQUE, organization_id INTEGER NOT NULL REFERENCES organizations(id) ON DELETE RESTRICT, organization_moysklad_id_snapshot TEXT NOT NULL, organization_name_snapshot TEXT NOT NULL, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id) ON DELETE RESTRICT, warehouse_moysklad_id_snapshot TEXT NOT NULL, warehouse_name_snapshot TEXT NOT NULL, selected_location_ids_json TEXT NOT NULL DEFAULT '[]', status TEXT NOT NULL DEFAULT 'draft' CHECK(status IN ('draft','syncing','sync_failed','completed')), moysklad_id TEXT, moysklad_href TEXT, sync_error TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL, completed_at INTEGER)''',
+    '''CREATE TABLE inventory_lines(id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER NOT NULL REFERENCES inventory_sessions(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE RESTRICT, product_moysklad_id_snapshot TEXT NOT NULL, product_kind_snapshot TEXT NOT NULL, product_name_snapshot TEXT NOT NULL, uom_name_snapshot TEXT NOT NULL, expected_stock REAL, actual_quantity REAL, include_in_inventory INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL, counted_at INTEGER, UNIQUE(session_id,product_id))''',
+    'CREATE INDEX inventory_lines_session_order_idx ON inventory_lines(session_id,sort_order)',
     '''CREATE TABLE business_operations(id INTEGER PRIMARY KEY AUTOINCREMENT, operation_uid TEXT NOT NULL UNIQUE, operation_type TEXT NOT NULL, business_status TEXT NOT NULL, supplier_id INTEGER REFERENCES suppliers(id) ON DELETE RESTRICT, organization_moysklad_id_snapshot TEXT, organization_name_snapshot TEXT, payment_method_id_snapshot INTEGER, payment_method_name_snapshot TEXT, payload_json TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''',
     '''CREATE TABLE business_operation_lines(id INTEGER PRIMARY KEY AUTOINCREMENT, operation_id INTEGER NOT NULL REFERENCES business_operations(id) ON DELETE CASCADE, product_id INTEGER REFERENCES products(id) ON DELETE RESTRICT, product_moysklad_id_snapshot TEXT NOT NULL, product_name_snapshot TEXT NOT NULL, quantity REAL NOT NULL, uom_name_snapshot TEXT NOT NULL)''',
     '''CREATE TABLE warehouse_journal_entries(id INTEGER PRIMARY KEY AUTOINCREMENT, entry_uid TEXT NOT NULL UNIQUE, entry_type TEXT NOT NULL, operation_id INTEGER REFERENCES business_operations(id) ON DELETE RESTRICT, state TEXT NOT NULL, summary TEXT NOT NULL, snapshot_json TEXT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''',
