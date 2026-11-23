@@ -677,7 +677,7 @@ void main() {
       expect(
         (await repository.products(warehouseMoyskladId: 'overview-w-2'))
             .map((row) => row['id']),
-        containsAll([productWithStock, productWithAssignment]),
+        [productWithAssignment],
       );
       expect(
         await repository.products(warehouseMoyskladId: 'unknown-warehouse'),
