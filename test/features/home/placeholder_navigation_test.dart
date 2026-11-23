@@ -53,34 +53,35 @@ SettingsRepository _testRepository() => SettingsRepository(
 );
 
 void main() {
-  testWidgets('placeholder business buttons show the exact development message', (
-    tester,
-  ) async {
-    await tester.pumpWidget(const LeruaZakupApp());
+  testWidgets(
+    'placeholder business buttons show the exact development message',
+    (tester) async {
+      await tester.pumpWidget(const LeruaZakupApp());
 
-    for (final label in [
-      'Закупка',
-      'Заказ',
-      'Перемещение',
-      'Прочие действия',
-    ]) {
-      await tester.tap(find.text(label));
-      await tester.pump();
-      if (label == 'Прочие действия') {
-        await tester.pumpAndSettle();
-        expect(find.text('Актуальные товары МойСклад'), findsOneWidget);
-      } else {
-        expect(
-          find.text('Функция находится в разработке'),
-          findsOneWidget,
-          reason: label,
-        );
-        await tester.tapAt(const Offset(8, 8));
-        await tester.pump(const Duration(milliseconds: 400));
+      for (final label in [
+        'Закупка',
+        'Заказ',
+        'Перемещение',
+        'Прочие действия',
+      ]) {
+        await tester.tap(find.text(label));
         await tester.pump();
+        if (label == 'Прочие действия') {
+          await tester.pumpAndSettle();
+          expect(find.text('Актуальные товары МойСклад'), findsOneWidget);
+        } else {
+          expect(
+            find.text('Функция находится в разработке'),
+            findsOneWidget,
+            reason: label,
+          );
+          await tester.tapAt(const Offset(8, 8));
+          await tester.pump(const Duration(milliseconds: 400));
+          await tester.pump();
+        }
       }
-    }
-  });
+    },
+  );
 
   testWidgets('Other actions opens the diagnostic warehouse journal', (
     tester,
