@@ -713,10 +713,6 @@ class ReferenceDataRepository {
         'В одном документе МойСклад поддерживается не более 1000 позиций. Разделите инвентаризацию на несколько документов.',
       );
     }
-    final token = await tokenStore.readToken();
-    if (token == null || token.trim().isEmpty) {
-      throw StateError('Не сохранён Access Token МойСклад.');
-    }
     await db.update(
       'inventory_sessions',
       {
@@ -731,16 +727,17 @@ class ReferenceDataRepository {
       final uid = session['session_uid'] as String;
       // A previous POST may have reached MoySklad even if its response was lost.
       // externalCode makes retry idempotent: look up the document before creating it again.
-      var existing = await directApiClient.getResource(
-        token,
-        '/entity/inventory',
+      final existing = await api.requestGet(
+        uid: 'inventory-lookup:$uid:${DateTime.now().microsecondsSinceEpoch}',
+        type: 'inventory_lookup',
+        logicalQueue: 'inventory',
+        path: '/entity/inventory',
         query: {'filter': 'externalCode=$uid', 'limit': '2'},
+        timeout: const Duration(seconds: 45),
       );
       Map<String, dynamic>? document;
-      final existingRows = existing.data?['rows'];
-      if (existing.isSuccess &&
-          existingRows is List &&
-          existingRows.isNotEmpty) {
+      final existingRows = existing['rows'];
+      if (existingRows is List && existingRows.isNotEmpty) {
         final row = existingRows.first;
         if (row is Map) document = Map<String, dynamic>.from(row);
       }
@@ -762,10 +759,23 @@ class ReferenceDataRepository {
             },
           };
         }).toList();
-        final created = await directApiClient.postResource(
-          token,
-          '/entity/inventory',
-          {
+        final baseTaskUid = 'inventory-create:$uid';
+        final previousTask = await api.taskByUid(baseTaskUid);
+        final postTaskUid = previousTask != null &&
+                {
+                  ApiTaskStatus.failed,
+                  ApiTaskStatus.uncertain,
+                  ApiTaskStatus.cancelled,
+                }.contains(previousTask.status)
+            ? '$baseTaskUid:retry:${DateTime.now().microsecondsSinceEpoch}'
+            : baseTaskUid;
+        final created = await api.requestPost(
+          uid: postTaskUid,
+          type: 'inventory_create',
+          logicalQueue: 'inventory',
+          path: '/entity/inventory',
+          timeout: const Duration(minutes: 3),
+          body: {
             'name':
                 'Инвентаризация ${DateTime.now().toIso8601String().substring(0, 16)}',
             'externalCode': uid,
@@ -788,16 +798,7 @@ class ReferenceDataRepository {
             'positions': positions,
           },
         );
-        if (!created.isSuccess) {
-          throw ApiTaskExecutionException(
-            ApiTaskStatus.failed,
-            created.errorResponse ?? created.data,
-            httpStatusCode: created.statusCode,
-            safeErrorCode: created.errorCode,
-            safeErrorMessage: created.errorMessage,
-          );
-        }
-        document = created.data!;
+        document = Map<String, dynamic>.from(created);
       }
       final meta = document['meta'];
       final href = meta is Map ? meta['href']?.toString() : null;
