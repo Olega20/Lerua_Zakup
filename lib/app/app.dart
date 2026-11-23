@@ -25,6 +25,7 @@ import '../features/connectivity/data/api_task_repository.dart';
 import '../features/connectivity/data/api_task_dispatcher.dart';
 import '../features/references/data/reference_data_repository.dart';
 import '../features/references/presentation/reference_screens.dart';
+import '../features/references/presentation/inventory_screens.dart';
 import '../features/warehouse_journal/data/warehouse_journal_repository.dart';
 import '../features/backup/data/backup_service.dart';
 import '../core/diagnostics/emergency_diagnostic_sink.dart';
@@ -357,6 +358,16 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
             connectivityStatuses: _connectivityStatuses,
             onOpenCalendar: () => _openCalendar(context),
             onOpenSettings: () => _openSettings(context),
+            onOpenInventory: () {
+              final deps = _AppDependencies.of(context);
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => InventoryHomeScreen(
+                    repository: deps.referenceDataRepository,
+                  ),
+                ),
+              );
+            },
             onOpenOtherActions: () {
               final deps = _AppDependencies.of(context);
               Navigator.of(context).push(
