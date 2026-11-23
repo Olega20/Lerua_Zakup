@@ -97,6 +97,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
   List<Map<String, Object?>> warehouseRows = [];
   final Map<int, List<Map<String, Object?>>> warehouseOverview = {};
   String? warehouseFilter;
+  int _loadGeneration = 0;
 
   @override
   void initState() {
@@ -111,27 +112,37 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
   }
 
   Future<void> load() async {
+    final request = ++_loadGeneration;
     if (mounted) setState(() => loading = true);
-    final result = await widget.repository.products(
-      search: search,
-      status: status,
-      warehouseMoyskladId: warehouseFilter,
-    );
-    final overview = await widget.repository.productWarehouseOverview(
-      result.map((row) => row['id'] as int),
-    );
-    final grouped = <int, List<Map<String, Object?>>>{};
-    for (final row in overview) {
-      (grouped[row['product_id'] as int] ??= []).add(row);
-    }
-    if (mounted) {
-      setState(() {
-        products = result;
-        warehouseOverview
-          ..clear()
-          ..addAll(grouped);
-        loading = false;
-      });
+    try {
+      final result = await widget.repository.products(
+        search: search,
+        status: status,
+        warehouseMoyskladId: warehouseFilter,
+      );
+      final overview = await widget.repository.productWarehouseOverview(
+        result.map((row) => row['id'] as int),
+      );
+      final grouped = <int, List<Map<String, Object?>>>{};
+      for (final row in overview) {
+        (grouped[row['product_id'] as int] ??= []).add(row);
+      }
+      if (mounted && request == _loadGeneration) {
+        setState(() {
+          products = result;
+          warehouseOverview
+            ..clear()
+            ..addAll(grouped);
+          loading = false;
+        });
+      }
+    } catch (error) {
+      if (mounted && request == _loadGeneration) {
+        setState(() => loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось загрузить товары: $error')),
+        );
+      }
     }
   }
 
