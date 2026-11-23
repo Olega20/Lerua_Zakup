@@ -495,7 +495,7 @@ class ReferenceDataRepository {
     }
     if (warehouseMoyskladId != null) {
       clauses.add(
-        '(EXISTS (SELECT 1 FROM product_warehouse_stock ws WHERE ws.product_id=p.id AND ws.warehouse_moysklad_id=?) OR EXISTS (SELECT 1 FROM product_storage_assignments psa2 JOIN warehouses w2 ON w2.id=psa2.warehouse_id WHERE psa2.product_id=p.id AND w2.moysklad_id=?))',
+        'EXISTS (SELECT 1 FROM product_storage_assignments psa2 JOIN warehouses w2 ON w2.id=psa2.warehouse_id JOIN storage_locations sl2 ON sl2.id=psa2.storage_location_id WHERE psa2.product_id=p.id AND w2.moysklad_id=? AND sl2.is_active=1)',
       );
       args
         ..add(warehouseMoyskladId)
