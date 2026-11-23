@@ -35,8 +35,18 @@ abstract interface class MoySkladHttpWriteTransport {
   });
 }
 
+abstract interface class MoySkladHttpUpdateTransport {
+  Future<MoySkladHttpResponse> put(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Object body,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
+  });
+}
+
 class IoMoySkladHttpTransport
-    implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
+    implements MoySkladHttpTransport, MoySkladHttpWriteTransport, MoySkladHttpUpdateTransport {
   IoMoySkladHttpTransport({HttpClient Function()? clientFactory})
     : _clientFactory = clientFactory ?? HttpClient.new;
 
@@ -55,6 +65,41 @@ class IoMoySkladHttpTransport
       ..autoUncompress = true;
     try {
       final request = await client.postUrl(uri).timeout(connectionTimeout);
+      headers.forEach(request.headers.set);
+      request.headers.contentType = ContentType.json;
+      request.write(jsonEncode(body));
+      final response = await request.close().timeout(responseTimeout);
+      final responseBody = await response
+          .transform(utf8.decoder)
+          .join()
+          .timeout(responseTimeout);
+      final responseHeaders = <String, String>{};
+      response.headers.forEach((name, values) {
+        responseHeaders[name.toLowerCase()] = values.join(',');
+      });
+      return MoySkladHttpResponse(
+        statusCode: response.statusCode,
+        body: responseBody,
+        headers: responseHeaders,
+      );
+    } finally {
+      client.close(force: true);
+    }
+  }
+
+  @override
+  Future<MoySkladHttpResponse> put(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Object body,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
+  }) async {
+    final client = _clientFactory()
+      ..connectionTimeout = connectionTimeout
+      ..autoUncompress = true;
+    try {
+      final request = await client.putUrl(uri).timeout(connectionTimeout);
       headers.forEach(request.headers.set);
       request.headers.contentType = ContentType.json;
       request.write(jsonEncode(body));
@@ -380,6 +425,91 @@ class MoySkladApiClient {
         statusCode: response.statusCode,
         data: decoded,
         errorCode: decoded == null ? 'INVALID_JSON_OBJECT' : null,
+      );
+    } on TimeoutException {
+      return const ApiResourceResult(
+        statusCode: 408,
+        errorCode: 'NETWORK_TIMEOUT',
+      );
+    } on SocketException {
+      return const ApiResourceResult(
+        statusCode: 503,
+        errorCode: 'NETWORK_UNAVAILABLE',
+      );
+    } on FormatException {
+      return const ApiResourceResult(
+        statusCode: 502,
+        errorCode: 'INVALID_RESPONSE',
+      );
+    } catch (_) {
+      return const ApiResourceResult(
+        statusCode: 503,
+        errorCode: 'TRANSPORT_ERROR',
+      );
+    }
+  }
+
+  Future<ApiResourceResult> putResource(
+    String? token,
+    String path,
+    Object body,
+  ) async {
+    final normalized = token?.trim();
+    if (normalized == null || normalized.isEmpty) {
+      return const ApiResourceResult(
+        statusCode: 401,
+        errorCode: 'TOKEN_MISSING',
+      );
+    }
+    final transport = _transport;
+    if (transport is! MoySkladHttpUpdateTransport) {
+      return const ApiResourceResult(
+        statusCode: 501,
+        errorCode: 'UPDATE_TRANSPORT_UNAVAILABLE',
+      );
+    }
+    final relativePath = path.startsWith('/') ? path : '/$path';
+    final normalizedPath = relativePath.startsWith('/api/remap/1.2/')
+        ? relativePath
+        : '/api/remap/1.2$relativePath';
+    final uri = Uri.https('api.moysklad.ru', normalizedPath);
+    try {
+      final response = await transport.put(
+        uri,
+        body: body,
+        connectionTimeout: connectionTimeout,
+        responseTimeout: responseTimeout,
+        headers: {
+          HttpHeaders.authorizationHeader: 'Bearer $normalized',
+          HttpHeaders.acceptHeader: 'application/json;charset=utf-8',
+          HttpHeaders.acceptEncodingHeader: 'gzip',
+          HttpHeaders.userAgentHeader: 'LZakup Android app',
+          'X-Lognex-Format-Metadata': 'true',
+        },
+      );
+      Map<String, dynamic>? decoded;
+      try {
+        final value = jsonDecode(response.body);
+        if (value is Map) decoded = Map<String, dynamic>.from(value);
+      } on FormatException {
+        // A successful PUT may return an empty body.
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        final error = _parseApiError(response.body);
+        return ApiResourceResult(
+          statusCode: response.statusCode,
+          retryAfter: _parseRetryAfter(
+            response.headers['retry-after'] ??
+                response.headers['x-lognex-retry-after'],
+          ),
+          errorCode: error.$1?.replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), ''),
+          errorMessage: error.$2,
+          errorResponse: decoded,
+        );
+      }
+      return ApiResourceResult(
+        statusCode: response.statusCode,
+        data: decoded ?? <String, dynamic>{},
       );
     } on TimeoutException {
       return const ApiResourceResult(
