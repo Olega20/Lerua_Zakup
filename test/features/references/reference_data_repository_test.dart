@@ -690,6 +690,13 @@ void main() {
       (await repository.inventorySessions()).single['moysklad_id'],
       'created-inventory-1',
     );
+    final entries = await journal.latestEntries();
+    expect(entries.single['state'], 'in_moysklad');
+    final events = await journal.events(entries.single['id'] as int);
+    expect(events.map((event) => event['event_type']), [
+      'draft_created',
+      'sent_to_moysklad',
+    ]);
   });
 
   test('payment method belongs to at most one organization and suppliers may share it', () async {
