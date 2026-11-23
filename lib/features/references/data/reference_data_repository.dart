@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:sqflite/sqflite.dart';
 
@@ -27,6 +28,15 @@ class ReferenceDataRepository {
   final WarehouseLogRepository? warehouseLog;
   Future<void>? _productSyncFuture;
   Future<Database> get _db => database.database;
+
+  String _newInventoryUid() {
+    final random = math.Random.secure();
+    final bytes = List<int>.generate(16, (_) => random.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((value) => value.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20, 32)}';
+  }
 
   Future<T> _guard<T>(
     String component,
@@ -572,8 +582,7 @@ class ReferenceDataRepository {
       throw StateError('В выбранных местах хранения нет назначенных товаров.');
     }
     final now = DateTime.now().millisecondsSinceEpoch;
-    final uid =
-        'inventory-${DateTime.now().microsecondsSinceEpoch}-${organization['moysklad_id']}-${warehouse['moysklad_id']}';
+    final uid = _newInventoryUid();
     return db.transaction((txn) async {
       final sessionId = await txn.insert('inventory_sessions', {
         'session_uid': uid,
@@ -708,9 +717,9 @@ class ReferenceDataRepository {
     if (lines.any((line) => line['actual_quantity'] == null)) {
       throw StateError('Сначала разрешите обработку пропущенных товаров.');
     }
-    if (lines.length > 1000) {
+    if (lines.length > 10000) {
       throw StateError(
-        'В одном документе МойСклад поддерживается не более 1000 позиций. Разделите инвентаризацию на несколько документов.',
+        'В одном документе МойСклад поддерживается не более 10 000 позиций. Разделите инвентаризацию на несколько документов.',
       );
     }
     await db.update(
@@ -785,7 +794,8 @@ class ReferenceDataRepository {
           body: {
             'name':
                 'Инвентаризация ${DateTime.now().toIso8601String().substring(0, 16)}',
-            'externalCode': uid,
+            'externalCode': 'LZ-$uid',
+            'syncId': uid,
             'organization': {
               'meta': {
                 'href':
