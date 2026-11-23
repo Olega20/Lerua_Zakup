@@ -331,6 +331,69 @@ void main() {
     expect(await repository.productSupplier(productId), isNotNull);
   });
 
+  test('inventory draft snapshots only assigned products and persists counts and skipped decisions', () async {
+    final sql = await db.database;
+    final organizationId = await sql.insert('organizations', {
+      'moysklad_id': 'inventory-org',
+      'name': 'Организация для инвентаризации',
+    });
+    final warehouseId = (await sql.query(
+      'warehouses',
+      where: 'moysklad_id=?',
+      whereArgs: ['w-1'],
+      limit: 1,
+    )).single['id'] as int;
+    await repository.saveStorageLocation(warehouseId, 'Зона А');
+    final locationId =
+        (await repository.storageLocations(warehouseId)).single['id'] as int;
+    final product1 = await sql.insert('products', {
+      'moysklad_id': 'inventory-product-1',
+      'name': 'Товар первый',
+      'kind': 'product',
+      'uom_name': 'шт',
+    });
+    final product2 = await sql.insert('products', {
+      'moysklad_id': 'inventory-product-2',
+      'name': 'Товар второй',
+      'kind': 'product',
+      'uom_name': 'шт',
+    });
+    await repository.assignProductsToStorageLocation(
+      [product1, product2],
+      warehouseId,
+      locationId,
+    );
+    await sql.insert('product_warehouse_stock', {
+      'product_id': product1,
+      'warehouse_moysklad_id': 'w-1',
+      'warehouse_name': 'Склад 1',
+      'stock': 7,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    });
+
+    final sessionId = await repository.createInventoryDraft(
+      organizationId: organizationId,
+      warehouseId: warehouseId,
+      storageLocationIds: [locationId],
+    );
+    var lines = await repository.inventoryLines(sessionId);
+    expect(lines, hasLength(2));
+    expect(lines.first['expected_stock'], 7);
+    expect(lines.map((line) => line['product_name_snapshot']),
+        containsAll(['Товар первый', 'Товар второй']));
+
+    await repository.saveInventoryCount(lines.first['id'] as int, 5);
+    await repository.resolveSkippedInventoryLines(
+      sessionId,
+      zeroLineIds: {lines.last['id'] as int},
+    );
+    lines = await repository.inventoryLines(sessionId);
+    expect(lines.first['actual_quantity'], 5);
+    expect(lines.last['actual_quantity'], 0);
+    expect(lines.last['include_in_inventory'], 1);
+    expect((await repository.inventorySessions()).single['status'], 'draft');
+  });
+
   test('payment method belongs to at most one organization and suppliers may share it', () async {
     final sql = await db.database;
     final o1 = await sql.insert('organizations', {
@@ -455,6 +518,15 @@ void main() {
         warehouse2,
         location2,
       );
+      // A balance at a second warehouse must not be shown when the product
+      // has a local storage assignment only at the first warehouse.
+      await sql.insert('product_warehouse_stock', {
+        'product_id': productWithStock,
+        'warehouse_moysklad_id': 'overview-w-2',
+        'warehouse_name': 'Склад Без назначения',
+        'stock': 99,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      });
 
       expect(
         (await repository.products(warehouseMoyskladId: 'overview-w-1'))
