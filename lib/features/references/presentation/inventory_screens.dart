@@ -355,6 +355,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   int index = 0;
   bool loading = true;
   bool calculatorMode = false;
+  bool listMode = false;
   bool syncing = false;
   double? accumulator;
   String? pendingOperator;
@@ -499,51 +500,20 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     }
   }
 
-  Future<void> _openList() async {
-    final selected = await showModalBottomSheet<int>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(sheetContext).size.height * .82,
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('Товары инвентаризации', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-              ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: lines.length,
-                  itemBuilder: (context, i) {
-                    final line = lines[i];
-                    final quantity = line['actual_quantity'];
-                    return ListTile(
-                      selected: i == index,
-                      title: Text(line['product_name_snapshot'] as String),
-                      subtitle: Text(quantity == null
-                          ? 'Не посчитан'
-                          : 'Факт: ${_formatQuantity((quantity as num).toDouble())}'),
-                      trailing: quantity == null
-                          ? const Icon(Icons.radio_button_unchecked)
-                          : const Icon(Icons.check_circle_outline, color: Colors.green),
-                      onTap: () => Navigator.pop(sheetContext, i),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (selected != null) {
-      await _saveQueue;
-      await _persistCurrent();
-      setState(() => index = selected);
-      _showCurrentValue();
-    }
+  Future<void> _toggleListMode() async {
+    await _saveQueue;
+    await _persistCurrent();
+    setState(() => listMode = !listMode);
+    if (!listMode) _showCurrentValue();
   }
+
+  Future<void> _selectListItem(int selected) async {
+    await _saveQueue;
+    await _persistCurrent();
+    setState(() => index = selected);
+    _showCurrentValue();
+  }
+
 
   Future<void> _finish() async {
     await _saveQueue;
@@ -674,55 +644,80 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
         title: Text('${index + 1} из ${lines.length}'),
         actions: [
           IconButton(
-            tooltip: 'Список товаров',
-            onPressed: _openList,
-            icon: const Icon(Icons.list_alt),
+            tooltip: listMode ? 'Поштучный режим' : 'Список товаров',
+            onPressed: _toggleListMode,
+            icon: Icon(listMode ? Icons.view_agenda_outlined : Icons.list_alt),
           ),
         ],
       ),
       body: Column(
         children: [
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
-              children: [
-                Text(
-                  line['product_name_snapshot'] as String,
-                  style: Theme.of(context).textTheme.headlineSmall,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Остаток по учёту: ${expected == null ? '—' : '${_formatQuantity((expected as num).toDouble())} ${line['uom_name_snapshot']}'}',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 28),
-                TextField(
-                  controller: quantityController,
-                  focusNode: quantityFocus,
-                  readOnly: true,
-                  showCursor: true,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium,
-                  decoration: const InputDecoration(
-                    labelText: 'Фактическое количество',
-                    border: OutlineInputBorder(),
+            child: listMode
+                ? ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                    itemCount: lines.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (context, itemIndex) {
+                      final item = lines[itemIndex];
+                      final actual = item['actual_quantity'];
+                      final book = item['expected_stock'];
+                      return ListTile(
+                        selected: itemIndex == index,
+                        leading: CircleAvatar(child: Text('${itemIndex + 1}')),
+                        title: Text(item['product_name_snapshot'] as String),
+                        subtitle: Text(
+                          'Учёт: ${book == null ? '—' : _formatQuantity((book as num).toDouble())} • Факт: ${actual == null ? 'не внесён' : _formatQuantity((actual as num).toDouble())} ${item['uom_name_snapshot']}',
+                        ),
+                        trailing: itemIndex == index
+                            ? const Icon(Icons.edit)
+                            : actual == null
+                            ? const Icon(Icons.radio_button_unchecked)
+                            : const Icon(Icons.check_circle_outline, color: Colors.green),
+                        onTap: completed ? null : () => _selectListItem(itemIndex),
+                      );
+                    },
+                  )
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    children: [
+                      Text(
+                        line['product_name_snapshot'] as String,
+                        style: Theme.of(context).textTheme.headlineSmall,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Остаток по учёту: ${expected == null ? '—' : '${_formatQuantity((expected as num).toDouble())} ${line['uom_name_snapshot']}'}',
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 28),
+                      TextField(
+                        controller: quantityController,
+                        focusNode: quantityFocus,
+                        readOnly: true,
+                        showCursor: true,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.headlineMedium,
+                        decoration: const InputDecoration(
+                          labelText: 'Фактическое количество',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        line['uom_name_snapshot'] as String,
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      if (completed)
+                        const Padding(
+                          padding: EdgeInsets.only(top: 20),
+                          child: Text('Документ уже отправлен в МойСклад'),
+                        ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  line['uom_name_snapshot'] as String,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                if (completed)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 20),
-                    child: Text('Документ уже отправлен в МойСклад'),
-                  ),
-              ],
-            ),
           ),
           if (!completed) _buildKeyboard(context),
           if (!completed)
