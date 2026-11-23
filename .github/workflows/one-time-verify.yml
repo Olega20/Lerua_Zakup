@@ -40,6 +40,7 @@ jobs:
             lib/app/app.dart \
             lib/core/storage/app_database.dart \
             lib/features/connectivity/data/moysklad_api_client.dart \
+            lib/features/connectivity/data/api_task_dispatcher.dart \
             lib/features/home/presentation/home_screen.dart \
             lib/features/references/data/reference_data_repository.dart \
             lib/features/references/presentation/product_inventory_screens.dart \
@@ -47,6 +48,7 @@ jobs:
             lib/features/references/presentation/reference_screens.dart \
             test/core/storage/app_database_test.dart \
             test/features/connectivity/moysklad_api_client_test.dart \
+            test/features/connectivity/api_task_dispatcher_test.dart \
             test/features/home/home_screen_test.dart \
             test/features/home/placeholder_navigation_test.dart \
             test/features/references/reference_data_repository_test.dart
