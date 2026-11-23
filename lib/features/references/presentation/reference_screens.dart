@@ -138,6 +138,7 @@ class ProductCatalogScreen extends StatefulWidget {
 
 class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
   List<Map<String, Object?>> rows = [];
+  final Map<int, List<Map<String, Object?>>> warehouseOverview = {};
   Map<String, int> counts = {};
   final Set<int> selected = {};
   String search = '';
@@ -157,11 +158,21 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
         status: filter,
         archived: widget.archived,
       );
+      final overviewRows = await widget.repository.productWarehouseOverview(
+        r.map((row) => row['id'] as int),
+      );
+      final groupedOverview = <int, List<Map<String, Object?>>>{};
+      for (final row in overviewRows) {
+        (groupedOverview[row['product_id'] as int] ??= []).add(row);
+      }
       final c = await widget.repository.productCounts();
       final l = await widget.repository.lastProductSync();
       if (mounted) {
         setState(() {
           rows = r;
+          warehouseOverview
+            ..clear()
+            ..addAll(groupedOverview);
           counts = c;
           last = l;
           loading = false;
@@ -258,7 +269,16 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   ),
                 ),
           title: Text(r['name'] as String),
-          subtitle: Text('Остаток: ${r['stock']} ${r['uom_name']}'),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Поставщик: ${r['supplier_name'] ?? 'Не назначен'}'),
+              ProductWarehouseOverview(
+                rows: warehouseOverview[id] ?? const [],
+                unit: r['uom_name']?.toString() ?? '',
+              ),
+            ],
+          ),
           onLongPress: () => setState(() => selected.add(id)),
           onTap: () {
             if (selected.isNotEmpty) {
@@ -274,6 +294,7 @@ class _ProductCatalogScreenState extends State<ProductCatalogScreen> {
                   builder: (_) => ProductReviewScreen(
                     repository: widget.repository,
                     items: rows,
+                    warehouseOverview: warehouseOverview,
                     index: rows.indexOf(r),
                   ),
                 ),
@@ -414,10 +435,12 @@ class ProductReviewScreen extends StatefulWidget {
     super.key,
     required this.repository,
     required this.items,
+    required this.warehouseOverview,
     required this.index,
   });
   final ReferenceDataRepository repository;
   final List<Map<String, Object?>> items;
+  final Map<int, List<Map<String, Object?>>> warehouseOverview;
   final int index;
   @override
   State<ProductReviewScreen> createState() => _ProductReviewScreenState();
@@ -476,8 +499,10 @@ class _ProductReviewScreenState extends State<ProductReviewScreen> {
             style: Theme.of(c).textTheme.headlineSmall,
           ),
           const SizedBox(height: 16),
-          Text(
-            '\u041e\u0441\u0442\u0430\u0442\u043e\u043a: ${r['stock'] ?? 0} ${r['uom_name'] ?? '\u041d\u0435 \u0443\u043a\u0430\u0437\u0430\u043d\u043e'}',
+          Text('Поставщик: ${r['supplier_name'] ?? 'Не назначен'}'),
+          ProductWarehouseOverview(
+            rows: widget.warehouseOverview[r['id'] as int] ?? const [],
+            unit: r['uom_name']?.toString() ?? '',
           ),
           const SizedBox(height: 32),
           FilledButton(
