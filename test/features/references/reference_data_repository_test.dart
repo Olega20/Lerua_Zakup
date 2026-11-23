@@ -506,7 +506,7 @@ void main() {
         storageLocationIds: [locationId],
       );
 
-      await tester.view.setPhysicalSize(const Size(420, 900));
+      tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1;
       await tester.pumpWidget(
         MaterialApp(
