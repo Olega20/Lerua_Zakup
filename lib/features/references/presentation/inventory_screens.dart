@@ -359,6 +359,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   double? accumulator;
   String? pendingOperator;
   bool replaceOnNextDigit = false;
+  Future<void> _saveQueue = Future<void>.value();
 
   Map<String, Object?>? get current => lines.isEmpty ? null : lines[index];
 
@@ -410,12 +411,13 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       throw const FormatException('Введите корректное количество');
     }
     await widget.repository.saveInventoryCount(line['id'] as int, value);
+    line['actual_quantity'] = value;
   }
 
   void _digit(String value) {
     final text = quantityController.text;
     if (value == '.' && text.contains('.')) return;
-    final next = replaceOnNextDigit ? value : '$text$value';
+    final next = replaceOnNextDigit ? value : text.isEmpty && value == '.' ? '0.' : '$text$value';
     replaceOnNextDigit = false;
     quantityController.text = next;
     quantityController.selection = TextSelection.collapsed(offset: next.length);
@@ -432,12 +434,11 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     setState(() {});
   }
 
-  Future<void> _persistCurrentQuietly() async {
-    try {
-      await _persistCurrent();
-    } catch (_) {
+  Future<void> _persistCurrentQuietly() {
+    _saveQueue = _saveQueue.then((_) => _persistCurrent()).catchError((_) {
       // The visible value remains editable; validation is shown on navigation.
-    }
+    });
+    return _saveQueue;
   }
 
   void _clear() {
@@ -486,6 +487,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
 
   Future<void> _move(int delta) async {
     try {
+      await _saveQueue;
       await _persistCurrent();
       if (index + delta < 0 || index + delta >= lines.length) return;
       setState(() => index += delta);
@@ -536,6 +538,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       ),
     );
     if (selected != null) {
+      await _saveQueue;
       await _persistCurrent();
       setState(() => index = selected);
       _showCurrentValue();
@@ -543,50 +546,67 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   }
 
   Future<void> _finish() async {
+    await _saveQueue;
     await _persistCurrent();
     final skipped = lines.where((line) => line['actual_quantity'] == null).toList();
     if (skipped.isNotEmpty) {
-      final setZero = await showDialog<bool>(
+      final zeroLineIds = await showDialog<Set<int>>(
         context: context,
-        builder: (dialogContext) => AlertDialog(
-          title: Text('Пропущено товаров: ${skipped.length}'),
-          content: SizedBox(
-            width: 440,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('Добавить пропущенные товары в инвентаризацию с количеством 0?'),
-                const SizedBox(height: 8),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: skipped.map((line) => ListTile(
-                      dense: true,
-                      leading: const Checkbox(value: true, onChanged: null),
-                      title: Text(line['product_name_snapshot'] as String),
-                    )).toList(),
-                  ),
+        builder: (dialogContext) {
+          final selected = skipped.map((line) => line['id'] as int).toSet();
+          return StatefulBuilder(
+            builder: (context, updateDialog) => AlertDialog(
+              title: Text('Пропущено товаров: ${skipped.length}'),
+              content: SizedBox(
+                width: 440,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Отметьте товары, которые нужно добавить в инвентаризацию с количеством 0.'),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      height: 260,
+                      child: ListView(
+                        children: skipped.map((line) {
+                          final id = line['id'] as int;
+                          return CheckboxListTile(
+                            dense: true,
+                            value: selected.contains(id),
+                            title: Text(line['product_name_snapshot'] as String),
+                            onChanged: (value) => updateDialog(() {
+                              if (value == true) {
+                                selected.add(id);
+                              } else {
+                                selected.remove(id);
+                              }
+                            }),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, <int>{}),
+                  child: const Text('Нет, не учитывать'),
+                ),
+                FilledButton(
+                  onPressed: () => Navigator.pop(dialogContext, selected),
+                  child: const Text('Да, обнулить отмеченные'),
                 ),
               ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Нет, не учитывать'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Да, обнулить'),
-            ),
-          ],
-        ),
+          );
+        },
       );
-      if (setZero == null) return;
+      if (zeroLineIds == null) return;
       await widget.repository.resolveSkippedInventoryLines(
         widget.sessionId,
-        setToZero: setZero,
+        zeroLineIds: zeroLineIds,
       );
+      await load();
     }
     if (!mounted) return;
     final confirm = await showDialog<bool>(
