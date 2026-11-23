@@ -444,9 +444,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       (row) => row['id'] == widget.sessionId,
     );
     setState(() {
-      lines = values[0]
-          .map((line) => Map<String, Object?>.from(line))
-          .toList();
+      lines = values[0].map((line) => Map<String, Object?>.from(line)).toList();
       session = found.isEmpty ? null : found.first;
       loading = false;
     });
@@ -801,6 +799,4 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       ),
     );
   }
-
-
 }

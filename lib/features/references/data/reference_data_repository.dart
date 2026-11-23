@@ -521,7 +521,9 @@ class ReferenceDataRepository {
       whereArgs: [sessionId],
     );
     if (deleted != 1) {
-      throw StateError('Удалить можно только локальный черновик инвентаризации.');
+      throw StateError(
+        'Удалить можно только локальный черновик инвентаризации.',
+      );
     }
   }
 

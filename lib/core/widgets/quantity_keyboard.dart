@@ -42,16 +42,19 @@ class _QuantityKeyboardState extends State<QuantityKeyboard> {
         final rounded = double.parse(result.toStringAsFixed(8));
         final output = rounded == rounded.roundToDouble()
             ? rounded.toInt().toString()
-            : rounded.toString().replaceFirst(RegExp(r'0+$'), '').replaceFirst(RegExp(r'\.$'), '');
+            : rounded
+                  .toString()
+                  .replaceFirst(RegExp(r'0+$'), '')
+                  .replaceFirst(RegExp(r'\.$'), '');
         _write(output);
       } on FormatException {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Проверь математическое выражение.')),
         );
       } on UnsupportedError {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Нельзя делить на ноль.')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Нельзя делить на ноль.')));
       }
       return;
     }
@@ -76,7 +79,28 @@ class _QuantityKeyboardState extends State<QuantityKeyboard> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
     final keys = _calculatorMode
-        ? const ['C', '(', ')', '÷', '7', '8', '9', '×', '4', '5', '6', '−', '1', '2', '3', '+', '⌫', '0', ',', '=']
+        ? const [
+            'C',
+            '(',
+            ')',
+            '÷',
+            '7',
+            '8',
+            '9',
+            '×',
+            '4',
+            '5',
+            '6',
+            '−',
+            '1',
+            '2',
+            '3',
+            '+',
+            '⌫',
+            '0',
+            ',',
+            '=',
+          ]
         : const ['7', '8', '9', '4', '5', '6', '1', '2', '3', ',', '0', '⌫'];
 
     return SizedBox(
@@ -90,7 +114,9 @@ class _QuantityKeyboardState extends State<QuantityKeyboard> {
               child: Row(
                 children: [
                   Icon(
-                    _calculatorMode ? Icons.calculate_rounded : Icons.dialpad_rounded,
+                    _calculatorMode
+                        ? Icons.calculate_rounded
+                        : Icons.dialpad_rounded,
                     size: 18,
                     color: colors.primary,
                   ),
@@ -107,7 +133,8 @@ class _QuantityKeyboardState extends State<QuantityKeyboard> {
                         : 'Открыть калькулятор',
                     visualDensity: VisualDensity.compact,
                     onPressed: widget.enabled
-                        ? () => setState(() => _calculatorMode = !_calculatorMode)
+                        ? () =>
+                              setState(() => _calculatorMode = !_calculatorMode)
                         : null,
                     icon: Icon(
                       _calculatorMode
@@ -126,7 +153,8 @@ class _QuantityKeyboardState extends State<QuantityKeyboard> {
                   final rows = (keys.length / columns).ceil();
                   const spacing = 6.0;
                   final cellWidth =
-                      (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                      (constraints.maxWidth - spacing * (columns - 1)) /
+                      columns;
                   final cellHeight =
                       (constraints.maxHeight - spacing * (rows - 1)) / rows;
                   final aspectRatio = cellWidth / cellHeight;
@@ -168,7 +196,12 @@ class _QuantityKeyboardState extends State<QuantityKeyboard> {
 
 class _ExpressionParser {
   _ExpressionParser(String source)
-      : _source = source.replaceAll(',', '.').replaceAll('×', '*').replaceAll('÷', '/').replaceAll('−', '-').replaceAll(' ', '');
+    : _source = source
+          .replaceAll(',', '.')
+          .replaceAll('×', '*')
+          .replaceAll('÷', '/')
+          .replaceAll('−', '-')
+          .replaceAll(' ', '');
 
   final String _source;
   int _index = 0;
@@ -199,7 +232,8 @@ class _ExpressionParser {
       if (operator != '*' && operator != '/') break;
       _index++;
       final right = _factor();
-      if (operator == '/' && right == 0) throw UnsupportedError('division by zero');
+      if (operator == '/' && right == 0)
+        throw UnsupportedError('division by zero');
       value = operator == '*' ? value * right : value / right;
     }
     return value;
