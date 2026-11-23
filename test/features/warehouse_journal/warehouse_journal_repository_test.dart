@@ -6,6 +6,42 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
+
+  test('inventory journal keeps one entry and appends lifecycle events', () async {
+    final database = AppDatabase(
+      databaseFactory: databaseFactoryFfi,
+      databasePath: inMemoryDatabasePath,
+    );
+    try {
+      final repo = WarehouseJournalRepository(database: database);
+      await repo.recordInventoryEvent(
+        entryUid: 'inventory:test-session',
+        summary: 'Инвентаризация • Основной склад',
+        state: 'draft',
+        eventType: 'draft_created',
+        message: 'Создан локальный черновик инвентаризации',
+        snapshot: {'warehouse': 'Основной склад'},
+      );
+      await repo.recordInventoryEvent(
+        entryUid: 'inventory:test-session',
+        summary: 'Инвентаризация • Основной склад',
+        state: 'in_moysklad',
+        eventType: 'sent_to_moysklad',
+        message: 'Инвентаризация создана в МойСклад',
+        snapshot: {'moysklad_inventory_id': 'inventory-1'},
+      );
+
+      final entries = await repo.latestEntries();
+      expect(entries, hasLength(1));
+      expect(entries.single['state'], 'in_moysklad');
+      final events = await repo.events(entries.single['id'] as int);
+      expect(events, hasLength(2));
+      expect(events.first['event_type'], 'draft_created');
+      expect(events.last['event_type'], 'sent_to_moysklad');
+    } finally {
+      await database.close();
+    }
+  });
   test(
     'draft autosave creates no journal entry until operation is prepared',
     () async {
