@@ -691,7 +691,9 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
       final nextAssignments = await widget.repository.productStorageAssignments(
         id,
       );
-      final nextOverview = await widget.repository.productWarehouseOverview([id]);
+      final nextOverview = await widget.repository.productWarehouseOverview([
+        id,
+      ]);
       final nextSupplier = await widget.repository.productSupplier(id);
       if (mounted && (product['id'] as int) == id) {
         setState(() {
