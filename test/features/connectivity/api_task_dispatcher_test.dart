@@ -48,7 +48,7 @@ class _SuccessTransport implements MoySkladHttpTransport {
 }
 
 class _WriteSuccessTransport
-    implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
+    implements MoySkladHttpTransport, MoySkladHttpWriteTransport, MoySkladHttpUpdateTransport {
   int postRequests = 0;
   Object? postedBody;
 
@@ -73,6 +73,25 @@ class _WriteSuccessTransport
     return const MoySkladHttpResponse(
       statusCode: 201,
       body: '{"id":"inventory-1","meta":{"href":"https://api.moysklad.ru/api/remap/1.2/entity/inventory/inventory-1"}}',
+    );
+  }
+
+  int putRequests = 0;
+  Object? putBody;
+
+  @override
+  Future<MoySkladHttpResponse> put(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Object body,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
+  }) async {
+    putRequests++;
+    putBody = body;
+    return const MoySkladHttpResponse(
+      statusCode: 200,
+      body: '{"id":"inventory-position-1"}',
     );
   }
 }
@@ -127,6 +146,45 @@ void main() {
       expect(response['id'], 'inventory-1');
       expect(transport.postRequests, 1);
       expect(transport.postedBody, {'name': 'Инвентаризация', 'positions': []});
+      final task = (await repository.listTasks()).single;
+      expect(task.status, ApiTaskStatus.succeeded);
+      expect(task.attemptsCount, 1);
+    } finally {
+      await dispatcher.dispose();
+      await internet.close();
+      await database.close();
+    }
+  });
+
+  test('dispatcher sends PUT once and persists the updated position response', () async {
+    final database = AppDatabase(
+      databaseFactory: databaseFactoryFfi,
+      databasePath: inMemoryDatabasePath,
+    );
+    final internet = StreamController<bool>.broadcast();
+    final transport = _WriteSuccessTransport();
+    final repository = ApiTaskRepository(database: database);
+    final dispatcher = ApiTaskDispatcher(
+      repository: repository,
+      apiClient: MoySkladApiClient(transport: transport),
+      tokenStore: _TokenStore(),
+      internet: internet.stream,
+      connectivitySnapshot: () => true,
+    );
+
+    try {
+      await dispatcher.start();
+      final response = await dispatcher.requestPut(
+        uid: 'inventory-position-update-1',
+        type: 'inventory_position_update',
+        logicalQueue: 'inventory',
+        path: '/entity/inventory/inventory-1/positions/position-1',
+        body: {'quantity': 7},
+      );
+
+      expect(response['id'], 'inventory-position-1');
+      expect(transport.putRequests, 1);
+      expect(transport.putBody, {'quantity': 7});
       final task = (await repository.listTasks()).single;
       expect(task.status, ApiTaskStatus.succeeded);
       expect(task.attemptsCount, 1);
