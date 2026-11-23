@@ -14,6 +14,7 @@ class HomeScreen extends StatefulWidget {
     this.onDateSelected,
     this.connectivityStatuses,
     this.onOpenOtherActions,
+    this.onOpenInventory,
   });
 
   final DateTime now;
@@ -23,6 +24,7 @@ class HomeScreen extends StatefulWidget {
   final ValueChanged<DateTime>? onDateSelected;
   final Stream<ApiConnectionState>? connectivityStatuses;
   final VoidCallback? onOpenOtherActions;
+  final VoidCallback? onOpenInventory;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -136,6 +138,9 @@ class _HomeScreenState extends State<HomeScreen> with RestorationMixin {
                             if (label == 'Прочие действия' &&
                                 widget.onOpenOtherActions != null) {
                               widget.onOpenOtherActions!.call();
+                            } else if (label == 'Инвентаризация' &&
+                                widget.onOpenInventory != null) {
+                              widget.onOpenInventory!.call();
                             } else {
                               widget.onShowPlaceholder(
                                 'Функция находится в разработке',
