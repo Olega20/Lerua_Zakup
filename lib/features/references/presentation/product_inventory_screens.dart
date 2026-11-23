@@ -114,18 +114,61 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
       title: Text(
-        sequential ? 'Последовательная актуализация' : 'Каталог товаров',
+        selected.isNotEmpty
+            ? 'Выбрано: ${selected.length}'
+            : sequential
+            ? 'Последовательная актуализация'
+            : 'Каталог товаров',
       ),
       actions: [
-        IconButton(
-          tooltip: sequential ? 'Обычный режим' : 'Последовательный ввод',
-          icon: Icon(sequential ? Icons.list_alt : Icons.playlist_play),
-          onPressed: () => setState(() {
-            sequential = !sequential;
-            selected.clear();
-          }),
-        ),
-        IconButton(icon: const Icon(Icons.refresh), onPressed: load),
+        if (selected.isNotEmpty) ...[
+          PopupMenuButton<String>(
+            tooltip: 'Действия',
+            icon: const Icon(Icons.more_vert),
+            onSelected: (action) {
+              final ids = selected.toList();
+              switch (action) {
+                case 'relevant':
+                  changeStatus(ids, 'relevant');
+                  break;
+                case 'irrelevant':
+                  changeStatus(ids, 'irrelevant');
+                  break;
+                case 'unassigned':
+                  changeStatus(ids, 'unassigned');
+                  break;
+                case 'storage':
+                  chooseStorage(ids);
+                  break;
+              }
+            },
+            itemBuilder: (_) => const [
+              PopupMenuItem(value: 'relevant', child: Text('Актуален')),
+              PopupMenuItem(value: 'irrelevant', child: Text('Не актуален')),
+              PopupMenuItem(value: 'unassigned', child: Text('Нераспределён')),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'storage',
+                child: Text('Выбрать склад и место хранения'),
+              ),
+            ],
+          ),
+          IconButton(
+            tooltip: 'Снять выделение',
+            onPressed: () => setState(() => selected.clear()),
+            icon: const Icon(Icons.close),
+          ),
+        ] else ...[
+          IconButton(
+            tooltip: sequential ? 'Обычный режим' : 'Последовательный ввод',
+            icon: Icon(sequential ? Icons.list_alt : Icons.playlist_play),
+            onPressed: () => setState(() {
+              sequential = !sequential;
+              selected.clear();
+            }),
+          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: load),
+        ],
       ],
     ),
     body: Column(
@@ -234,60 +277,6 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
         ),
       ],
     ),
-    bottomNavigationBar: selected.isEmpty
-        ? null
-        : SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  Expanded(child: Text('Выбрано: ${selected.length}')),
-                  PopupMenuButton<String>(
-                    tooltip: 'Действия',
-                    icon: const Icon(Icons.more_vert),
-                    onSelected: (action) {
-                      final ids = selected.toList();
-                      switch (action) {
-                        case 'relevant':
-                          changeStatus(ids, 'relevant');
-                          break;
-                        case 'irrelevant':
-                          changeStatus(ids, 'irrelevant');
-                          break;
-                        case 'unassigned':
-                          changeStatus(ids, 'unassigned');
-                          break;
-                        case 'storage':
-                          chooseStorage(ids);
-                          break;
-                      }
-                    },
-                    itemBuilder: (_) => const [
-                      PopupMenuItem(value: 'relevant', child: Text('Актуален')),
-                      PopupMenuItem(
-                        value: 'irrelevant',
-                        child: Text('Не актуален'),
-                      ),
-                      PopupMenuItem(
-                        value: 'unassigned',
-                        child: Text('Нераспределён'),
-                      ),
-                      PopupMenuDivider(),
-                      PopupMenuItem(
-                        value: 'storage',
-                        child: Text('Выбрать склад и место хранения'),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    tooltip: 'Снять выделение',
-                    onPressed: () => setState(() => selected.clear()),
-                    icon: const Icon(Icons.close),
-                  ),
-                ],
-              ),
-            ),
-          ),
   );
 }
 
