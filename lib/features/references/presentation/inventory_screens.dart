@@ -95,6 +95,38 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
     }
   }
 
+  Future<void> deleteDraft(int id) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Удалить черновик?'),
+        content: const Text(
+          'Локальная инвентаризация и все введённые количества будут удалены. Документ в МойСклад не создавался.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Удалить'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    try {
+      await widget.repository.deleteInventoryDraft(id);
+      await load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось удалить черновик: $error')),
+      );
+    }
+  }
+
   Future<void> openSession(int id) async {
     await Navigator.push<void>(
       context,
@@ -150,7 +182,18 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
                   subtitle: Text(
                     '${session['organization_name_snapshot']} • ${_inventoryStatus(status)}',
                   ),
-                  trailing: const Icon(Icons.chevron_right),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (status == 'draft')
+                        IconButton(
+                          tooltip: 'Удалить черновик',
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: () => deleteDraft(session['id'] as int),
+                        ),
+                      const Icon(Icons.chevron_right),
+                    ],
+                  ),
                   onTap: () => openSession(session['id'] as int),
                 ),
               );
@@ -415,9 +458,6 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     quantityController.text = value == null
         ? ''
         : _formatQuantity((value as num).toDouble());
-    accumulator = null;
-    pendingOperator = null;
-    replaceOnNextDigit = false;
     if (mounted) setState(() {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && current != null) quantityFocus.requestFocus();
