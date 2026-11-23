@@ -505,7 +505,7 @@ void main() {
     );
 
     await tester.view.setPhysicalSize(const Size(420, 900));
-    await tester.view.devicePixelRatio = 1;
+    tester.view.devicePixelRatio = 1;
     await tester.pumpWidget(
       MaterialApp(
         home: InventorySessionScreen(
