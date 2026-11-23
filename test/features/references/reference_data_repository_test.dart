@@ -20,7 +20,8 @@ class _TokenStore implements SecureTokenStore {
   Future<void> deleteToken() async {}
 }
 
-class _FakeDirectTransport implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
+class _FakeDirectTransport
+    implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
   int calls = 0;
   Uri? lastUri;
 
@@ -362,12 +363,14 @@ void main() {
       'moysklad_id': 'inventory-org',
       'name': 'Организация для инвентаризации',
     });
-    final warehouseId = (await sql.query(
-      'warehouses',
-      where: 'moysklad_id=?',
-      whereArgs: ['w-1'],
-      limit: 1,
-    )).single['id'] as int;
+    final warehouseId =
+        (await sql.query(
+              'warehouses',
+              where: 'moysklad_id=?',
+              whereArgs: ['w-1'],
+              limit: 1,
+            )).single['id']
+            as int;
     await repository.saveStorageLocation(warehouseId, 'Зона А');
     final locationId =
         (await repository.storageLocations(warehouseId)).single['id'] as int;
@@ -404,8 +407,10 @@ void main() {
     var lines = await repository.inventoryLines(sessionId);
     expect(lines, hasLength(2));
     expect(lines.first['expected_stock'], 7);
-    expect(lines.map((line) => line['product_name_snapshot']),
-        containsAll(['Товар первый', 'Товар второй']));
+    expect(
+      lines.map((line) => line['product_name_snapshot']),
+      containsAll(['Товар первый', 'Товар второй']),
+    );
 
     await repository.saveInventoryCount(lines.first['id'] as int, 5);
     await repository.resolveSkippedInventoryLines(
@@ -425,12 +430,14 @@ void main() {
       'moysklad_id': 'inventory-org',
       'name': 'Организация',
     });
-    final warehouseId = (await sql.query(
-      'warehouses',
-      where: 'moysklad_id=?',
-      whereArgs: ['w-1'],
-      limit: 1,
-    )).single['id'] as int;
+    final warehouseId =
+        (await sql.query(
+              'warehouses',
+              where: 'moysklad_id=?',
+              whereArgs: ['w-1'],
+              limit: 1,
+            )).single['id']
+            as int;
     await repository.saveStorageLocation(warehouseId, 'Зона');
     final locationId =
         (await repository.storageLocations(warehouseId)).single['id'] as int;
@@ -457,16 +464,25 @@ void main() {
     expect(directTransport.postedUri!.path, '/api/remap/1.2/entity/inventory');
     final payload = directTransport.postedBody! as Map<String, dynamic>;
     expect(payload['externalCode'], isA<String>());
-    expect((payload['organization'] as Map)['meta']['href'],
-        contains('/entity/organization/inventory-org'));
-    expect((payload['store'] as Map)['meta']['href'],
-        contains('/entity/store/w-1'));
+    expect(
+      (payload['organization'] as Map)['meta']['href'],
+      contains('/entity/organization/inventory-org'),
+    );
+    expect(
+      (payload['store'] as Map)['meta']['href'],
+      contains('/entity/store/w-1'),
+    );
     final positions = payload['positions'] as List;
     expect(positions, hasLength(1));
     expect(positions.single['quantity'], 4.0);
-    expect((await repository.inventorySessions()).single['status'], 'completed');
-    expect((await repository.inventorySessions()).single['moysklad_id'],
-        'created-inventory-1');
+    expect(
+      (await repository.inventorySessions()).single['status'],
+      'completed',
+    );
+    expect(
+      (await repository.inventorySessions()).single['moysklad_id'],
+      'created-inventory-1',
+    );
   });
 
   test('payment method belongs to at most one organization and suppliers may share it', () async {

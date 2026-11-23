@@ -531,7 +531,9 @@ class ReferenceDataRepository {
       limit: 1,
     );
     if (organizationRows.isEmpty || warehouseRows.isEmpty) {
-      throw StateError('Организация или склад больше недоступны. Обновите справочники.');
+      throw StateError(
+        'Организация или склад больше недоступны. Обновите справочники.',
+      );
     }
     final organization = organizationRows.first;
     final warehouse = warehouseRows.first;
@@ -570,7 +572,8 @@ class ReferenceDataRepository {
       throw StateError('В выбранных местах хранения нет назначенных товаров.');
     }
     final now = DateTime.now().millisecondsSinceEpoch;
-    final uid = 'inventory-${DateTime.now().microsecondsSinceEpoch}-${organization['moysklad_id']}-${warehouse['moysklad_id']}';
+    final uid =
+        'inventory-${DateTime.now().microsecondsSinceEpoch}-${organization['moysklad_id']}-${warehouse['moysklad_id']}';
     return db.transaction((txn) async {
       final sessionId = await txn.insert('inventory_sessions', {
         'session_uid': uid,
@@ -606,7 +609,11 @@ class ReferenceDataRepository {
 
   Future<void> saveInventoryCount(int lineId, double? quantity) async {
     if (quantity != null && (!quantity.isFinite || quantity < 0)) {
-      throw ArgumentError.value(quantity, 'quantity', 'Количество должно быть неотрицательным');
+      throw ArgumentError.value(
+        quantity,
+        'quantity',
+        'Количество должно быть неотрицательным',
+      );
     }
     final db = await _db;
     final line = await db.query(
@@ -621,7 +628,9 @@ class ReferenceDataRepository {
       'inventory_lines',
       {
         'actual_quantity': quantity,
-        'counted_at': quantity == null ? null : DateTime.now().millisecondsSinceEpoch,
+        'counted_at': quantity == null
+            ? null
+            : DateTime.now().millisecondsSinceEpoch,
       },
       where: 'id=?',
       whereArgs: [lineId],
@@ -648,7 +657,9 @@ class ReferenceDataRepository {
       );
       final skippedIds = skipped.map((row) => row['id'] as int).toSet();
       if (zeroLineIds.difference(skippedIds).isNotEmpty) {
-        throw StateError('Список пропущенных товаров изменился. Повторите действие.');
+        throw StateError(
+          'Список пропущенных товаров изменился. Повторите действие.',
+        );
       }
       for (final id in skippedIds) {
         final zero = zeroLineIds.contains(id);
@@ -672,7 +683,6 @@ class ReferenceDataRepository {
     });
   }
 
-
   Future<void> syncInventorySession(int sessionId) async {
     final db = await _db;
     final sessions = await db.query(
@@ -691,13 +701,17 @@ class ReferenceDataRepository {
       orderBy: 'sort_order',
     );
     if (lines.isEmpty) {
-      throw StateError('Нет товаров, которые можно включить в документ инвентаризации.');
+      throw StateError(
+        'Нет товаров, которые можно включить в документ инвентаризации.',
+      );
     }
     if (lines.any((line) => line['actual_quantity'] == null)) {
       throw StateError('Сначала разрешите обработку пропущенных товаров.');
     }
     if (lines.length > 1000) {
-      throw StateError('В одном документе МойСклад поддерживается не более 1000 позиций. Разделите инвентаризацию на несколько документов.');
+      throw StateError(
+        'В одном документе МойСклад поддерживается не более 1000 позиций. Разделите инвентаризацию на несколько документов.',
+      );
     }
     final token = await tokenStore.readToken();
     if (token == null || token.trim().isEmpty) {
@@ -705,7 +719,11 @@ class ReferenceDataRepository {
     }
     await db.update(
       'inventory_sessions',
-      {'status': 'syncing', 'sync_error': null, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+      {
+        'status': 'syncing',
+        'sync_error': null,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      },
       where: 'id=?',
       whereArgs: [sessionId],
     );
@@ -720,7 +738,9 @@ class ReferenceDataRepository {
       );
       Map<String, dynamic>? document;
       final existingRows = existing.data?['rows'];
-      if (existing.isSuccess && existingRows is List && existingRows.isNotEmpty) {
+      if (existing.isSuccess &&
+          existingRows is List &&
+          existingRows.isNotEmpty) {
         final row = existingRows.first;
         if (row is Map) document = Map<String, dynamic>.from(row);
       }
@@ -734,7 +754,8 @@ class ReferenceDataRepository {
             'quantity': (line['actual_quantity'] as num).toDouble(),
             'assortment': {
               'meta': {
-                'href': 'https://api.moysklad.ru/api/remap/1.2/entity/$kind/$productId',
+                'href':
+                    'https://api.moysklad.ru/api/remap/1.2/entity/$kind/$productId',
                 'type': kind,
                 'mediaType': 'application/json',
               },
@@ -745,18 +766,21 @@ class ReferenceDataRepository {
           token,
           '/entity/inventory',
           {
-            'name': 'Инвентаризация ${DateTime.now().toIso8601String().substring(0, 16)}',
+            'name':
+                'Инвентаризация ${DateTime.now().toIso8601String().substring(0, 16)}',
             'externalCode': uid,
             'organization': {
               'meta': {
-                'href': 'https://api.moysklad.ru/api/remap/1.2/entity/organization/${session['organization_moysklad_id_snapshot']}',
+                'href':
+                    'https://api.moysklad.ru/api/remap/1.2/entity/organization/${session['organization_moysklad_id_snapshot']}',
                 'type': 'organization',
                 'mediaType': 'application/json',
               },
             },
             'store': {
               'meta': {
-                'href': 'https://api.moysklad.ru/api/remap/1.2/entity/store/${session['warehouse_moysklad_id_snapshot']}',
+                'href':
+                    'https://api.moysklad.ru/api/remap/1.2/entity/store/${session['warehouse_moysklad_id_snapshot']}',
                 'type': 'store',
                 'mediaType': 'application/json',
               },
@@ -777,10 +801,13 @@ class ReferenceDataRepository {
       }
       final meta = document['meta'];
       final href = meta is Map ? meta['href']?.toString() : null;
-      final documentId = document['id']?.toString() ??
+      final documentId =
+          document['id']?.toString() ??
           (href == null ? null : Uri.tryParse(href)?.pathSegments.lastOrNull);
       if (documentId == null || documentId.isEmpty) {
-        throw const FormatException('МойСклад не вернул идентификатор инвентаризации.');
+        throw const FormatException(
+          'МойСклад не вернул идентификатор инвентаризации.',
+        );
       }
       await db.update(
         'inventory_sessions',
@@ -1000,8 +1027,7 @@ class ReferenceDataRepository {
       final batch = ids.skip(offset).take(800).toList();
       final placeholders = List.filled(batch.length, '?').join(',');
       result.addAll(
-        await db.rawQuery(
-          '''
+        await db.rawQuery('''
           SELECT psa.product_id,
                  w.moysklad_id AS warehouse_moysklad_id,
                  w.name AS warehouse_name,
@@ -1016,9 +1042,7 @@ class ReferenceDataRepository {
            AND pws.warehouse_moysklad_id=w.moysklad_id
           WHERE psa.product_id IN ($placeholders)
           ORDER BY psa.product_id,w.name COLLATE NOCASE
-          ''',
-          batch,
-        ),
+          ''', batch),
       );
     }
     return result;

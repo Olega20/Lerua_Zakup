@@ -41,7 +41,9 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
       if (mounted) setState(() => loading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось загрузить инвентаризации: $error')),
+          SnackBar(
+            content: Text('Не удалось загрузить инвентаризации: $error'),
+          ),
         );
       }
     }
@@ -50,7 +52,9 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
   Future<void> createDraft() async {
     if (organizations.isEmpty || warehouses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Сначала синхронизируйте организации и склады')),
+        const SnackBar(
+          content: Text('Сначала синхронизируйте организации и склады'),
+        ),
       );
       return;
     }
@@ -236,10 +240,15 @@ class _InventorySetupDialogState extends State<InventorySetupDialog> {
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Организация'),
               items: widget.organizations
-                  .map((row) => DropdownMenuItem(
-                        value: row['id'] as int,
-                        child: Text(row['name'] as String, overflow: TextOverflow.ellipsis),
-                      ))
+                  .map(
+                    (row) => DropdownMenuItem(
+                      value: row['id'] as int,
+                      child: Text(
+                        row['name'] as String,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) => setState(() => organizationId = value),
             ),
@@ -249,10 +258,15 @@ class _InventorySetupDialogState extends State<InventorySetupDialog> {
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Склад'),
               items: widget.warehouses
-                  .map((row) => DropdownMenuItem(
-                        value: row['id'] as int,
-                        child: Text(row['name'] as String, overflow: TextOverflow.ellipsis),
-                      ))
+                  .map(
+                    (row) => DropdownMenuItem(
+                      value: row['id'] as int,
+                      child: Text(
+                        row['name'] as String,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  )
                   .toList(),
               onChanged: (value) {
                 setState(() {
@@ -264,8 +278,13 @@ class _InventorySetupDialogState extends State<InventorySetupDialog> {
               },
             ),
             const SizedBox(height: 16),
-            const Text('Места хранения', style: TextStyle(fontWeight: FontWeight.w600)),
-            const Text('Выберите одно или несколько. По умолчанию выбраны все.'),
+            const Text(
+              'Места хранения',
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const Text(
+              'Выберите одно или несколько. По умолчанию выбраны все.',
+            ),
             if (loadingLocations)
               const LinearProgressIndicator()
             else if (locations.isEmpty)
@@ -282,9 +301,11 @@ class _InventorySetupDialogState extends State<InventorySetupDialog> {
                 onChanged: (value) => setState(() {
                   selectedLocations
                     ..clear()
-                    ..addAll(value == true
-                        ? locations.map((row) => row['id'] as int)
-                        : const <int>[]);
+                    ..addAll(
+                      value == true
+                          ? locations.map((row) => row['id'] as int)
+                          : const <int>[],
+                    );
                 }),
               ),
               ...locations.map((row) {
@@ -314,19 +335,20 @@ class _InventorySetupDialogState extends State<InventorySetupDialog> {
         child: const Text('Отмена'),
       ),
       FilledButton(
-        onPressed: loadingLocations ||
+        onPressed:
+            loadingLocations ||
                 organizationId == null ||
                 warehouseId == null ||
                 selectedLocations.isEmpty
             ? null
             : () => Navigator.pop(
-                  context,
-                  _InventorySetupResult(
-                    organizationId: organizationId!,
-                    warehouseId: warehouseId!,
-                    locationIds: selectedLocations.toList(),
-                  ),
+                context,
+                _InventorySetupResult(
+                  organizationId: organizationId!,
+                  warehouseId: warehouseId!,
+                  locationIds: selectedLocations.toList(),
                 ),
+              ),
         child: const Text('Создать'),
       ),
     ],
@@ -390,7 +412,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
 
   void _showCurrentValue() {
     final value = current?['actual_quantity'];
-    quantityController.text = value == null ? '' : _formatQuantity((value as num).toDouble());
+    quantityController.text = value == null
+        ? ''
+        : _formatQuantity((value as num).toDouble());
     accumulator = null;
     pendingOperator = null;
     replaceOnNextDigit = false;
@@ -400,8 +424,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     });
   }
 
-  String _formatQuantity(double value) =>
-      value == value.roundToDouble() ? value.toInt().toString() : value.toString();
+  String _formatQuantity(double value) => value == value.roundToDouble()
+      ? value.toInt().toString()
+      : value.toString();
 
   Future<void> _persistCurrent() async {
     final line = current;
@@ -419,7 +444,11 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   void _digit(String value) {
     final text = quantityController.text;
     if (value == '.' && text.contains('.')) return;
-    final next = replaceOnNextDigit ? value : text.isEmpty && value == '.' ? '0.' : '$text$value';
+    final next = replaceOnNextDigit
+        ? value
+        : text.isEmpty && value == '.'
+        ? '0.'
+        : '$text$value';
     replaceOnNextDigit = false;
     quantityController.text = next;
     quantityController.selection = TextSelection.collapsed(offset: next.length);
@@ -431,7 +460,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     final text = quantityController.text;
     if (text.isEmpty) return;
     quantityController.text = text.substring(0, text.length - 1);
-    quantityController.selection = TextSelection.collapsed(offset: quantityController.text.length);
+    quantityController.selection = TextSelection.collapsed(
+      offset: quantityController.text.length,
+    );
     _persistCurrentQuietly();
     setState(() {});
   }
@@ -458,7 +489,8 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     if (accumulator != null && pendingOperator != null && !replaceOnNextDigit) {
       _calculate();
     }
-    accumulator = double.tryParse(quantityController.text.replaceAll(',', '.')) ?? value;
+    accumulator =
+        double.tryParse(quantityController.text.replaceAll(',', '.')) ?? value;
     pendingOperator = op;
     replaceOnNextDigit = true;
   }
@@ -477,12 +509,16 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     };
     if (!result.isFinite || result < 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Результат должен быть неотрицательным числом')),
+        const SnackBar(
+          content: Text('Результат должен быть неотрицательным числом'),
+        ),
       );
       return;
     }
     quantityController.text = _formatQuantity(result);
-    quantityController.selection = TextSelection.collapsed(offset: quantityController.text.length);
+    quantityController.selection = TextSelection.collapsed(
+      offset: quantityController.text.length,
+    );
     accumulator = null;
     pendingOperator = null;
     replaceOnNextDigit = true;
@@ -498,9 +534,8 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       setState(() => index += delta);
       _showCurrentValue();
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -518,11 +553,12 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     _showCurrentValue();
   }
 
-
   Future<void> _finish() async {
     await _saveQueue;
     await _persistCurrent();
-    final skipped = lines.where((line) => line['actual_quantity'] == null).toList();
+    final skipped = lines
+        .where((line) => line['actual_quantity'] == null)
+        .toList();
     if (skipped.isNotEmpty) {
       final zeroLineIds = await showDialog<Set<int>>(
         context: context,
@@ -536,7 +572,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('Отметьте товары, которые нужно добавить в инвентаризацию с количеством 0.'),
+                    const Text(
+                      'Отметьте товары, которые нужно добавить в инвентаризацию с количеством 0.',
+                    ),
                     const SizedBox(height: 8),
                     SizedBox(
                       height: 260,
@@ -546,7 +584,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
                           return CheckboxListTile(
                             dense: true,
                             value: selected.contains(id),
-                            title: Text(line['product_name_snapshot'] as String),
+                            title: Text(
+                              line['product_name_snapshot'] as String,
+                            ),
                             onChanged: (value) => updateDialog(() {
                               if (value == true) {
                                 selected.add(id);
@@ -615,7 +655,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Не удалось отправить. Черновик сохранён: $error')),
+          SnackBar(
+            content: Text('Не удалось отправить. Черновик сохранён: $error'),
+          ),
         );
       }
     } finally {
@@ -632,7 +674,8 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (loading)
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     if (session == null || lines.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Инвентаризация')),
@@ -689,8 +732,13 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
                             ? const Icon(Icons.edit)
                             : actual == null
                             ? const Icon(Icons.radio_button_unchecked)
-                            : const Icon(Icons.check_circle_outline, color: Colors.green),
-                        onTap: completed ? null : () => _selectListItem(itemIndex),
+                            : const Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                              ),
+                        onTap: completed
+                            ? null
+                            : () => _selectListItem(itemIndex),
                       );
                     },
                   )
@@ -759,9 +807,11 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
                             : index == lines.length - 1
                             ? _finish
                             : () => _move(1),
-                        child: Text(index == lines.length - 1
-                            ? 'Завершить синхронизацию'
-                            : 'Далее'),
+                        child: Text(
+                          index == lines.length - 1
+                              ? 'Завершить синхронизацию'
+                              : 'Далее',
+                        ),
                       ),
                     ),
                   ],
@@ -776,7 +826,26 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
 
   Widget _buildKeyboard(BuildContext context) {
     final keys = calculatorMode
-        ? ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', 'C', '0', '.', '+', '⌫', '=']
+        ? [
+            '7',
+            '8',
+            '9',
+            '÷',
+            '4',
+            '5',
+            '6',
+            '×',
+            '1',
+            '2',
+            '3',
+            '−',
+            'C',
+            '0',
+            '.',
+            '+',
+            '⌫',
+            '=',
+          ]
         : ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '.', '⌫'];
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
@@ -792,7 +861,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
                   accumulator = null;
                   pendingOperator = null;
                 }),
-                icon: Icon(calculatorMode ? Icons.dialpad : Icons.calculate_outlined),
+                icon: Icon(
+                  calculatorMode ? Icons.dialpad : Icons.calculate_outlined,
+                ),
                 label: Text(calculatorMode ? 'Клавиатура' : 'Калькулятор'),
               ),
             ],

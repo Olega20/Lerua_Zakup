@@ -62,23 +62,29 @@ class FakeMoySkladWriteTransport extends FakeMoySkladHttpTransport
 
 void main() {
   group('MoySkladApiClient', () {
-    test('creates resources with authenticated POST and returns the document', () async {
-      final transport = FakeMoySkladWriteTransport();
-      final client = MoySkladApiClient(transport: transport);
+    test(
+      'creates resources with authenticated POST and returns the document',
+      () async {
+        final transport = FakeMoySkladWriteTransport();
+        final client = MoySkladApiClient(transport: transport);
 
-      final result = await client.postResource(
-        'secret-token',
-        '/entity/inventory',
-        {'name': 'Проверка', 'positions': []},
-      );
+        final result = await client.postResource(
+          'secret-token',
+          '/entity/inventory',
+          {'name': 'Проверка', 'positions': []},
+        );
 
-      expect(result.isSuccess, isTrue);
-      expect(result.data?['id'], 'inventory-1');
-      expect(transport.postCalls, 1);
-      expect(transport.postedUri!.path, '/api/remap/1.2/entity/inventory');
-      expect(transport.postedBody, {'name': 'Проверка', 'positions': []});
-      expect(transport.postedHeaders!['Authorization'], 'Bearer secret-token');
-    });
+        expect(result.isSuccess, isTrue);
+        expect(result.data?['id'], 'inventory-1');
+        expect(transport.postCalls, 1);
+        expect(transport.postedUri!.path, '/api/remap/1.2/entity/inventory');
+        expect(transport.postedBody, {'name': 'Проверка', 'positions': []});
+        expect(
+          transport.postedHeaders!['Authorization'],
+          'Bearer secret-token',
+        );
+      },
+    );
 
     test('does not send a request when token is absent or blank', () async {
       final transport = FakeMoySkladHttpTransport(null);
