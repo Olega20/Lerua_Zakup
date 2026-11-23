@@ -4,6 +4,83 @@ import 'package:flutter/material.dart';
 
 import '../data/reference_data_repository.dart';
 
+
+/// Compact warehouse breakdown shared by product lists and review screens.
+/// The stock value belongs to the warehouse, not to the local storage location.
+class ProductWarehouseOverview extends StatelessWidget {
+  const ProductWarehouseOverview({
+    super.key,
+    required this.rows,
+    required this.unit,
+  });
+
+  final List<Map<String, Object?>> rows;
+  final String unit;
+
+  @override
+  Widget build(BuildContext context) {
+    if (rows.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 4),
+        child: Text(
+          'Остатки по складам не загружены',
+          style: TextStyle(fontSize: 12, color: Colors.grey),
+        ),
+      );
+    }
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: rows.map((row) {
+          final stock = row['stock'];
+          final stockText = stock == null ? '—' : '$stock $unit'.trim();
+          return ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 112, maxWidth: 190),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                border: Border.all(color: theme.dividerColor),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      row['warehouse_name']?.toString() ?? 'Склад',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Место: ${row['location_name'] ?? '—'}',
+                      style: theme.textTheme.bodySmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'Остаток: $stockText',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class InventoryCatalogScreen extends StatefulWidget {
   const InventoryCatalogScreen({super.key, required this.repository});
   final ReferenceDataRepository repository;
@@ -18,6 +95,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
   String? status;
   bool loading = true, sequential = false;
   List<Map<String, Object?>> warehouseRows = [];
+  final Map<int, List<Map<String, Object?>>> warehouseOverview = {};
   String? warehouseFilter;
 
   @override
@@ -39,9 +117,19 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
       status: status,
       warehouseMoyskladId: warehouseFilter,
     );
+    final overview = await widget.repository.productWarehouseOverview(
+      result.map((row) => row['id'] as int),
+    );
+    final grouped = <int, List<Map<String, Object?>>>{};
+    for (final row in overview) {
+      (grouped[row['product_id'] as int] ??= []).add(row);
+    }
     if (mounted) {
       setState(() {
         products = result;
+        warehouseOverview
+          ..clear()
+          ..addAll(grouped);
         loading = false;
       });
     }
@@ -306,8 +394,16 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
                       )
                     : const Icon(Icons.inventory_2_outlined),
                 title: Text(p['name'] as String),
-                subtitle: Text(
-                  '${statusName(p['relevance_status'] as String?)} • Остаток: ${p['stock']} ${p['uom_name']}${p['supplier_name'] == null ? '' : ' • Поставщик: ${p['supplier_name']}'}',
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(statusName(p['relevance_status'] as String?)),
+                    Text('Поставщик: ${p['supplier_name'] ?? 'Не назначен'}'),
+                    ProductWarehouseOverview(
+                      rows: warehouseOverview[id] ?? const [],
+                      unit: p['uom_name']?.toString() ?? '',
+                    ),
+                  ],
                 ),
                 onLongPress: sequential
                     ? null
