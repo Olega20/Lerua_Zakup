@@ -446,6 +446,23 @@ void main() {
       location2,
     );
 
+    expect(
+      (await repository.products(warehouseMoyskladId: 'overview-w-1'))
+          .map((row) => row['id'])
+          .toList(),
+      [productWithStock],
+    );
+    expect(
+      (await repository.products(warehouseMoyskladId: 'overview-w-2'))
+          .map((row) => row['id'])
+          .toList(),
+      [productWithAssignment],
+    );
+    expect(
+      await repository.products(warehouseMoyskladId: 'unknown-warehouse'),
+      isEmpty,
+    );
+
     final overview = await repository.productWarehouseOverview([
       productWithStock,
       productWithAssignment,
