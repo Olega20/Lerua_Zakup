@@ -9,6 +9,7 @@ import 'package:lerua_zakup/features/connectivity/data/api_task_repository.dart'
 import 'package:lerua_zakup/features/connectivity/domain/api_task.dart';
 import 'package:lerua_zakup/features/connectivity/data/moysklad_api_client.dart';
 import 'package:lerua_zakup/features/references/data/reference_data_repository.dart';
+import 'package:lerua_zakup/features/warehouse_journal/data/warehouse_journal_repository.dart';
 import 'package:lerua_zakup/features/references/presentation/reference_screens.dart';
 import 'package:lerua_zakup/features/references/presentation/inventory_screens.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -84,7 +85,11 @@ class _FakeApi extends ApiTaskDispatcher {
   List<Map<String, dynamic>> stockByStoreRows = [];
   bool failStockByStore = false;
   int postRequests = 0;
+  int putRequests = 0;
   Map<String, Object?>? postedBody;
+  Map<String, Object?>? putBody;
+  List<Map<String, dynamic>> inventoryRows = [];
+  List<Map<String, dynamic>> inventoryPositionRows = [];
 
   @override
   Future<Map<String, Object?>> requestPost({
@@ -106,6 +111,20 @@ class _FakeApi extends ApiTaskDispatcher {
   }
 
   @override
+  Future<Map<String, Object?>> requestPut({
+    required String uid,
+    required String type,
+    required String logicalQueue,
+    required String path,
+    required Map<String, Object?> body,
+    Duration timeout = const Duration(minutes: 3),
+  }) async {
+    putRequests++;
+    putBody = body;
+    return {'id': 'updated-position'};
+  }
+
+  @override
   Future<List<ApiTask>> listTasks({
     String? logicalQueue,
     Set<ApiTaskStatus>? statuses,
@@ -121,6 +140,16 @@ class _FakeApi extends ApiTaskDispatcher {
     Duration timeout = const Duration(minutes: 3),
   }) async {
     if (path == '/entity/store') warehouseRequests++;
+    if (path == '/entity/inventory') {
+      return {'rows': inventoryRows, 'meta': {'size': inventoryRows.length}};
+    }
+    if (path.startsWith('/entity/inventory/') &&
+        path.endsWith('/positions')) {
+      return {
+        'rows': inventoryPositionRows,
+        'meta': {'size': inventoryPositionRows.length},
+      };
+    }
     if (failService && path == '/entity/service') {
       throw StateError('network');
     }
@@ -204,6 +233,7 @@ void main() {
   late AppDatabase db;
   late _FakeApi api;
   late _FakeDirectTransport directTransport;
+  late WarehouseJournalRepository journal;
   late ReferenceDataRepository repository;
   setUp(() async {
     db = AppDatabase(
@@ -212,11 +242,13 @@ void main() {
     );
     api = _FakeApi(db);
     directTransport = _FakeDirectTransport();
+    journal = WarehouseJournalRepository(database: db);
     repository = ReferenceDataRepository(
       database: db,
       api: api,
       directApiClient: MoySkladApiClient(transport: directTransport),
       tokenStore: _TokenStore(),
+      warehouseJournal: journal,
     );
     final sql = await db.database;
     await sql.insert('warehouses', {'moysklad_id': 'w-1', 'name': 'Склад 1'});
@@ -224,6 +256,51 @@ void main() {
   });
   tearDown(() async {
     await db.close();
+  });
+
+  test('remote MoySklad inventories are fetched live and not stored locally', () async {
+    api.inventoryRows = [
+      {
+        'id': 'remote-inventory-1',
+        'name': 'Пересчёт склада',
+        'store': {'name': 'Склад 1'},
+      },
+    ];
+
+    final remote = await repository.moySkladInventories();
+
+    expect(remote.single['id'], 'remote-inventory-1');
+    expect(await repository.inventorySessions(), isEmpty);
+  });
+
+  test('remote inventory position updates use PUT and are journaled', () async {
+    api.inventoryPositionRows = [
+      {
+        'id': 'position-1',
+        'quantity': 3,
+        'assortment': {'name': 'Саморез'},
+      },
+    ];
+    final positions = await repository.moySkladInventoryPositions(
+      'remote-inventory-1',
+    );
+    expect(positions.single['id'], 'position-1');
+
+    await repository.updateMoySkladInventoryPosition(
+      inventoryId: 'remote-inventory-1',
+      positionId: 'position-1',
+      productName: 'Саморез',
+      quantity: 8,
+      documentName: 'Пересчёт склада',
+    );
+
+    expect(api.putRequests, 1);
+    expect(api.putBody, {'quantity': 8.0});
+    final entries = await journal.latestEntries();
+    expect(entries.single['summary'], 'Пересчёт склада');
+    expect(entries.single['state'], 'updated');
+    final events = await journal.events(entries.single['id'] as int);
+    expect(events.single['event_type'], 'position_updated');
   });
 
   test(
