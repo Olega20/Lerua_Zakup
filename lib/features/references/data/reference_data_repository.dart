@@ -933,19 +933,6 @@ class ReferenceDataRepository {
           'МойСклад не вернул идентификатор инвентаризации.',
         );
       }
-      await warehouseJournal?.recordInventoryEvent(
-        entryUid: 'inventory:$uid',
-        summary: 'Инвентаризация • ${session['warehouse_name_snapshot']}',
-        state: 'in_moysklad',
-        eventType: 'sent_to_moysklad',
-        message: 'Инвентаризация создана в МойСклад',
-        snapshot: {
-          'moysklad_inventory_id': documentId,
-          'moysklad_href': href,
-          'organization': session['organization_name_snapshot'],
-          'warehouse': session['warehouse_name_snapshot'],
-        },
-      );
       await db.update(
         'inventory_sessions',
         {
@@ -959,6 +946,19 @@ class ReferenceDataRepository {
         where: 'id=?',
         whereArgs: [sessionId],
       );
+      await warehouseJournal?.recordInventoryEvent(
+        entryUid: 'inventory:$uid',
+        summary: 'Инвентаризация • ${session['warehouse_name_snapshot']}',
+        state: 'in_moysklad',
+        eventType: 'sent_to_moysklad',
+        message: 'Инвентаризация создана в МойСклад',
+        snapshot: {
+          'moysklad_inventory_id': documentId,
+          'moysklad_href': href,
+          'organization': session['organization_name_snapshot'],
+          'warehouse': session['warehouse_name_snapshot'],
+        },
+      );
     } catch (error) {
       await db.update(
         'inventory_sessions',
@@ -970,6 +970,19 @@ class ReferenceDataRepository {
         where: 'id=?',
         whereArgs: [sessionId],
       );
+      try {
+        await warehouseJournal?.recordInventoryEvent(
+          entryUid: 'inventory:${session['session_uid']}',
+          summary: 'Инвентаризация • ${session['warehouse_name_snapshot']}',
+          state: 'sync_failed',
+          eventType: 'sync_failed',
+          level: 'error',
+          message: 'Не удалось отправить инвентаризацию в МойСклад',
+          snapshot: {'error': error.toString()},
+        );
+      } catch (_) {
+        // The original synchronization failure remains the primary error.
+      }
       rethrow;
     }
   }
