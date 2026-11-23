@@ -22,7 +22,7 @@ class AppDatabase {
     final db = await _factory.openDatabase(
       path,
       options: sqflite.OpenDatabaseOptions(
-        version: 4,
+        version: 5,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
           await db.execute('PRAGMA journal_mode = WAL');
@@ -76,6 +76,18 @@ class AppDatabase {
             );
             await db.insert('schema_migrations', {
               'version': 4,
+              'applied_at': DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+          if (oldVersion < 5) {
+            await db.execute(
+              '''CREATE TABLE product_supplier_assignments(id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE, supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT, assigned_at INTEGER NOT NULL)''',
+            );
+            await db.execute(
+              'CREATE INDEX product_supplier_assignments_supplier_idx ON product_supplier_assignments(supplier_id)',
+            );
+            await db.insert('schema_migrations', {
+              'version': 5,
               'applied_at': DateTime.now().millisecondsSinceEpoch,
             });
           }
@@ -153,6 +165,8 @@ class AppDatabase {
     '''CREATE TABLE organizations(id INTEGER PRIMARY KEY AUTOINCREMENT, moysklad_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, is_archived INTEGER NOT NULL DEFAULT 0, is_present INTEGER NOT NULL DEFAULT 1, last_synced_at INTEGER, raw_sync_json TEXT)''',
     '''CREATE TABLE payment_methods(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL COLLATE NOCASE UNIQUE, organization_id INTEGER UNIQUE REFERENCES organizations(id) ON DELETE RESTRICT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''',
     '''CREATE TABLE suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT, moysklad_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, phone TEXT, relevance_status TEXT NOT NULL DEFAULT 'other' CHECK(relevance_status IN ('current','other')), payment_method_id INTEGER REFERENCES payment_methods(id) ON DELETE RESTRICT, last_synced_at INTEGER, raw_sync_json TEXT)''',
+    '''CREATE TABLE product_supplier_assignments(id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL UNIQUE REFERENCES products(id) ON DELETE CASCADE, supplier_id INTEGER NOT NULL REFERENCES suppliers(id) ON DELETE RESTRICT, assigned_at INTEGER NOT NULL)''',
+    'CREATE INDEX product_supplier_assignments_supplier_idx ON product_supplier_assignments(supplier_id)',
     'CREATE INDEX suppliers_name_idx ON suppliers(name COLLATE NOCASE)',
     '''CREATE TABLE business_operations(id INTEGER PRIMARY KEY AUTOINCREMENT, operation_uid TEXT NOT NULL UNIQUE, operation_type TEXT NOT NULL, business_status TEXT NOT NULL, supplier_id INTEGER REFERENCES suppliers(id) ON DELETE RESTRICT, organization_moysklad_id_snapshot TEXT, organization_name_snapshot TEXT, payment_method_id_snapshot INTEGER, payment_method_name_snapshot TEXT, payload_json TEXT NOT NULL DEFAULT '{}', created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''',
     '''CREATE TABLE business_operation_lines(id INTEGER PRIMARY KEY AUTOINCREMENT, operation_id INTEGER NOT NULL REFERENCES business_operations(id) ON DELETE CASCADE, product_id INTEGER REFERENCES products(id) ON DELETE RESTRICT, product_moysklad_id_snapshot TEXT NOT NULL, product_name_snapshot TEXT NOT NULL, quantity REAL NOT NULL, uom_name_snapshot TEXT NOT NULL)''',

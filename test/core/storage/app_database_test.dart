@@ -9,20 +9,26 @@ void main() {
   sqfliteFfiInit();
 
   test(
-    'upgrades a version 3 database without losing existing products',
+    'upgrades a version 4 database without losing existing products',
     () async {
-      final directory = await Directory.systemTemp.createTemp('lerua-db-v3-');
+      final directory = await Directory.systemTemp.createTemp('lerua-db-v4-');
       final path = '${directory.path}${Platform.pathSeparator}legacy.db';
       final oldDb = await databaseFactoryFfi.openDatabase(
         path,
         options: OpenDatabaseOptions(
-          version: 3,
+          version: 4,
           onCreate: (db, version) async {
             await db.execute(
               'CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)',
             );
             await db.execute(
               'CREATE TABLE products(id INTEGER PRIMARY KEY, moysklad_id TEXT NOT NULL, name TEXT NOT NULL)',
+            );
+            await db.execute(
+              'CREATE TABLE suppliers(id INTEGER PRIMARY KEY, moysklad_id TEXT NOT NULL, name TEXT NOT NULL)',
+            );
+            await db.execute(
+              'CREATE TABLE product_warehouse_stock(id INTEGER PRIMARY KEY, product_id INTEGER, warehouse_moysklad_id TEXT, warehouse_name TEXT, stock REAL, updated_at INTEGER)',
             );
             await db.insert('products', {
               'id': 41,
@@ -43,9 +49,13 @@ void main() {
       final stockTable = await db.rawQuery(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='product_warehouse_stock'",
       );
+      final supplierTable = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='product_supplier_assignments'",
+      );
 
       expect(product.single['moysklad_id'], 'existing-product');
       expect(stockTable, hasLength(1));
+      expect(supplierTable, hasLength(1));
       await appDatabase.close();
       await directory.delete(recursive: true);
     },
@@ -67,6 +77,7 @@ void main() {
       containsAll([
         'products',
         'product_warehouse_stock',
+        'product_supplier_assignments',
         'warehouses',
         'storage_locations',
         'organizations',

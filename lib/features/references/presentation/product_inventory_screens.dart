@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/reference_data_repository.dart';
@@ -15,11 +17,19 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
   String search = '';
   String? status;
   bool loading = true, sequential = false;
+  List<Map<String, Object?>> warehouseRows = [];
+  String? warehouseFilter;
 
   @override
   void initState() {
     super.initState();
+    loadWarehouses();
     load();
+  }
+
+  Future<void> loadWarehouses() async {
+    final result = await widget.repository.warehouses();
+    if (mounted) setState(() => warehouseRows = result);
   }
 
   Future<void> load() async {
@@ -27,6 +37,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
     final result = await widget.repository.products(
       search: search,
       status: status,
+      warehouseMoyskladId: warehouseFilter,
     );
     if (mounted) {
       setState(() {
@@ -47,6 +58,35 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
     if (!mounted) return;
     setState(() => selected.clear());
     await load();
+  }
+
+  Future<void> chooseSupplier(List<int> ids) async {
+    final supplier = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => SupplierPickerDialog(repository: widget.repository),
+    );
+    if (supplier == null || !mounted) return;
+    try {
+      await widget.repository.assignSupplierToProducts(ids, supplier);
+      if (!mounted) return;
+      setState(() => selected.clear());
+      await load();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Поставщик «${supplier['name']}» назначен ${ids.length} товарам',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось назначить поставщика: $error')),
+        );
+      }
+    }
   }
 
   Future<void> chooseStorage(List<int> ids) async {
@@ -140,6 +180,9 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
                 case 'storage':
                   chooseStorage(ids);
                   break;
+                case 'supplier':
+                  chooseSupplier(ids);
+                  break;
               }
             },
             itemBuilder: (_) => const [
@@ -150,6 +193,10 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
               PopupMenuItem(
                 value: 'storage',
                 child: Text('Выбрать склад и место хранения'),
+              ),
+              PopupMenuItem(
+                value: 'supplier',
+                child: Text('Назначить поставщика'),
               ),
             ],
           ),
@@ -209,6 +256,32 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
             },
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: DropdownButtonFormField<String?>(
+            initialValue: warehouseFilter,
+            decoration: const InputDecoration(labelText: 'Склад'),
+            items: [
+              const DropdownMenuItem<String?>(
+                value: null,
+                child: Text('Все склады'),
+              ),
+              ...warehouseRows.map(
+                (w) => DropdownMenuItem<String?>(
+                  value: w['moysklad_id'] as String,
+                  child: Text(
+                    w['name'] as String,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+            onChanged: (value) {
+              setState(() => warehouseFilter = value);
+              load();
+            },
+          ),
+        ),
         if (loading) const LinearProgressIndicator(),
         Expanded(
           child: ListView.builder(
@@ -234,7 +307,7 @@ class _InventoryCatalogScreenState extends State<InventoryCatalogScreen> {
                     : const Icon(Icons.inventory_2_outlined),
                 title: Text(p['name'] as String),
                 subtitle: Text(
-                  '${statusName(p['relevance_status'] as String?)} • Остаток: ${p['stock']} ${p['uom_name']}',
+                  '${statusName(p['relevance_status'] as String?)} • Остаток: ${p['stock']} ${p['uom_name']}${p['supplier_name'] == null ? '' : ' • Поставщик: ${p['supplier_name']}'}',
                 ),
                 onLongPress: sequential
                     ? null
@@ -294,6 +367,7 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<Map<String, Object?>> assignments = [];
+  Map<String, Object?>? supplier;
   bool loading = true;
   late String currentStatus;
   @override
@@ -308,11 +382,35 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final rows = await widget.repository.productStorageAssignments(
       widget.product['id'] as int,
     );
+    final selectedSupplier = await widget.repository.productSupplier(
+      widget.product['id'] as int,
+    );
     if (mounted) {
       setState(() {
         assignments = rows;
+        supplier = selectedSupplier;
         loading = false;
       });
+    }
+  }
+
+  Future<void> chooseSupplier() async {
+    final selected = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => SupplierPickerDialog(repository: widget.repository),
+    );
+    if (selected == null || !mounted) return;
+    try {
+      await widget.repository.assignSupplierToProducts([
+        widget.product['id'] as int,
+      ], selected);
+      await load();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось назначить поставщика: $error')),
+        );
+      }
     }
   }
 
@@ -376,6 +474,17 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
           const SizedBox(height: 8),
           Text('Остаток: ${p['stock']} ${p['uom_name']}'),
           const SizedBox(height: 24),
+          const Text(
+            'Поставщик',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            title: Text(supplier?['name'] as String? ?? 'Не назначен'),
+            subtitle: Text(supplier?['phone'] as String? ?? ''),
+            trailing: const Icon(Icons.search),
+            onTap: chooseSupplier,
+          ),
           const Text('Статус', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           SegmentedButton<String>(
@@ -451,6 +560,7 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
   bool saving = false;
   List<Map<String, Object?>> assignments = [];
   List<Map<String, Object?>> warehouseStocks = [];
+  Map<String, Object?>? supplier;
   String? detailsError;
   Map<String, Object?> get product => widget.items[index];
 
@@ -467,10 +577,12 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
         id,
       );
       final nextStocks = await widget.repository.productWarehouseStocks(id);
+      final nextSupplier = await widget.repository.productSupplier(id);
       if (mounted && (product['id'] as int) == id) {
         setState(() {
           assignments = nextAssignments;
           warehouseStocks = nextStocks;
+          supplier = nextSupplier;
           detailsError = null;
         });
       }
@@ -503,6 +615,30 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Не удалось сохранить статус: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> chooseSupplier() async {
+    if (saving) return;
+    final selected = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => SupplierPickerDialog(repository: widget.repository),
+    );
+    if (selected == null || !mounted) return;
+    setState(() => saving = true);
+    try {
+      await widget.repository.assignSupplierToProducts([
+        product['id'] as int,
+      ], selected);
+      await loadProductDetails();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось назначить поставщика: $error')),
         );
       }
     } finally {
@@ -632,6 +768,14 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
             );
           }),
         const SizedBox(height: 16),
+        const Text('Поставщик', style: TextStyle(fontWeight: FontWeight.bold)),
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(supplier?['name'] as String? ?? 'Не назначен'),
+          subtitle: Text(supplier?['phone'] as String? ?? ''),
+          trailing: const Icon(Icons.search),
+          onTap: saving ? null : chooseSupplier,
+        ),
         const Text(
           'Места хранения',
           style: TextStyle(fontWeight: FontWeight.bold),
@@ -712,5 +856,122 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
         if (saving) const LinearProgressIndicator(),
       ],
     ),
+  );
+}
+
+class SupplierPickerDialog extends StatefulWidget {
+  const SupplierPickerDialog({super.key, required this.repository});
+  final ReferenceDataRepository repository;
+
+  @override
+  State<SupplierPickerDialog> createState() => _SupplierPickerDialogState();
+}
+
+class _SupplierPickerDialogState extends State<SupplierPickerDialog> {
+  final controller = TextEditingController();
+  Timer? timer;
+  List<Map<String, dynamic>> results = [];
+  bool loading = false;
+  int generation = 0;
+
+  void search(String value) {
+    timer?.cancel();
+    final request = ++generation;
+    if (value.trim().length < 2) {
+      setState(() {
+        results = [];
+        loading = false;
+      });
+      return;
+    }
+    setState(() {
+      results = [];
+      loading = true;
+    });
+    timer = Timer(const Duration(milliseconds: 500), () async {
+      try {
+        final found = await widget.repository.searchSuppliers(value);
+        if (mounted && request == generation) {
+          setState(() => results = found);
+        }
+      } catch (error) {
+        if (mounted && request == generation) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '\u041f\u043e\u0438\u0441\u043a \u043f\u043e\u0441\u0442\u0430\u0432\u0449\u0438\u043a\u043e\u0432 \u043d\u0435 \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d: $error',
+              ),
+            ),
+          );
+        }
+      } finally {
+        if (mounted && request == generation) {
+          setState(() => loading = false);
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    timer?.cancel();
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text(
+      '\u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u043f\u043e\u0441\u0442\u0430\u0432\u0449\u0438\u043a',
+    ),
+    content: SizedBox(
+      width: 480,
+      height: 420,
+      child: Column(
+        children: [
+          TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: '\u041f\u043e\u0438\u0441\u043a \u043e\u0442 \u0434\u0432\u0443\u0445 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432',
+            ),
+            onChanged: search,
+          ),
+          if (loading) const LinearProgressIndicator(),
+          Expanded(
+            child: controller.text.trim().length < 2
+                ? const Center(
+                    child: Text(
+                      '\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043d\u0435 \u043c\u0435\u043d\u0435\u0435 \u0434\u0432\u0443\u0445 \u0441\u0438\u043c\u0432\u043e\u043b\u043e\u0432',
+                    ),
+                  )
+                : results.isEmpty && !loading
+                ? const Center(
+                    child: Text(
+                      '\u041f\u043e\u0441\u0442\u0430\u0432\u0449\u0438\u043a\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d\u044b',
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: results.length,
+                    itemBuilder: (context, index) {
+                      final supplier = results[index];
+                      return ListTile(
+                        title: Text(supplier['name']?.toString() ?? ''),
+                        subtitle: Text(supplier['phone']?.toString() ?? ''),
+                        onTap: () => Navigator.pop(context, supplier),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context),
+        child: const Text('\u041e\u0442\u043c\u0435\u043d\u0430'),
+      ),
+    ],
   );
 }

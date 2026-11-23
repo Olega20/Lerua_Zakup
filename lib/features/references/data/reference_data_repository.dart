@@ -469,22 +469,29 @@ class ReferenceDataRepository {
     String search = '',
     String? status,
     bool archived = false,
+    String? warehouseMoyskladId,
   }) async {
-    final clauses = <String>['is_archived=?', 'is_present=1'];
+    final clauses = <String>['p.is_archived=?', 'p.is_present=1'];
     final args = <Object?>[archived ? 1 : 0];
     if (status != null) {
-      clauses.add('relevance_status=?');
+      clauses.add('p.relevance_status=?');
       args.add(status);
     }
     if (search.trim().isNotEmpty) {
-      clauses.add('name LIKE ?');
+      clauses.add('p.name LIKE ?');
       args.add('%${search.trim()}%');
     }
-    return (await _db).query(
-      'products',
-      where: clauses.join(' AND '),
-      whereArgs: args,
-      orderBy: "CASE relevance_status WHEN 'unassigned' THEN 0 WHEN 'relevant' THEN 1 ELSE 2 END,name COLLATE NOCASE",
+    if (warehouseMoyskladId != null) {
+      clauses.add(
+        '(EXISTS (SELECT 1 FROM product_warehouse_stock ws WHERE ws.product_id=p.id AND ws.warehouse_moysklad_id=?) OR EXISTS (SELECT 1 FROM product_storage_assignments psa2 JOIN warehouses w2 ON w2.id=psa2.warehouse_id WHERE psa2.product_id=p.id AND w2.moysklad_id=?))',
+      );
+      args
+        ..add(warehouseMoyskladId)
+        ..add(warehouseMoyskladId);
+    }
+    return (await _db).rawQuery(
+      '''SELECT p.*,s.name AS supplier_name,s.phone AS supplier_phone FROM products p LEFT JOIN product_supplier_assignments psa ON psa.product_id=p.id LEFT JOIN suppliers s ON s.id=psa.supplier_id WHERE ${clauses.join(' AND ')} ORDER BY CASE p.relevance_status WHEN 'unassigned' THEN 0 WHEN 'relevant' THEN 1 ELSE 2 END,p.name COLLATE NOCASE''',
+      args,
     );
   }
 
@@ -660,6 +667,72 @@ class ReferenceDataRepository {
           orderBy: 'warehouse_name COLLATE NOCASE',
         ),
       );
+
+  Future<Map<String, Object?>?> productSupplier(int productId) async {
+    final rows = await (await _db).rawQuery(
+      '''SELECT s.*,psa.assigned_at FROM product_supplier_assignments psa JOIN suppliers s ON s.id=psa.supplier_id WHERE psa.product_id=? LIMIT 1''',
+      [productId],
+    );
+    return rows.isEmpty ? null : rows.first;
+  }
+
+  Future<void> assignSupplierToProducts(
+    Iterable<int> productIds,
+    Map<String, dynamic> supplier,
+  ) => _guard(
+    'Назначение поставщика товарам',
+    'PRODUCT_SUPPLIER_ASSIGNMENT_FAILED',
+    () async {
+      final moyskladId = supplier['id']?.toString();
+      final name = supplier['name']?.toString();
+      if (moyskladId == null ||
+          moyskladId.isEmpty ||
+          name == null ||
+          name.isEmpty) {
+        throw const FormatException('Карточка поставщика некорректна');
+      }
+      final db = await _db;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.transaction((txn) async {
+        final old = await txn.query(
+          'suppliers',
+          where: 'moysklad_id=?',
+          whereArgs: [moyskladId],
+          limit: 1,
+        );
+        final values = <String, Object?>{
+          'moysklad_id': moyskladId,
+          'name': name,
+          'phone': supplier['phone']?.toString(),
+          'relevance_status': 'current',
+          'payment_method_id': old.isEmpty
+              ? null
+              : old.first['payment_method_id'],
+          'last_synced_at': now,
+          'raw_sync_json': jsonEncode(supplier),
+        };
+        late int supplierId;
+        if (old.isEmpty) {
+          supplierId = await txn.insert('suppliers', values);
+        } else {
+          supplierId = old.first['id'] as int;
+          await txn.update(
+            'suppliers',
+            values,
+            where: 'id=?',
+            whereArgs: [supplierId],
+          );
+        }
+        for (final productId in productIds.toSet()) {
+          await txn.insert('product_supplier_assignments', {
+            'product_id': productId,
+            'supplier_id': supplierId,
+            'assigned_at': now,
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+    },
+  );
 
   Future<void> assignProductsToStorageLocation(
     Iterable<int> productIds,

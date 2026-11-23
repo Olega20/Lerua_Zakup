@@ -272,6 +272,59 @@ void main() {
     expect(reordered.map((r) => r['id']).toList(), [second, first]);
   });
 
+  test('assigning a supplier to products saves a current local supplier and supports warehouse filtering', () async {
+    final sql = await db.database;
+    final productId = await sql.insert('products', {
+      'moysklad_id': 'supplier-product',
+      'name': 'Товар с поставщиком',
+      'kind': 'product',
+    });
+    await sql.insert('warehouses', {
+      'moysklad_id': 'supplier-warehouse',
+      'name': 'Склад для фильтра',
+    });
+    await sql.insert('product_warehouse_stock', {
+      'product_id': productId,
+      'warehouse_moysklad_id': 'supplier-warehouse',
+      'warehouse_name': 'Склад для фильтра',
+      'stock': 7,
+      'updated_at': DateTime.now().millisecondsSinceEpoch,
+    });
+
+    final supplier = {
+      'id': 'supplier-from-search',
+      'name': 'Поставщик из поиска',
+      'phone': '+70000000000',
+      'meta': {
+        'href': 'https://api.moysklad.ru/api/remap/1.2/entity/counterparty/supplier-from-search',
+      },
+    };
+    await repository.assignSupplierToProducts([productId], supplier);
+
+    final assigned = await repository.productSupplier(productId);
+    expect(assigned?['name'], 'Поставщик из поиска');
+    expect(assigned?['phone'], '+70000000000');
+    expect(assigned?['raw_sync_json'], isNotNull);
+    expect(
+      (await repository.suppliers(status: 'current')).single['moysklad_id'],
+      'supplier-from-search',
+    );
+    expect(
+      (await repository.products()).single['supplier_name'],
+      'Поставщик из поиска',
+    );
+    expect(
+      (await repository.products(warehouseMoyskladId: 'supplier-warehouse'))
+          .single['id'],
+      productId,
+    );
+    expect(
+      await repository.products(warehouseMoyskladId: 'missing-warehouse'),
+      isEmpty,
+    );
+    expect(await repository.productSupplier(productId), isNotNull);
+  });
+
   test('payment method belongs to at most one organization and suppliers may share it', () async {
     final sql = await db.database;
     final o1 = await sql.insert('organizations', {
