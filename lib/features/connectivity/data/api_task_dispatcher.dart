@@ -165,6 +165,23 @@ class ApiTaskDispatcher {
     if (_ready && _online) unawaited(pump());
   }
 
+  Future<void> enqueuePut({
+    required String uid,
+    required String type,
+    required String logicalQueue,
+    required String path,
+    required Map<String, Object?> body,
+  }) async {
+    await repository.enqueue(
+      uid: uid,
+      type: type,
+      logicalQueue: logicalQueue,
+      request: {'method': 'PUT', 'path': path, 'body': body},
+      clock: _clock,
+    );
+    if (_ready && _online) unawaited(pump());
+  }
+
   Future<void> pump() async {
     if (_disposed || !_ready || !_online) return;
     if (_pumping) {
@@ -194,10 +211,10 @@ class ApiTaskDispatcher {
         final method = request['method'];
         final path = request['path'];
         final rawBody = request['body'];
-        if ((method != 'GET' && method != 'POST') ||
+        if ((method != 'GET' && method != 'POST' && method != 'PUT') ||
             path is! String ||
             !path.startsWith('/') ||
-            (method == 'POST' && rawBody is! Map)) {
+            (method != 'GET' && rawBody is! Map)) {
           await repository.finishAttempt(
             taskId: claim.task.id,
             attemptNumber: claim.attemptNumber,
@@ -219,8 +236,14 @@ class ApiTaskDispatcher {
         final ApiResourceResult result;
         if (method == 'GET') {
           result = await apiClient.getResource(token, path, query: query);
-        } else {
+        } else if (method == 'POST') {
           result = await apiClient.postResource(
+            token,
+            path,
+            Map<String, dynamic>.from(rawBody as Map),
+          );
+        } else {
+          result = await apiClient.putResource(
             token,
             path,
             Map<String, dynamic>.from(rawBody as Map),
@@ -250,7 +273,7 @@ class ApiTaskDispatcher {
           _activeClaim = null;
           continue;
         }
-        if (method == 'POST') {
+        if (method != 'GET') {
           // Writes are never automatically retried. A timeout or server error
           // may happen after MoySklad has created the document.
           final ambiguous = result.statusCode == 408 || result.statusCode >= 500;
@@ -445,6 +468,48 @@ class ApiTaskDispatcher {
       await Future<void>.delayed(const Duration(milliseconds: 250));
     }
     throw TimeoutException('API write task did not complete in time');
+  }
+
+  Future<Map<String, Object?>> requestPut({
+    required String uid,
+    required String type,
+    required String logicalQueue,
+    required String path,
+    required Map<String, Object?> body,
+    Duration timeout = const Duration(minutes: 3),
+  }) async {
+    await enqueuePut(
+      uid: uid,
+      type: type,
+      logicalQueue: logicalQueue,
+      path: path,
+      body: body,
+    );
+    final deadline = _clock().add(timeout);
+    while (_clock().isBefore(deadline)) {
+      final task = await repository.getTaskByUid(uid);
+      if (task == null) throw StateError('Задача PUT потеряна из очереди');
+      if (task.status == ApiTaskStatus.succeeded) {
+        return task.response ?? <String, Object?>{};
+      }
+      if (task.status == ApiTaskStatus.failed ||
+          task.status == ApiTaskStatus.uncertain ||
+          task.status == ApiTaskStatus.cancelled) {
+        throw ApiTaskExecutionException(
+          task.status,
+          task.response,
+          taskId: task.id,
+          safeErrorCode: task.status == ApiTaskStatus.uncertain
+              ? 'WRITE_RESULT_UNCERTAIN'
+              : 'API_REJECTED',
+          safeErrorMessage: task.status == ApiTaskStatus.uncertain
+              ? 'Результат изменения не подтверждён. Обновите документ перед повтором.'
+              : 'МойСклад отклонил изменение документа.',
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    throw TimeoutException('Истекло время ожидания ответа МойСклад для PUT');
   }
 
   Future<ApiTask?> taskByUid(String uid) => repository.getTaskByUid(uid);
