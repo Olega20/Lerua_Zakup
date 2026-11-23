@@ -884,3 +884,243 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     );
   }
 }
+
+
+class MoySkladInventoryScreen extends StatefulWidget {
+  const MoySkladInventoryScreen({
+    super.key,
+    required this.repository,
+    required this.inventory,
+  });
+
+  final ReferenceDataRepository repository;
+  final Map<String, dynamic> inventory;
+
+  @override
+  State<MoySkladInventoryScreen> createState() =>
+      _MoySkladInventoryScreenState();
+}
+
+class _MoySkladInventoryScreenState extends State<MoySkladInventoryScreen> {
+  List<Map<String, dynamic>> positions = [];
+  bool loading = true;
+  bool saving = false;
+  String? error;
+
+  String get inventoryId => widget.inventory['id']?.toString() ?? '';
+  String get inventoryName =>
+      widget.inventory['name']?.toString() ?? 'Инвентаризация';
+
+  @override
+  void initState() {
+    super.initState();
+    load();
+  }
+
+  Future<void> load() async {
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      if (inventoryId.isEmpty) {
+        throw StateError('МойСклад не вернул идентификатор документа.');
+      }
+      final rows = await widget.repository.moySkladInventoryPositions(
+        inventoryId,
+      );
+      if (!mounted) return;
+      setState(() {
+        positions = rows;
+        loading = false;
+      });
+    } catch (exception) {
+      if (!mounted) return;
+      setState(() {
+        error = exception.toString();
+        loading = false;
+      });
+    }
+  }
+
+  Future<void> editPosition(Map<String, dynamic> position) async {
+    final positionId = position['id']?.toString();
+    if (positionId == null || positionId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('У позиции нет идентификатора МойСклад')),
+      );
+      return;
+    }
+    final assortment = position['assortment'];
+    final productName = assortment is Map
+        ? assortment['name']?.toString() ?? 'Товар'
+        : 'Товар';
+    final controller = TextEditingController(
+      text: (position['quantity'] as num?)?.toString() ?? '0',
+    );
+    final quantity = await showDialog<double>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(productName),
+        content: SizedBox(
+          width: 360,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                readOnly: true,
+                showCursor: true,
+                decoration: const InputDecoration(
+                  labelText: 'Учётное количество',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              QuantityKeyboard(
+                controller: controller,
+                onChanged: () {},
+                height: 250,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = double.tryParse(
+                controller.text.trim().replaceAll(',', '.'),
+              );
+              if (value == null || !value.isFinite || value < 0) {
+                ScaffoldMessenger.of(dialogContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Введите корректное неотрицательное число'),
+                  ),
+                );
+                return;
+              }
+              Navigator.pop(dialogContext, value);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (quantity == null || !mounted) return;
+    setState(() => saving = true);
+    try {
+      await widget.repository.updateMoySkladInventoryPosition(
+        inventoryId: inventoryId,
+        positionId: positionId,
+        productName: productName,
+        quantity: quantity,
+        documentName: inventoryName,
+      );
+      await load();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Изменение сохранено в МойСклад')),
+      );
+    } catch (exception) {
+      if (!mounted) return;
+      setState(() => saving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Не удалось изменить позицию: $exception')),
+      );
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final store = _inventoryRelatedName(widget.inventory['store']);
+    final organization = _inventoryRelatedName(
+      widget.inventory['organization'],
+    );
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(inventoryName),
+        actions: [
+          IconButton(
+            tooltip: 'Обновить из МойСклад',
+            onPressed: loading || saving ? null : load,
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
+      ),
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : error != null
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: load,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : Column(
+              children: [
+                if (saving) const LinearProgressIndicator(),
+                ListTile(
+                  title: Text(store.isEmpty ? 'Склад не указан' : store),
+                  subtitle: Text(
+                    organization.isEmpty
+                        ? 'Документ загружен непосредственно из МойСклад'
+                        : organization,
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: positions.isEmpty
+                      ? const Center(child: Text('В документе нет позиций'))
+                      : ListView.separated(
+                          itemCount: positions.length,
+                          separatorBuilder: (_, _) =>
+                              const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final position = positions[index];
+                            final assortment = position['assortment'];
+                            final productName = assortment is Map
+                                ? assortment['name']?.toString() ?? 'Товар'
+                                : 'Товар';
+                            final quantity =
+                                (position['quantity'] as num?)?.toString() ??
+                                '—';
+                            final calculated =
+                                (position['calculatedQuantity'] as num?)
+                                    ?.toString();
+                            return ListTile(
+                              title: Text(productName),
+                              subtitle: Text(
+                                'Учётное количество: $quantity'
+                                '${calculated == null ? '' : ' • Расчётный остаток: $calculated'}',
+                              ),
+                              trailing: const Icon(Icons.edit_outlined),
+                              onTap: saving
+                                  ? null
+                                  : () => editPosition(position),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+}
