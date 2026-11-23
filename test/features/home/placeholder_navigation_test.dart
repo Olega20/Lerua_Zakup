@@ -70,6 +70,11 @@ void main() {
       if (label == 'Прочие действия') {
         await tester.pumpAndSettle();
         expect(find.text('Актуальные товары МойСклад'), findsOneWidget);
+      } else if (label == 'Инвентаризация') {
+        await tester.pumpAndSettle();
+        expect(find.text('Инвентаризация'), findsOneWidget);
+        await tester.pageBack();
+        await tester.pumpAndSettle();
       } else {
         expect(
           find.text('Функция находится в разработке'),
