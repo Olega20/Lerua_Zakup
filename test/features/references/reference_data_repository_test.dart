@@ -81,6 +81,34 @@ class _FakeApi extends ApiTaskDispatcher {
   List<Map<String, dynamic>> organizationRows = [];
   List<Map<String, dynamic>> stockByStoreRows = [];
   bool failStockByStore = false;
+  int postRequests = 0;
+  Map<String, Object?>? postedBody;
+
+  @override
+  Future<Map<String, Object?>> requestPost({
+    required String uid,
+    required String type,
+    required String logicalQueue,
+    required String path,
+    required Map<String, Object?> body,
+    Duration timeout = const Duration(minutes: 3),
+  }) async {
+    postRequests++;
+    postedBody = body;
+    return {
+      'id': 'created-inventory-1',
+      'meta': {
+        'href': 'https://api.moysklad.ru/api/remap/1.2/entity/inventory/created-inventory-1',
+      },
+    };
+  }
+
+  @override
+  Future<List<ApiTask>> listTasks({
+    String? logicalQueue,
+    Set<ApiTaskStatus>? statuses,
+  }) async => [];
+
   @override
   Future<Map<String, Object?>> requestGet({
     required String uid,
@@ -461,8 +489,8 @@ void main() {
     await repository.saveInventoryCount(line['id'] as int, 4);
     await repository.syncInventorySession(sessionId);
 
-    expect(directTransport.postedUri!.path, '/api/remap/1.2/entity/inventory');
-    final payload = directTransport.postedBody! as Map<String, dynamic>;
+    expect(api.postRequests, 1);
+    final payload = api.postedBody!;
     expect(payload['externalCode'], isA<String>());
     expect(
       (payload['organization'] as Map)['meta']['href'],
