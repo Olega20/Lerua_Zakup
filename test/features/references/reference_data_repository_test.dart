@@ -463,6 +463,10 @@ void main() {
     expect(zeroLine['actual_quantity'], 0);
     expect(zeroLine['include_in_inventory'], 1);
     expect((await repository.inventorySessions()).single['status'], 'draft');
+
+    await repository.deleteInventoryDraft(sessionId);
+    expect(await repository.inventorySessions(), isEmpty);
+    expect(await repository.inventoryLines(sessionId), isEmpty);
   });
 
   test('sends the completed local inventory to MoySklad and stores its document id', () async {
