@@ -43,7 +43,9 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
       }
       if (!mounted) return;
       setState(() {
-        sessions = values[0];
+        sessions = values[0]
+            .where((session) => session['status'] != 'completed')
+            .toList();
         organizations = values[1];
         warehouses = values[2];
         remoteInventories = remote;
