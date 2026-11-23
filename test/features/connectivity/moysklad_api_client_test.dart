@@ -32,8 +32,54 @@ class FakeMoySkladHttpTransport implements MoySkladHttpTransport {
   }
 }
 
+class FakeMoySkladWriteTransport extends FakeMoySkladHttpTransport
+    implements MoySkladHttpWriteTransport {
+  FakeMoySkladWriteTransport() : super(null);
+
+  int postCalls = 0;
+  Object? postedBody;
+  Uri? postedUri;
+  Map<String, String>? postedHeaders;
+
+  @override
+  Future<MoySkladHttpResponse> post(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Object body,
+    required Duration connectionTimeout,
+    required Duration responseTimeout,
+  }) async {
+    postCalls++;
+    postedUri = uri;
+    postedHeaders = headers;
+    postedBody = body;
+    return const MoySkladHttpResponse(
+      statusCode: 201,
+      body: '{"id":"inventory-1","meta":{"href":"https://api.moysklad.ru/api/remap/1.2/entity/inventory/inventory-1"}}',
+    );
+  }
+}
+
 void main() {
   group('MoySkladApiClient', () {
+    test('creates resources with authenticated POST and returns the document', () async {
+      final transport = FakeMoySkladWriteTransport();
+      final client = MoySkladApiClient(transport: transport);
+
+      final result = await client.postResource(
+        'secret-token',
+        '/entity/inventory',
+        {'name': 'Проверка', 'positions': []},
+      );
+
+      expect(result.isSuccess, isTrue);
+      expect(result.data?['id'], 'inventory-1');
+      expect(transport.postCalls, 1);
+      expect(transport.postedUri!.path, '/api/remap/1.2/entity/inventory');
+      expect(transport.postedBody, {'name': 'Проверка', 'positions': []});
+      expect(transport.postedHeaders!['Authorization'], 'Bearer secret-token');
+    });
+
     test('does not send a request when token is absent or blank', () async {
       final transport = FakeMoySkladHttpTransport(null);
       final client = MoySkladApiClient(transport: transport);
