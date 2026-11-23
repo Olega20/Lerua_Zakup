@@ -439,6 +439,14 @@ class ApiTaskDispatcher {
     Set<ApiTaskStatus>? statuses,
   }) => repository.listTasks(logicalQueue: logicalQueue, statuses: statuses);
 
+  Future<List<ApiTask>> listTaskSummaries({
+    String? logicalQueue,
+    Set<ApiTaskStatus>? statuses,
+  }) => repository.listTaskSummaries(
+    logicalQueue: logicalQueue,
+    statuses: statuses,
+  );
+
   Future<bool> isGloballyPaused() => repository.isQueuePaused();
 
   Future<bool> isQueuePaused(String queue) => repository.isQueuePaused(queue);
@@ -453,6 +461,8 @@ class ApiTaskDispatcher {
 
   Future<Map<String, List<Map<String, Object?>>>> taskHistory(int taskId) =>
       repository.taskHistory(taskId);
+
+  Future<ApiTask?> taskById(int taskId) => repository.getTaskById(taskId);
 
   Future<void> suspendForDatabaseMaintenance() async {
     await repository.pauseAll(

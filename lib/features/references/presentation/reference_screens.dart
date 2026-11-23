@@ -1212,7 +1212,7 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
       });
     }
     try {
-      final t = await widget.api.listTasks();
+      final t = await widget.api.listTaskSummaries();
       final c = await widget.api.repository.requiresResumeConfirmation();
       final isPaused = await widget.api.isGloballyPaused();
       final queues = t.map((task) => task.logicalQueue).toSet();
@@ -1242,6 +1242,7 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
   }
 
   Future<void> showTaskDetails(ApiTask task) async {
+    final fullTask = await widget.api.taskById(task.id) ?? task;
     final history = await widget.api.taskHistory(task.id);
     if (!mounted) return;
     final attempts = history['attempts'] ?? [];
@@ -1265,7 +1266,7 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SelectableText(
-                  const JsonEncoder.withIndent('  ').convert(task.request),
+                  const JsonEncoder.withIndent('  ').convert(fullTask.request),
                 ),
                 const SizedBox(height: 12),
                 const Text(
@@ -1274,7 +1275,7 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
                 ),
                 SelectableText(
                   const JsonEncoder.withIndent('  ')
-                      .convert(task.response ?? {}),
+                      .convert(fullTask.response ?? {}),
                 ),
                 const SizedBox(height: 12),
                 const Text(

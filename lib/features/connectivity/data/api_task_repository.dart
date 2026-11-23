@@ -527,6 +527,16 @@ class ApiTaskRepository {
     return {'attempts': attempts, 'events': events};
   }
 
+  Future<ApiTask?> getTaskById(int id) async {
+    final rows = await (await _db).query(
+      'api_tasks',
+      where: 'id=?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : _fromRow(rows.single);
+  }
+
   Future<ApiTask?> getTaskByUid(String uid) async {
     final db = await _db;
     final rows = await db.query(
@@ -562,6 +572,50 @@ class ApiTaskRepository {
       limit: limit,
     );
     return rows.map(_fromRow).toList(growable: false);
+  }
+
+  Future<List<ApiTask>> listTaskSummaries({
+    String? logicalQueue,
+    Set<ApiTaskStatus>? statuses,
+    int limit = 200,
+  }) async {
+    final db = await _db;
+    final clauses = <String>[];
+    final args = <Object?>[];
+    if (logicalQueue != null) {
+      clauses.add('logical_queue = ?');
+      args.add(logicalQueue);
+    }
+    if (statuses != null && statuses.isNotEmpty) {
+      clauses.add('status IN (${List.filled(statuses.length, '?').join(',')})');
+      args.addAll(statuses.map(ApiTask.storeStatus));
+    }
+    // Do not read or decode potentially multi-megabyte response_json values
+    // when rendering the manager list. Full payloads are fetched on demand.
+    final rows = await db.query(
+      'api_tasks',
+      columns: [
+        'id',
+        'task_uid',
+        'task_type',
+        'logical_queue',
+        'status',
+        'fifo_sequence',
+        'attempts_count',
+        'next_attempt_at',
+        'started_at',
+        'finished_at',
+        'created_at',
+        'updated_at',
+      ],
+      where: clauses.isEmpty ? null : clauses.join(' AND '),
+      whereArgs: args.isEmpty ? null : args,
+      orderBy: 'fifo_sequence ASC',
+      limit: limit,
+    );
+    return rows
+        .map((row) => _fromRow(row, includeResponse: false))
+        .toList(growable: false);
   }
 
   Future<int> retryFailed(int taskId, {DateTime Function()? clock}) async {
@@ -710,9 +764,14 @@ class ApiTaskRepository {
     });
   }
 
-  ApiTask _fromRow(Map<String, Object?> row) {
-    final request = jsonDecode(row['request_json'] as String) as Map;
-    final responseJson = row['response_json'] as String?;
+  ApiTask _fromRow(Map<String, Object?> row, {bool includeResponse = true}) {
+    final requestJson = row['request_json'] as String?;
+    final request = requestJson == null
+        ? <String, Object?>{}
+        : jsonDecode(requestJson) as Map;
+    final responseJson = includeResponse
+        ? row['response_json'] as String?
+        : null;
     final response = responseJson == null
         ? null
         : jsonDecode(responseJson) as Map;

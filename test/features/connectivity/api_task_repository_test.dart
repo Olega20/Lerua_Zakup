@@ -337,6 +337,37 @@ void main() {
   });
 
   test(
+    'task list skips large stored responses and loads them only on demand',
+    () async {
+      await repository.enqueue(
+        uid: 'large-response',
+        type: 'reference_page',
+        logicalQueue: 'catalog',
+        request: {'method': 'GET', 'path': '/entity/product'},
+      );
+      final claim = await repository.claimNext();
+      await repository.finishAttempt(
+        taskId: claim!.task.id,
+        attemptNumber: claim.attemptNumber,
+        status: ApiTaskStatus.succeeded,
+        response: {
+          'rows': List.generate(
+            1000,
+            (i) => {'id': 'p-$i', 'name': 'Товар $i'},
+          ),
+        },
+      );
+
+      final summary = (await repository.listTaskSummaries()).single;
+      expect(summary.request, isEmpty);
+      expect(summary.response, isNull);
+      final full = await repository.getTaskById(summary.id);
+      expect(full!.request['path'], '/entity/product');
+      expect((full.response!['rows'] as List), hasLength(1000));
+    },
+  );
+
+  test(
     'uncertain task can only be resolved after explicit manual review',
     () async {
       await repository.enqueue(
