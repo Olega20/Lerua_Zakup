@@ -1196,6 +1196,7 @@ class ApiTasksScreen extends StatefulWidget {
 class _ApiTasksScreenState extends State<ApiTasksScreen> {
   List<ApiTask> tasks = [];
   bool loading = true, paused = false, confirmation = false;
+  String? loadError;
   Map<String, bool> queuePauses = {};
   @override
   void initState() {
@@ -1204,22 +1205,39 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
   }
 
   Future<void> load() async {
-    final t = await widget.api.listTasks();
-    final c = await widget.api.repository.requiresResumeConfirmation();
-    final isPaused = await widget.api.isGloballyPaused();
-    final queues = t.map((task) => task.logicalQueue).toSet();
-    final queueState = <String, bool>{};
-    for (final queue in queues) {
-      queueState[queue] = await widget.api.isQueuePaused(queue);
-    }
     if (mounted) {
       setState(() {
-        tasks = t;
-        queuePauses = queueState;
-        paused = isPaused;
-        confirmation = c;
-        loading = false;
+        loading = true;
+        loadError = null;
       });
+    }
+    try {
+      final t = await widget.api.listTasks();
+      final c = await widget.api.repository.requiresResumeConfirmation();
+      final isPaused = await widget.api.isGloballyPaused();
+      final queues = t.map((task) => task.logicalQueue).toSet();
+      final queueState = <String, bool>{};
+      for (final queue in queues) {
+        queueState[queue] = await widget.api.isQueuePaused(queue);
+      }
+      if (mounted) {
+        setState(() {
+          tasks = t;
+          queuePauses = queueState;
+          paused = isPaused;
+          confirmation = c;
+          loading = false;
+          loadError = null;
+        });
+      }
+    } catch (error, stackTrace) {
+      debugPrint('ApiTasksScreen.load failed: $error\n$stackTrace');
+      if (mounted) {
+        setState(() {
+          loading = false;
+          loadError = error.toString();
+        });
+      }
     }
   }
 
@@ -1399,6 +1417,35 @@ class _ApiTasksScreenState extends State<ApiTasksScreen> {
     ),
     body: loading
         ? const Center(child: CircularProgressIndicator())
+        : loadError != null
+        ? Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 40),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Не удалось загрузить данные менеджера API',
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    loadError!,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(c).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 16),
+                  FilledButton.icon(
+                    onPressed: load,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Повторить'),
+                  ),
+                ],
+              ),
+            ),
+          )
         : Column(
             children: [
               if (confirmation)
