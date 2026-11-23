@@ -14,6 +14,8 @@ class InventoryHomeScreen extends StatefulWidget {
 
 class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
   List<Map<String, Object?>> sessions = [];
+  List<Map<String, dynamic>> remoteInventories = [];
+  String? remoteLoadError;
   List<Map<String, Object?>> organizations = [];
   List<Map<String, Object?>> warehouses = [];
   bool loading = true;
@@ -32,11 +34,20 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
         widget.repository.organizations(),
         widget.repository.warehouses(),
       ]);
+      List<Map<String, dynamic>> remote = [];
+      String? remoteError;
+      try {
+        remote = await widget.repository.moySkladInventories();
+      } catch (error) {
+        remoteError = error.toString();
+      }
       if (!mounted) return;
       setState(() {
         sessions = values[0];
         organizations = values[1];
         warehouses = values[2];
+        remoteInventories = remote;
+        remoteLoadError = remoteError;
         loading = false;
       });
     } catch (error) {
@@ -127,6 +138,19 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
     }
   }
 
+  Future<void> openMoySkladInventory(Map<String, dynamic> inventory) async {
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MoySkladInventoryScreen(
+          repository: widget.repository,
+          inventory: inventory,
+        ),
+      ),
+    );
+    await load();
+  }
+
   Future<void> openSession(int id) async {
     await Navigator.push<void>(
       context,
@@ -153,53 +177,113 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
     ),
     body: loading
         ? const Center(child: CircularProgressIndicator())
-        : sessions.isEmpty
-        ? const Center(child: Text('Инвентаризаций пока нет'))
-        : ListView.separated(
+        : ListView(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
-            itemCount: sessions.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 8),
-            itemBuilder: (context, index) {
-              final session = sessions[index];
-              final status = session['status'] as String;
-              final completed = status == 'completed';
-              final failed = status == 'sync_failed';
-              return Card(
-                child: ListTile(
-                  leading: Icon(
-                    completed
-                        ? Icons.check_circle_outline
-                        : failed
-                        ? Icons.error_outline
-                        : Icons.inventory_2_outlined,
-                    color: completed
-                        ? Colors.green
-                        : failed
-                        ? Theme.of(context).colorScheme.error
-                        : null,
+            children: [
+              if (remoteLoadError != null)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.cloud_off_outlined),
+                    title: const Text('Не удалось загрузить документы МойСклад'),
+                    subtitle: Text(remoteLoadError!),
+                    trailing: IconButton(
+                      tooltip: 'Повторить',
+                      onPressed: load,
+                      icon: const Icon(Icons.refresh),
+                    ),
                   ),
-                  title: Text(session['warehouse_name_snapshot'] as String),
-                  subtitle: Text(
-                    '${session['organization_name_snapshot']} • ${_inventoryStatus(status)}',
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (status == 'draft')
-                        IconButton(
-                          tooltip: 'Удалить черновик',
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: () => deleteDraft(session['id'] as int),
-                        ),
-                      const Icon(Icons.chevron_right),
-                    ],
-                  ),
-                  onTap: () => openSession(session['id'] as int),
                 ),
-              );
-            },
+              if (sessions.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(4, 12, 4, 8),
+                  child: Text(
+                    'Локальные черновики',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+                ...sessions.map((session) {
+                  final status = session['status'] as String;
+                  final completed = status == 'completed';
+                  final failed = status == 'sync_failed';
+                  return Card(
+                    child: ListTile(
+                      leading: Icon(
+                        completed
+                            ? Icons.check_circle_outline
+                            : failed
+                            ? Icons.error_outline
+                            : Icons.inventory_2_outlined,
+                        color: completed
+                            ? Colors.green
+                            : failed
+                            ? Theme.of(context).colorScheme.error
+                            : null,
+                      ),
+                      title: Text(session['warehouse_name_snapshot'] as String),
+                      subtitle: Text(
+                        '${session['organization_name_snapshot']} • ${_inventoryStatus(status)}',
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (status == 'draft')
+                            IconButton(
+                              tooltip: 'Удалить черновик',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => deleteDraft(session['id'] as int),
+                            ),
+                          const Icon(Icons.chevron_right),
+                        ],
+                      ),
+                      onTap: () => openSession(session['id'] as int),
+                    ),
+                  );
+                }),
+              ],
+              const Padding(
+                padding: EdgeInsets.fromLTRB(4, 18, 4, 8),
+                child: Text(
+                  'Инвентаризации МойСклад',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              if (remoteInventories.isEmpty && remoteLoadError == null)
+                const Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('В МойСклад инвентаризаций не найдено'),
+                ),
+              ...remoteInventories.map((inventory) {
+                final name = inventory['name']?.toString() ?? 'Инвентаризация';
+                final store = _inventoryRelatedName(inventory['store']);
+                final organization = _inventoryRelatedName(inventory['organization']);
+                final moment = inventory['moment']?.toString() ??
+                    inventory['created']?.toString() ?? '';
+                final state = _inventoryRelatedName(inventory['state']);
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.cloud_done_outlined),
+                    title: Text(name),
+                    subtitle: Text([
+                      if (store.isNotEmpty) store,
+                      if (organization.isNotEmpty) organization,
+                      if (moment.isNotEmpty) moment.replaceFirst('T', ' '),
+                      if (state.isNotEmpty) state,
+                    ].join(' • ')),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => openMoySkladInventory(inventory),
+                  ),
+                );
+              }),
+            ],
           ),
   );
+}
+
+String _inventoryRelatedName(Object? value) {
+  if (value is Map) {
+    return value['name']?.toString() ?? '';
+  }
+  return '';
 }
 
 String _inventoryStatus(String status) => switch (status) {
