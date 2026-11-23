@@ -227,6 +227,42 @@ void main() {
     expect(await repository.storageLocations(w2), hasLength(1));
   });
 
+  test('product has one storage location per warehouse and location order is persisted', () async {
+    final sql = await db.database;
+    final product = await sql.insert('products', {
+      'moysklad_id': 'storage-product',
+      'name': 'Тестовый товар',
+      'kind': 'product',
+    });
+    final warehouse = await sql.insert('warehouses', {
+      'moysklad_id': 'storage-warehouse',
+      'name': 'Склад тест',
+    });
+    await repository.saveStorageLocation(warehouse, 'Стеллаж 1');
+    await repository.saveStorageLocation(warehouse, 'Стеллаж 2');
+    final locations = await repository.storageLocations(warehouse);
+    final first = locations[0]['id'] as int;
+    final second = locations[1]['id'] as int;
+
+    await repository.assignProductsToStorageLocation(
+      [product],
+      warehouse,
+      first,
+    );
+    await repository.assignProductsToStorageLocation(
+      [product],
+      warehouse,
+      second,
+    );
+    var assignments = await repository.productStorageAssignments(product);
+    expect(assignments, hasLength(1));
+    expect(assignments.single['storage_location_id'], second);
+
+    await repository.reorderStorageLocations(warehouse, [second, first]);
+    final reordered = await repository.storageLocations(warehouse);
+    expect(reordered.map((r) => r['id']).toList(), [second, first]);
+  });
+
   test('payment method belongs to at most one organization and suppliers may share it', () async {
     final sql = await db.database;
     final o1 = await sql.insert('organizations', {

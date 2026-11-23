@@ -12,6 +12,7 @@ import '../../warehouse_log/presentation/warehouse_log_screen.dart';
 import '../../backup/data/backup_service.dart';
 import '../../backup/presentation/backup_screen.dart';
 import '../data/reference_data_repository.dart';
+import 'product_inventory_screens.dart';
 
 class OtherActionsScreen extends StatelessWidget {
   const OtherActionsScreen({
@@ -38,7 +39,7 @@ class OtherActionsScreen extends StatelessWidget {
           c,
           Icons.inventory_2_outlined,
           'Актуальные товары МойСклад',
-          ProductCatalogScreen(repository: repository),
+          InventoryCatalogScreen(repository: repository),
         ),
         _entry(
           c,
@@ -693,24 +694,45 @@ class _StorageLocationsScreenState extends State<StorageLocationsScreen> {
         IconButton(onPressed: () => edit(), icon: const Icon(Icons.add)),
       ],
     ),
-    body: ListView(
-      children: rows
-          .map(
-            (r) => ListTile(
-              title: Text(r['name'] as String),
-              onTap: () => edit(r),
-              trailing: IconButton(
-                icon: const Icon(Icons.archive_outlined),
-                onPressed: () async {
-                  await widget.repository.archiveStorageLocation(
-                    r['id'] as int,
-                  );
-                  await load();
-                },
+    body: ReorderableListView.builder(
+      itemCount: rows.length,
+      onReorderItem: (oldIndex, newIndex) async {
+        setState(() {
+          final item = rows.removeAt(oldIndex);
+          rows.insert(newIndex, item);
+        });
+        try {
+          await widget.repository.reorderStorageLocations(
+            widget.warehouse['id'] as int,
+            rows.map((r) => r['id'] as int).toList(),
+          );
+        } catch (_) {
+          await load();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Не удалось сохранить порядок мест'),
               ),
-            ),
-          )
-          .toList(),
+            );
+          }
+        }
+      },
+      itemBuilder: (context, index) {
+        final r = rows[index];
+        return ListTile(
+          key: ValueKey(r['id']),
+          leading: const Icon(Icons.drag_handle),
+          title: Text(r['name'] as String),
+          onTap: () => edit(r),
+          trailing: IconButton(
+            icon: const Icon(Icons.archive_outlined),
+            onPressed: () async {
+              await widget.repository.archiveStorageLocation(r['id'] as int);
+              await load();
+            },
+          ),
+        );
+      },
     ),
   );
 }

@@ -548,9 +548,15 @@ class ReferenceDataRepository {
     );
     if (duplicate) throw StateError('Такое место хранения уже существует');
     if (id == null) {
+      final orderRows = await db.rawQuery(
+        'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM storage_locations WHERE warehouse_id=?',
+        [warehouseId],
+      );
+      final nextOrder = orderRows.first['next_order'] as int;
       await db.insert('storage_locations', {
         'warehouse_id': warehouseId,
         'name': n,
+        'sort_order': nextOrder,
         'created_at': now,
         'updated_at': now,
       });
@@ -572,6 +578,91 @@ class ReferenceDataRepository {
       whereArgs: [id],
     ),
   );
+
+  Future<List<Map<String, Object?>>> productStorageAssignments(int productId) =>
+      _db.then(
+        (d) => d.rawQuery(
+          '''SELECT a.id,a.product_id,a.warehouse_id,a.storage_location_id,a.assigned_at,w.name warehouse_name,l.name location_name FROM product_storage_assignments a JOIN warehouses w ON w.id=a.warehouse_id JOIN storage_locations l ON l.id=a.storage_location_id WHERE a.product_id=? AND l.is_active=1 ORDER BY w.name COLLATE NOCASE''',
+          [productId],
+        ),
+      );
+
+  Future<void> assignProductsToStorageLocation(
+    Iterable<int> productIds,
+    int warehouseId,
+    int storageLocationId,
+  ) => _guard(
+    'Назначение мест хранения товарам',
+    'PRODUCT_STORAGE_ASSIGNMENT_FAILED',
+    () async {
+      final db = await _db;
+      final location = await db.query(
+        'storage_locations',
+        columns: ['id'],
+        where: 'id=? AND warehouse_id=? AND is_active=1',
+        whereArgs: [storageLocationId, warehouseId],
+        limit: 1,
+      );
+      if (location.isEmpty) {
+        throw StateError('Место хранения не относится к выбранному складу');
+      }
+      final now = DateTime.now().millisecondsSinceEpoch;
+      await db.transaction((t) async {
+        for (final productId in productIds.toSet()) {
+          await t.insert('product_storage_assignments', {
+            'product_id': productId,
+            'warehouse_id': warehouseId,
+            'storage_location_id': storageLocationId,
+            'assigned_at': now,
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
+        }
+      });
+    },
+  );
+
+  Future<void> removeProductStorageAssignment(int assignmentId) => _db.then(
+    (d) => d.delete(
+      'product_storage_assignments',
+      where: 'id=?',
+      whereArgs: [assignmentId],
+    ),
+  );
+
+  Future<void> reorderStorageLocations(int warehouseId, List<int> orderedIds) =>
+      _guard(
+        'Изменение порядка мест хранения',
+        'STORAGE_LOCATION_REORDER_FAILED',
+        () async {
+          final db = await _db;
+          await db.transaction((t) async {
+            final existing = await t.query(
+              'storage_locations',
+              columns: ['id'],
+              where: 'warehouse_id=? AND is_active=1',
+              whereArgs: [warehouseId],
+            );
+            final expected = existing.map((r) => r['id'] as int).toSet();
+            if (orderedIds.toSet().length != orderedIds.length ||
+                orderedIds.toSet().difference(expected).isNotEmpty ||
+                expected.difference(orderedIds.toSet()).isNotEmpty) {
+              throw StateError(
+                'Список мест хранения изменился; обновите экран',
+              );
+            }
+            for (var i = 0; i < orderedIds.length; i++) {
+              await t.update(
+                'storage_locations',
+                {
+                  'sort_order': i,
+                  'updated_at': DateTime.now().millisecondsSinceEpoch,
+                },
+                where: 'id=? AND warehouse_id=?',
+                whereArgs: [orderedIds[i], warehouseId],
+              );
+            }
+          });
+        },
+      );
 
   Future<void> syncOrganizations() async {
     try {
