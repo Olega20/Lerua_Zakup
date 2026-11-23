@@ -1,7 +1,7 @@
 name: lerua_zakup
 description: "Lerua Zakup Android application."
 publish_to: 'none'
-version: 1.2.9+13
+version: 1.2.10+14
 environment:
   sdk: ^3.13.5
 
