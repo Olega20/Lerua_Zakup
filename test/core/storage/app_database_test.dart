@@ -83,6 +83,8 @@ void main() {
         'organizations',
         'payment_methods',
         'suppliers',
+        'inventory_sessions',
+        'inventory_lines',
         'business_operations',
         'business_operation_lines',
         'warehouse_journal_entries',
