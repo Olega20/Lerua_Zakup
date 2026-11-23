@@ -675,6 +675,7 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
   bool saving = false;
   List<Map<String, Object?>> assignments = [];
   List<Map<String, Object?>> warehouseStocks = [];
+  List<Map<String, Object?>> warehouseOverview = [];
   Map<String, Object?>? supplier;
   String? detailsError;
   Map<String, Object?> get product => widget.items[index];
@@ -692,11 +693,13 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
         id,
       );
       final nextStocks = await widget.repository.productWarehouseStocks(id);
+      final nextOverview = await widget.repository.productWarehouseOverview([id]);
       final nextSupplier = await widget.repository.productSupplier(id);
       if (mounted && (product['id'] as int) == id) {
         setState(() {
           assignments = nextAssignments;
           warehouseStocks = nextStocks;
+          warehouseOverview = nextOverview;
           supplier = nextSupplier;
           detailsError = null;
         });
@@ -860,28 +863,13 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
         ),
         if (detailsError != null)
           Text('Не удалось загрузить данные товара: $detailsError'),
-        if (warehouseStocks.isEmpty)
+        if (warehouseOverview.isEmpty)
           const Text('Детализация по складам пока не загружена')
         else
-          ...warehouseStocks.map((row) {
-            final assignment = assignments
-                .where(
-                  (item) =>
-                      item['warehouse_moysklad_id'] ==
-                      row['warehouse_moysklad_id'],
-                )
-                .firstOrNull;
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(row['warehouse_name'] as String),
-              subtitle: Text(
-                assignment == null
-                    ? 'Место хранения не назначено'
-                    : assignment['location_name'] as String,
-              ),
-              trailing: Text('${row['stock']} ${product['uom_name']}'),
-            );
-          }),
+          ProductWarehouseOverview(
+            rows: warehouseOverview,
+            unit: product['uom_name']?.toString() ?? '',
+          ),
         const SizedBox(height: 16),
         const Text('Поставщик', style: TextStyle(fontWeight: FontWeight.bold)),
         ListTile(
