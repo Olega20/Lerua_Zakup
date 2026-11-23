@@ -668,6 +668,51 @@ class ReferenceDataRepository {
         ),
       );
 
+  /// Returns one row per warehouse with either a stock snapshot or a local
+  /// storage assignment. Stock is warehouse-level; storage locations are local.
+  Future<List<Map<String, Object?>>> productWarehouseOverview(
+    Iterable<int> productIds,
+  ) async {
+    final ids = productIds.toSet().toList();
+    if (ids.isEmpty) return const [];
+    final placeholders = List.filled(ids.length, '?').join(',');
+    final db = await _db;
+    return db.rawQuery(
+      '''
+      SELECT ws.product_id,
+             ws.warehouse_moysklad_id,
+             COALESCE(w.name, ws.warehouse_name) AS warehouse_name,
+             ws.stock,
+             sl.name AS location_name
+      FROM product_warehouse_stock ws
+      LEFT JOIN warehouses w ON w.moysklad_id=ws.warehouse_moysklad_id
+      LEFT JOIN product_storage_assignments psa
+        ON psa.product_id=ws.product_id AND psa.warehouse_id=w.id
+      LEFT JOIN storage_locations sl
+        ON sl.id=psa.storage_location_id AND sl.is_active=1
+      WHERE ws.product_id IN ($placeholders)
+      UNION ALL
+      SELECT psa.product_id,
+             w.moysklad_id AS warehouse_moysklad_id,
+             w.name AS warehouse_name,
+             NULL AS stock,
+             sl.name AS location_name
+      FROM product_storage_assignments psa
+      JOIN warehouses w ON w.id=psa.warehouse_id
+      JOIN storage_locations sl
+        ON sl.id=psa.storage_location_id AND sl.is_active=1
+      WHERE psa.product_id IN ($placeholders)
+        AND NOT EXISTS (
+          SELECT 1 FROM product_warehouse_stock ws
+          WHERE ws.product_id=psa.product_id
+            AND ws.warehouse_moysklad_id=w.moysklad_id
+        )
+      ORDER BY product_id, warehouse_name COLLATE NOCASE
+      ''',
+      [...ids, ...ids],
+    );
+  }
+
   Future<Map<String, Object?>?> productSupplier(int productId) async {
     final rows = await (await _db).rawQuery(
       '''SELECT s.*,psa.assigned_at FROM product_supplier_assignments psa JOIN suppliers s ON s.id=psa.supplier_id WHERE psa.product_id=? LIMIT 1''',
