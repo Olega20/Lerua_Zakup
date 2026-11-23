@@ -336,13 +336,14 @@ class MoySkladApiClient {
         errorCode: 'WRITE_TRANSPORT_UNAVAILABLE',
       );
     }
+    final writeTransport = transport as MoySkladHttpWriteTransport;
     final relativePath = path.startsWith('/') ? path : '/$path';
     final normalizedPath = relativePath.startsWith('/api/remap/1.2/')
         ? relativePath
         : '/api/remap/1.2$relativePath';
     final uri = Uri.https('api.moysklad.ru', normalizedPath);
     try {
-      final response = await transport.post(
+      final response = await writeTransport.post(
         uri,
         body: body,
         connectionTimeout: connectionTimeout,
