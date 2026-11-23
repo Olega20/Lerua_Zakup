@@ -514,6 +514,17 @@ class ReferenceDataRepository {
     );
   }
 
+  Future<void> deleteInventoryDraft(int sessionId) async {
+    final deleted = await (await _db).delete(
+      'inventory_sessions',
+      where: "id=? AND status='draft'",
+      whereArgs: [sessionId],
+    );
+    if (deleted != 1) {
+      throw StateError('Удалить можно только локальный черновик инвентаризации.');
+    }
+  }
+
   Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async {
     return (await _db).query(
       'inventory_lines',
