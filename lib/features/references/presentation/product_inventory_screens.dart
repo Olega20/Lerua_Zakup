@@ -674,7 +674,6 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
   late int index = widget.index;
   bool saving = false;
   List<Map<String, Object?>> assignments = [];
-  List<Map<String, Object?>> warehouseStocks = [];
   List<Map<String, Object?>> warehouseOverview = [];
   Map<String, Object?>? supplier;
   String? detailsError;
@@ -692,13 +691,11 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
       final nextAssignments = await widget.repository.productStorageAssignments(
         id,
       );
-      final nextStocks = await widget.repository.productWarehouseStocks(id);
       final nextOverview = await widget.repository.productWarehouseOverview([id]);
       final nextSupplier = await widget.repository.productSupplier(id);
       if (mounted && (product['id'] as int) == id) {
         setState(() {
           assignments = nextAssignments;
-          warehouseStocks = nextStocks;
           warehouseOverview = nextOverview;
           supplier = nextSupplier;
           detailsError = null;
