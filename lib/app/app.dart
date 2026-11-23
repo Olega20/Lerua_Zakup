@@ -87,6 +87,7 @@ class _LeruaZakupAppState extends State<LeruaZakupApp>
         directApiClient: MoySkladApiClient(),
         tokenStore: _tokenStore,
         warehouseLog: _warehouseLogRepository,
+        warehouseJournal: _warehouseJournalRepository,
       );
   late final WarehouseJournalRepository _warehouseJournalRepository =
       WarehouseJournalRepository(
