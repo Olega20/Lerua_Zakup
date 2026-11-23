@@ -22,7 +22,7 @@ class AppDatabase {
     final db = await _factory.openDatabase(
       path,
       options: sqflite.OpenDatabaseOptions(
-        version: 3,
+        version: 4,
         onConfigure: (db) async {
           await db.execute('PRAGMA foreign_keys = ON');
           await db.execute('PRAGMA journal_mode = WAL');
@@ -64,6 +64,18 @@ class AppDatabase {
             );
             await db.insert('schema_migrations', {
               'version': 3,
+              'applied_at': DateTime.now().millisecondsSinceEpoch,
+            });
+          }
+          if (oldVersion < 4) {
+            await db.execute(
+              '''CREATE TABLE product_warehouse_stock(id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, warehouse_moysklad_id TEXT NOT NULL, warehouse_name TEXT NOT NULL, stock REAL NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, UNIQUE(product_id, warehouse_moysklad_id))''',
+            );
+            await db.execute(
+              'CREATE INDEX product_warehouse_stock_product_idx ON product_warehouse_stock(product_id)',
+            );
+            await db.insert('schema_migrations', {
+              'version': 4,
               'applied_at': DateTime.now().millisecondsSinceEpoch,
             });
           }
@@ -136,6 +148,8 @@ class AppDatabase {
     'CREATE INDEX storage_locations_order_idx ON storage_locations(warehouse_id,sort_order)',
     '''CREATE TABLE product_storage_assignments(id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, warehouse_id INTEGER NOT NULL REFERENCES warehouses(id) ON DELETE RESTRICT, storage_location_id INTEGER NOT NULL REFERENCES storage_locations(id) ON DELETE RESTRICT, assigned_at INTEGER NOT NULL, UNIQUE(product_id, warehouse_id))''',
     'CREATE INDEX product_storage_assignments_product_idx ON product_storage_assignments(product_id)',
+    '''CREATE TABLE product_warehouse_stock(id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, warehouse_moysklad_id TEXT NOT NULL, warehouse_name TEXT NOT NULL, stock REAL NOT NULL DEFAULT 0, updated_at INTEGER NOT NULL, UNIQUE(product_id, warehouse_moysklad_id))''',
+    'CREATE INDEX product_warehouse_stock_product_idx ON product_warehouse_stock(product_id)',
     '''CREATE TABLE organizations(id INTEGER PRIMARY KEY AUTOINCREMENT, moysklad_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, is_archived INTEGER NOT NULL DEFAULT 0, is_present INTEGER NOT NULL DEFAULT 1, last_synced_at INTEGER, raw_sync_json TEXT)''',
     '''CREATE TABLE payment_methods(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL COLLATE NOCASE UNIQUE, organization_id INTEGER UNIQUE REFERENCES organizations(id) ON DELETE RESTRICT, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL)''',
     '''CREATE TABLE suppliers(id INTEGER PRIMARY KEY AUTOINCREMENT, moysklad_id TEXT NOT NULL UNIQUE, name TEXT NOT NULL, phone TEXT, relevance_status TEXT NOT NULL DEFAULT 'other' CHECK(relevance_status IN ('current','other')), payment_method_id INTEGER REFERENCES payment_methods(id) ON DELETE RESTRICT, last_synced_at INTEGER, raw_sync_json TEXT)''',

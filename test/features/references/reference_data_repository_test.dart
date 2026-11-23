@@ -53,6 +53,8 @@ class _FakeApi extends ApiTaskDispatcher {
   int supplierSearchRequests = 0;
   int warehouseRequests = 0;
   List<Map<String, dynamic>> organizationRows = [];
+  List<Map<String, dynamic>> stockByStoreRows = [];
+  bool failStockByStore = false;
   @override
   Future<Map<String, Object?>> requestGet({
     required String uid,
@@ -110,6 +112,13 @@ class _FakeApi extends ApiTaskDispatcher {
       return {
         'rows': organizationRows,
         'meta': {'size': organizationRows.length},
+      };
+    }
+    if (path == '/report/stock/bystore') {
+      if (failStockByStore) throw StateError('stock by store unavailable');
+      return {
+        'rows': stockByStoreRows,
+        'meta': {'size': stockByStoreRows.length},
       };
     }
     if (path == '/report/stock/all') {
@@ -341,6 +350,46 @@ void main() {
       expect(products.single['uom_name'], '\u0448\u0442');
     },
   );
+
+  test('product refresh stores per-warehouse stock and keeps the last snapshot if the report fails', () async {
+    api.stockByStoreRows = [
+      {
+        'meta': {
+          'href': 'https://api.moysklad.ru/api/remap/1.2/entity/product/p-1',
+        },
+        'stockByStore': [
+          {
+            'meta': {
+              'href': 'https://api.moysklad.ru/api/remap/1.2/entity/store/w-1',
+            },
+            'name': 'Склад 1',
+            'stock': 4,
+          },
+          {
+            'meta': {
+              'href': 'https://api.moysklad.ru/api/remap/1.2/entity/store/w-2',
+            },
+            'name': 'Склад 2',
+            'stock': 3,
+          },
+        ],
+      },
+    ];
+    await repository.syncProducts();
+    final product = (await repository.products()).single;
+    var stocks = await repository.productWarehouseStocks(product['id'] as int);
+    expect(stocks, hasLength(2));
+    expect(stocks.map((row) => row['stock']).toList(), [4, 3]);
+    expect(stocks.map((row) => row['warehouse_moysklad_id']).toList(), [
+      'w-1',
+      'w-2',
+    ]);
+
+    api.failStockByStore = true;
+    await repository.syncProducts();
+    stocks = await repository.productWarehouseStocks(product['id'] as int);
+    expect(stocks, hasLength(2));
+  });
 
   test(
     'product refresh applies stock and status only after every page succeeds',

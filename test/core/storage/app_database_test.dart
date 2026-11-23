@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/core/storage/app_database.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -5,6 +7,49 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
+
+  test(
+    'upgrades a version 3 database without losing existing products',
+    () async {
+      final directory = await Directory.systemTemp.createTemp('lerua-db-v3-');
+      final path = '${directory.path}${Platform.pathSeparator}legacy.db';
+      final oldDb = await databaseFactoryFfi.openDatabase(
+        path,
+        options: OpenDatabaseOptions(
+          version: 3,
+          onCreate: (db, version) async {
+            await db.execute(
+              'CREATE TABLE schema_migrations(version INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)',
+            );
+            await db.execute(
+              'CREATE TABLE products(id INTEGER PRIMARY KEY, moysklad_id TEXT NOT NULL, name TEXT NOT NULL)',
+            );
+            await db.insert('products', {
+              'id': 41,
+              'moysklad_id': 'existing-product',
+              'name': 'Сохранённый товар',
+            });
+          },
+        ),
+      );
+      await oldDb.close();
+
+      final appDatabase = AppDatabase(
+        databaseFactory: databaseFactoryFfi,
+        databasePath: path,
+      );
+      final db = await appDatabase.database;
+      final product = await db.query('products');
+      final stockTable = await db.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='product_warehouse_stock'",
+      );
+
+      expect(product.single['moysklad_id'], 'existing-product');
+      expect(stockTable, hasLength(1));
+      await appDatabase.close();
+      await directory.delete(recursive: true);
+    },
+  );
 
   test('creates one database with all planned business modules', () async {
     final appDatabase = AppDatabase(
@@ -21,6 +66,7 @@ void main() {
       names,
       containsAll([
         'products',
+        'product_warehouse_stock',
         'warehouses',
         'storage_locations',
         'organizations',

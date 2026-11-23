@@ -239,6 +239,17 @@ class ReferenceDataRepository {
         final quantity = (stockRow['quantity'] as num?)?.toDouble();
         if (id != null && quantity != null) stockById[id] = quantity;
       }
+      List<Map<String, dynamic>>? stockByStoreRows;
+      try {
+        stockByStoreRows = await _all(
+          '/report/stock/bystore',
+          'product_stock_by_store',
+          'catalog',
+        );
+      } catch (_) {
+        // Keep the last successful per-warehouse snapshot if this optional
+        // report is temporarily unavailable; total stock sync can still finish.
+      }
       final uomNames = <String, String>{};
       for (final row in rows) {
         final uom = row['uom'];
@@ -329,6 +340,59 @@ class ReferenceDataRepository {
               where: 'id = ?',
               whereArgs: [old.first['id']],
             );
+          }
+        }
+        final storeStockSnapshot = stockByStoreRows;
+        if (storeStockSnapshot != null) {
+          await t.delete('product_warehouse_stock');
+          final localProducts = await t.query(
+            'products',
+            columns: ['id', 'moysklad_id'],
+            where: 'is_present=1',
+          );
+          final localProductIds = {
+            for (final product in localProducts)
+              product['moysklad_id'] as String: product['id'] as int,
+          };
+          final stockUpdatedAt = DateTime.now().millisecondsSinceEpoch;
+          for (final stockRow in storeStockSnapshot) {
+            final productMeta = stockRow['meta'];
+            final productHref = productMeta is Map
+                ? productMeta['href']?.toString()
+                : null;
+            final productMoyskladId = productHref == null
+                ? null
+                : Uri.tryParse(productHref)?.pathSegments
+                      .where((segment) => segment.isNotEmpty)
+                      .lastOrNull;
+            final productId = productMoyskladId == null
+                ? null
+                : localProductIds[productMoyskladId];
+            final storeRows = stockRow['stockByStore'];
+            if (productId == null || storeRows is! List) continue;
+            for (final storeRow in storeRows.whereType<Map>()) {
+              final storeMeta = storeRow['meta'];
+              final storeHref = storeMeta is Map
+                  ? storeMeta['href']?.toString()
+                  : null;
+              final storeId = storeHref == null
+                  ? null
+                  : Uri.tryParse(storeHref)?.pathSegments
+                        .where((segment) => segment.isNotEmpty)
+                        .lastOrNull;
+              final storeName = storeRow['name']?.toString();
+              final quantity = (storeRow['stock'] as num?)?.toDouble();
+              if (storeId == null || storeName == null || quantity == null) {
+                continue;
+              }
+              await t.insert('product_warehouse_stock', {
+                'product_id': productId,
+                'warehouse_moysklad_id': storeId,
+                'warehouse_name': storeName,
+                'stock': quantity,
+                'updated_at': stockUpdatedAt,
+              }, conflictAlgorithm: ConflictAlgorithm.replace);
+            }
           }
         }
         await t.insert('app_settings', {
@@ -582,8 +646,18 @@ class ReferenceDataRepository {
   Future<List<Map<String, Object?>>> productStorageAssignments(int productId) =>
       _db.then(
         (d) => d.rawQuery(
-          '''SELECT a.id,a.product_id,a.warehouse_id,a.storage_location_id,a.assigned_at,w.name warehouse_name,l.name location_name FROM product_storage_assignments a JOIN warehouses w ON w.id=a.warehouse_id JOIN storage_locations l ON l.id=a.storage_location_id WHERE a.product_id=? AND l.is_active=1 ORDER BY w.name COLLATE NOCASE''',
+          '''SELECT a.id,a.product_id,a.warehouse_id,a.storage_location_id,a.assigned_at,w.name warehouse_name,w.moysklad_id warehouse_moysklad_id,l.name location_name FROM product_storage_assignments a JOIN warehouses w ON w.id=a.warehouse_id JOIN storage_locations l ON l.id=a.storage_location_id WHERE a.product_id=? AND l.is_active=1 ORDER BY w.name COLLATE NOCASE''',
           [productId],
+        ),
+      );
+
+  Future<List<Map<String, Object?>>> productWarehouseStocks(int productId) =>
+      _db.then(
+        (db) => db.query(
+          'product_warehouse_stock',
+          where: 'product_id=?',
+          whereArgs: [productId],
+          orderBy: 'warehouse_name COLLATE NOCASE',
         ),
       );
 

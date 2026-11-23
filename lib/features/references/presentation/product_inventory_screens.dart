@@ -449,18 +449,139 @@ class ProductSequenceScreen extends StatefulWidget {
 class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
   late int index = widget.index;
   bool saving = false;
+  List<Map<String, Object?>> assignments = [];
+  List<Map<String, Object?>> warehouseStocks = [];
+  String? detailsError;
   Map<String, Object?> get product => widget.items[index];
+
+  @override
+  void initState() {
+    super.initState();
+    loadProductDetails();
+  }
+
+  Future<void> loadProductDetails() async {
+    final id = product['id'] as int;
+    try {
+      final nextAssignments = await widget.repository.productStorageAssignments(
+        id,
+      );
+      final nextStocks = await widget.repository.productWarehouseStocks(id);
+      if (mounted && (product['id'] as int) == id) {
+        setState(() {
+          assignments = nextAssignments;
+          warehouseStocks = nextStocks;
+          detailsError = null;
+        });
+      }
+    } catch (error) {
+      if (mounted && (product['id'] as int) == id) {
+        setState(() => detailsError = error.toString());
+      }
+    }
+  }
+
+  Future<void> moveTo(int nextIndex) async {
+    if (nextIndex < 0 || nextIndex >= widget.items.length) return;
+    setState(() => index = nextIndex);
+    await loadProductDetails();
+  }
+
   Future<void> assign(String status) async {
     if (saving) return;
     setState(() => saving = true);
     try {
       await widget.repository.setProductStatus([product['id'] as int], status);
       if (mounted && index < widget.items.length - 1) {
-        setState(() => index++);
+        await moveTo(index + 1);
       } else if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Актуализация завершена')));
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось сохранить статус: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
+  Future<void> chooseStorage() async {
+    if (saving) return;
+    final warehouses = await widget.repository.warehouses();
+    if (!mounted) return;
+    if (warehouses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Сначала обновите список складов')),
+      );
+      return;
+    }
+    final warehouse = await showDialog<Map<String, Object?>>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: const Text('Выберите склад'),
+        children: warehouses
+            .map(
+              (w) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, w),
+                child: Text(w['name'] as String),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (warehouse == null || !mounted) return;
+    final locations = await widget.repository.storageLocations(
+      warehouse['id'] as int,
+    );
+    if (!mounted) return;
+    if (locations.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('На этом складе пока нет мест хранения')),
+      );
+      return;
+    }
+    final location = await showDialog<Map<String, Object?>>(
+      context: context,
+      builder: (ctx) => SimpleDialog(
+        title: Text(warehouse['name'] as String),
+        children: locations
+            .map(
+              (l) => SimpleDialogOption(
+                onPressed: () => Navigator.pop(ctx, l),
+                child: Text(l['name'] as String),
+              ),
+            )
+            .toList(),
+      ),
+    );
+    if (location == null || !mounted) return;
+    setState(() => saving = true);
+    try {
+      await widget.repository.assignProductsToStorageLocation(
+        [product['id'] as int],
+        warehouse['id'] as int,
+        location['id'] as int,
+      );
+      await loadProductDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Назначено: ${warehouse['name']} • ${location['name']}',
+            ),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Не удалось назначить место: $error')),
+        );
       }
     } finally {
       if (mounted) setState(() => saving = false);
@@ -478,8 +599,82 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
-        Text('Остаток: ${product['stock']} ${product['uom_name']}'),
-        const SizedBox(height: 32),
+        const Text(
+          'Остатки по складам',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        const Text(
+          'Показывается остаток всего склада. Место хранения — локальная привязка, остаток отдельной ячейки МойСклад не предоставляет.',
+          style: TextStyle(fontSize: 12),
+        ),
+        if (detailsError != null)
+          Text('Не удалось загрузить данные товара: $detailsError'),
+        if (warehouseStocks.isEmpty)
+          const Text('Детализация по складам пока не загружена')
+        else
+          ...warehouseStocks.map((row) {
+            final assignment = assignments
+                .where(
+                  (item) =>
+                      item['warehouse_moysklad_id'] ==
+                      row['warehouse_moysklad_id'],
+                )
+                .firstOrNull;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(row['warehouse_name'] as String),
+              subtitle: Text(
+                assignment == null
+                    ? 'Место хранения не назначено'
+                    : assignment['location_name'] as String,
+              ),
+              trailing: Text('${row['stock']} ${product['uom_name']}'),
+            );
+          }),
+        const SizedBox(height: 16),
+        const Text(
+          'Места хранения',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        if (assignments.isEmpty)
+          const Text('Места хранения не назначены')
+        else
+          ...assignments.map(
+            (row) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(row['warehouse_name'] as String),
+              subtitle: Text(row['location_name'] as String),
+              trailing: IconButton(
+                tooltip: 'Убрать место хранения',
+                icon: const Icon(Icons.delete_outline),
+                onPressed: saving
+                    ? null
+                    : () async {
+                        setState(() => saving = true);
+                        try {
+                          await widget.repository
+                              .removeProductStorageAssignment(row['id'] as int);
+                          await loadProductDetails();
+                        } catch (error) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Не удалось убрать место: $error'),
+                            ),
+                          );
+                        } finally {
+                          if (mounted) setState(() => saving = false);
+                        }
+                      },
+              ),
+            ),
+          ),
+        OutlinedButton.icon(
+          onPressed: saving ? null : chooseStorage,
+          icon: const Icon(Icons.add_location_alt_outlined),
+          label: const Text('Назначить склад и место хранения'),
+        ),
+        const Divider(height: 32),
         FilledButton(
           onPressed: saving ? null : () => assign('relevant'),
           child: const Text('Актуален'),
@@ -499,7 +694,7 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
               child: OutlinedButton(
                 onPressed: index == 0 || saving
                     ? null
-                    : () => setState(() => index--),
+                    : () => moveTo(index - 1),
                 child: const Text('Назад'),
               ),
             ),
@@ -508,7 +703,7 @@ class _ProductSequenceScreenState extends State<ProductSequenceScreen> {
               child: FilledButton(
                 onPressed: saving || index == widget.items.length - 1
                     ? null
-                    : () => setState(() => index++),
+                    : () => moveTo(index + 1),
                 child: const Text('Пропустить'),
               ),
             ),
