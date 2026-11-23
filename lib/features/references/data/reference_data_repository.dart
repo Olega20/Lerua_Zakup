@@ -148,6 +148,7 @@ class ReferenceDataRepository {
   Future<List<Map<String, dynamic>>> _allDirect(
     String path, {
     String? filter,
+    Map<String, String> extraQuery = const {},
   }) async {
     final token = await tokenStore.readToken();
     if (token == null || token.trim().isEmpty) {
@@ -159,6 +160,7 @@ class ReferenceDataRepository {
     while (true) {
       final query = <String, String>{'limit': '$limit', 'offset': '$offset'};
       if (filter != null) query['filter'] = filter;
+      query.addAll(extraQuery);
       final response = await directApiClient.getResource(
         token,
         path,
@@ -513,20 +515,19 @@ class ReferenceDataRepository {
   }
 
   /// Fetches live MoySklad documents without persisting their content locally.
-  Future<List<Map<String, dynamic>>> moySkladInventories() => _all(
+  Future<List<Map<String, dynamic>>> moySkladInventories() => _allDirect(
     '/entity/inventory',
-    'inventories',
-    'inventory',
-    extraQuery: const {'expand': 'organization,store,state'},
+    extraQuery: const {
+      'expand': 'organization,store,state',
+      'order': 'moment,desc',
+    },
   );
 
-  /// Positions are fetched on demand and are never cached in the local database.
+  /// Positions are fetched on demand and never enter the local task database.
   Future<List<Map<String, dynamic>>> moySkladInventoryPositions(
     String inventoryId,
-  ) => _all(
+  ) => _allDirect(
     '/entity/inventory/$inventoryId/positions',
-    'inventory_positions',
-    'inventory',
     extraQuery: const {'expand': 'assortment'},
   );
 
