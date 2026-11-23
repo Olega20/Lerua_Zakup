@@ -764,7 +764,8 @@ class ReferenceDataRepository {
             .where((task) => task.uid.startsWith(baseTaskUid))
             .toList();
         final previousTask = relatedTasks.isEmpty ? null : relatedTasks.last;
-        final previousIsTerminalFailure = previousTask != null &&
+        final previousIsTerminalFailure =
+            previousTask != null &&
             {
               ApiTaskStatus.failed,
               ApiTaskStatus.uncertain,
