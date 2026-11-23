@@ -495,6 +495,313 @@ class ReferenceDataRepository {
     );
   }
 
+  Future<List<Map<String, Object?>>> inventorySessions() async {
+    return (await _db).query(
+      'inventory_sessions',
+      orderBy: 'CASE status WHEN \'draft\' THEN 0 WHEN \'sync_failed\' THEN 1 WHEN \'syncing\' THEN 2 ELSE 3 END, updated_at DESC',
+    );
+  }
+
+  Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async {
+    return (await _db).query(
+      'inventory_lines',
+      where: 'session_id=?',
+      whereArgs: [sessionId],
+      orderBy: 'sort_order',
+    );
+  }
+
+  Future<int> createInventoryDraft({
+    required int organizationId,
+    required int warehouseId,
+    required Iterable<int> storageLocationIds,
+  }) async {
+    final db = await _db;
+    final selectedIds = storageLocationIds.toSet().toList()..sort();
+    final organizationRows = await db.query(
+      'organizations',
+      where: 'id=? AND is_present=1 AND is_archived=0',
+      whereArgs: [organizationId],
+      limit: 1,
+    );
+    final warehouseRows = await db.query(
+      'warehouses',
+      where: 'id=? AND is_present=1 AND is_archived=0',
+      whereArgs: [warehouseId],
+      limit: 1,
+    );
+    if (organizationRows.isEmpty || warehouseRows.isEmpty) {
+      throw StateError('Организация или склад больше недоступны. Обновите справочники.');
+    }
+    final organization = organizationRows.first;
+    final warehouse = warehouseRows.first;
+    final locations = await db.query(
+      'storage_locations',
+      where: 'warehouse_id=? AND is_active=1',
+      whereArgs: [warehouseId],
+    );
+    final validIds = locations.map((row) => row['id'] as int).toSet();
+    if (selectedIds.any((id) => !validIds.contains(id))) {
+      throw StateError('Список мест хранения изменился. Обновите экран.');
+    }
+    if (locations.isEmpty) {
+      throw StateError('На выбранном складе нет активных мест хранения.');
+    }
+    final locationFilter = selectedIds.isEmpty
+        ? ''
+        : ' AND psa.storage_location_id IN (${List.filled(selectedIds.length, '?').join(',')})';
+    final products = await db.rawQuery(
+      '''
+      SELECT p.id AS product_id,p.moysklad_id,p.kind,p.name,p.uom_name,
+             pws.stock AS expected_stock,psa.storage_location_id,sl.name AS location_name
+      FROM product_storage_assignments psa
+      JOIN products p ON p.id=psa.product_id
+      JOIN storage_locations sl ON sl.id=psa.storage_location_id
+      LEFT JOIN product_warehouse_stock pws
+        ON pws.product_id=p.id AND pws.warehouse_moysklad_id=?
+      WHERE psa.warehouse_id=? AND sl.is_active=1
+        AND p.is_archived=0 AND p.is_present=1
+        $locationFilter
+      ORDER BY sl.sort_order,sl.name COLLATE NOCASE,p.name COLLATE NOCASE
+      ''',
+      [warehouse['moysklad_id'], warehouseId, ...selectedIds],
+    );
+    if (products.isEmpty) {
+      throw StateError('В выбранных местах хранения нет назначенных товаров.');
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final uid = 'inventory-${now}-${organization['moysklad_id']}-${warehouse['moysklad_id']}';
+    return db.transaction((txn) async {
+      final sessionId = await txn.insert('inventory_sessions', {
+        'session_uid': uid,
+        'organization_id': organizationId,
+        'organization_moysklad_id_snapshot': organization['moysklad_id'],
+        'organization_name_snapshot': organization['name'],
+        'warehouse_id': warehouseId,
+        'warehouse_moysklad_id_snapshot': warehouse['moysklad_id'],
+        'warehouse_name_snapshot': warehouse['name'],
+        'selected_location_ids_json': jsonEncode(selectedIds),
+        'status': 'draft',
+        'created_at': now,
+        'updated_at': now,
+      });
+      for (var i = 0; i < products.length; i++) {
+        final product = products[i];
+        await txn.insert('inventory_lines', {
+          'session_id': sessionId,
+          'product_id': product['product_id'],
+          'product_moysklad_id_snapshot': product['moysklad_id'],
+          'product_kind_snapshot': product['kind'],
+          'product_name_snapshot': product['name'],
+          'uom_name_snapshot': product['uom_name'],
+          'expected_stock': product['expected_stock'],
+          'actual_quantity': null,
+          'include_in_inventory': 1,
+          'sort_order': i,
+        });
+      }
+      return sessionId;
+    });
+  }
+
+  Future<void> saveInventoryCount(int lineId, double? quantity) async {
+    if (quantity != null && (!quantity.isFinite || quantity < 0)) {
+      throw ArgumentError.value(quantity, 'quantity', 'Количество должно быть неотрицательным');
+    }
+    final db = await _db;
+    final line = await db.query(
+      'inventory_lines',
+      columns: ['session_id'],
+      where: 'id=?',
+      whereArgs: [lineId],
+      limit: 1,
+    );
+    if (line.isEmpty) throw StateError('Строка инвентаризации не найдена');
+    await db.update(
+      'inventory_lines',
+      {
+        'actual_quantity': quantity,
+        'counted_at': quantity == null ? null : DateTime.now().millisecondsSinceEpoch,
+      },
+      where: 'id=?',
+      whereArgs: [lineId],
+    );
+    await db.update(
+      'inventory_sessions',
+      {'updated_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'id=?',
+      whereArgs: [line.first['session_id']],
+    );
+  }
+
+  Future<void> resolveSkippedInventoryLines(
+    int sessionId, {
+    required bool setToZero,
+  }) async {
+    final db = await _db;
+    await db.transaction((txn) async {
+      if (setToZero) {
+        await txn.update(
+          'inventory_lines',
+          {
+            'actual_quantity': 0,
+            'include_in_inventory': 1,
+            'counted_at': DateTime.now().millisecondsSinceEpoch,
+          },
+          where: 'session_id=? AND actual_quantity IS NULL',
+          whereArgs: [sessionId],
+        );
+      } else {
+        await txn.update(
+          'inventory_lines',
+          {'include_in_inventory': 0},
+          where: 'session_id=? AND actual_quantity IS NULL',
+          whereArgs: [sessionId],
+        );
+      }
+      await txn.update(
+        'inventory_sessions',
+        {'updated_at': DateTime.now().millisecondsSinceEpoch},
+        where: 'id=?',
+        whereArgs: [sessionId],
+      );
+    });
+  }
+
+  Future<void> syncInventorySession(int sessionId) async {
+    final db = await _db;
+    final sessions = await db.query(
+      'inventory_sessions',
+      where: 'id=?',
+      whereArgs: [sessionId],
+      limit: 1,
+    );
+    if (sessions.isEmpty) throw StateError('Инвентаризация не найдена');
+    final session = sessions.first;
+    if (session['status'] == 'completed') return;
+    final lines = await db.query(
+      'inventory_lines',
+      where: 'session_id=? AND include_in_inventory=1',
+      whereArgs: [sessionId],
+      orderBy: 'sort_order',
+    );
+    if (lines.any((line) => line['actual_quantity'] == null)) {
+      throw StateError('Сначала разрешите обработку пропущенных товаров.');
+    }
+    if (lines.length > 1000) {
+      throw StateError('В одном документе МойСклад поддерживается не более 1000 позиций. Разделите инвентаризацию на несколько документов.');
+    }
+    final token = await tokenStore.readToken();
+    if (token == null || token.trim().isEmpty) {
+      throw StateError('Не сохранён Access Token МойСклад.');
+    }
+    await db.update(
+      'inventory_sessions',
+      {'status': 'syncing', 'sync_error': null, 'updated_at': DateTime.now().millisecondsSinceEpoch},
+      where: 'id=?',
+      whereArgs: [sessionId],
+    );
+    try {
+      final uid = session['session_uid'] as String;
+      // A previous POST may have reached MoySklad even if its response was lost.
+      // externalCode makes retry idempotent: look up the document before creating it again.
+      var existing = await directApiClient.getResource(
+        token,
+        '/entity/inventory',
+        query: {'filter': 'externalCode=$uid', 'limit': '2'},
+      );
+      Map<String, dynamic>? document;
+      final existingRows = existing.data?['rows'];
+      if (existing.isSuccess && existingRows is List && existingRows.isNotEmpty) {
+        final row = existingRows.first;
+        if (row is Map) document = Map<String, dynamic>.from(row);
+      }
+      if (document == null) {
+        final positions = lines.map((line) {
+          final kind = line['product_kind_snapshot'] == 'service'
+              ? 'service'
+              : 'product';
+          final productId = line['product_moysklad_id_snapshot'];
+          return {
+            'quantity': (line['actual_quantity'] as num).toDouble(),
+            'assortment': {
+              'meta': {
+                'href': 'https://api.moysklad.ru/api/remap/1.2/entity/$kind/$productId',
+                'type': kind,
+                'mediaType': 'application/json',
+              },
+            },
+          };
+        }).toList();
+        final created = await directApiClient.postResource(
+          token,
+          '/entity/inventory',
+          {
+            'name': 'Инвентаризация ${DateTime.now().toIso8601String().substring(0, 16)}',
+            'externalCode': uid,
+            'organization': {
+              'meta': {
+                'href': 'https://api.moysklad.ru/api/remap/1.2/entity/organization/${session['organization_moysklad_id_snapshot']}',
+                'type': 'organization',
+                'mediaType': 'application/json',
+              },
+            },
+            'store': {
+              'meta': {
+                'href': 'https://api.moysklad.ru/api/remap/1.2/entity/store/${session['warehouse_moysklad_id_snapshot']}',
+                'type': 'store',
+                'mediaType': 'application/json',
+              },
+            },
+            'positions': positions,
+          },
+        );
+        if (!created.isSuccess) {
+          throw ApiTaskExecutionException(
+            ApiTaskStatus.failed,
+            created.errorResponse ?? created.data,
+            httpStatusCode: created.statusCode,
+            safeErrorCode: created.errorCode,
+            safeErrorMessage: created.errorMessage,
+          );
+        }
+        document = created.data!;
+      }
+      final meta = document['meta'];
+      final href = meta is Map ? meta['href']?.toString() : null;
+      final documentId = document['id']?.toString() ??
+          (href == null ? null : Uri.tryParse(href)?.pathSegments.lastOrNull);
+      if (documentId == null || documentId.isEmpty) {
+        throw const FormatException('МойСклад не вернул идентификатор инвентаризации.');
+      }
+      await db.update(
+        'inventory_sessions',
+        {
+          'status': 'completed',
+          'moysklad_id': documentId,
+          'moysklad_href': href,
+          'sync_error': null,
+          'completed_at': DateTime.now().millisecondsSinceEpoch,
+          'updated_at': DateTime.now().millisecondsSinceEpoch,
+        },
+        where: 'id=?',
+        whereArgs: [sessionId],
+      );
+    } catch (error) {
+      await db.update(
+        'inventory_sessions',
+        {
+          'status': 'sync_failed',
+          'sync_error': error.toString(),
+          'updated_at': DateTime.now().millisecondsSinceEpoch,
+        },
+        where: 'id=?',
+        whereArgs: [sessionId],
+      );
+      rethrow;
+    }
+  }
+
   Future<Map<String, int>> productCounts() async {
     final rows = await (await _db).rawQuery(
       "SELECT relevance_status,COUNT(*) c FROM products WHERE is_archived=0 AND is_present=1 GROUP BY relevance_status",
