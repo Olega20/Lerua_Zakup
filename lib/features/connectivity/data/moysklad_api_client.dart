@@ -471,13 +471,14 @@ class MoySkladApiClient {
         errorCode: 'UPDATE_TRANSPORT_UNAVAILABLE',
       );
     }
+    final updateTransport = transport as MoySkladHttpUpdateTransport;
     final relativePath = path.startsWith('/') ? path : '/$path';
     final normalizedPath = relativePath.startsWith('/api/remap/1.2/')
         ? relativePath
         : '/api/remap/1.2$relativePath';
     final uri = Uri.https('api.moysklad.ru', normalizedPath);
     try {
-      final response = await transport.put(
+      final response = await updateTransport.put(
         uri,
         body: body,
         connectionTimeout: connectionTimeout,
