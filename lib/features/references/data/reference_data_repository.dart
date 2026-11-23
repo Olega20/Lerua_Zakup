@@ -741,7 +741,7 @@ class ReferenceDataRepository {
         type: 'inventory_lookup',
         logicalQueue: 'inventory',
         path: '/entity/inventory',
-        query: {'filter': 'externalCode=$uid', 'limit': '2'},
+        query: {'filter': 'externalCode=LZ-$uid', 'limit': '2'},
         timeout: const Duration(seconds: 45),
       );
       Map<String, dynamic>? document;
