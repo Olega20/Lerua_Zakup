@@ -527,6 +527,7 @@ class ReferenceDataRepository {
     '/entity/inventory/$inventoryId/positions',
     'inventory_positions',
     'inventory',
+    extraQuery: const {'expand': 'assortment'},
   );
 
   Future<void> updateMoySkladInventoryPosition({
@@ -549,8 +550,18 @@ class ReferenceDataRepository {
       body: {'quantity': quantity},
       timeout: const Duration(minutes: 2),
     );
+    final localSessions = await (await _db).query(
+      'inventory_sessions',
+      columns: ['session_uid'],
+      where: 'moysklad_id = ?',
+      whereArgs: [inventoryId],
+      limit: 1,
+    );
+    final journalUid = localSessions.isEmpty
+        ? 'moysklad-inventory:$inventoryId'
+        : 'inventory:${localSessions.single['session_uid']}';
     await warehouseJournal?.recordInventoryEvent(
-      entryUid: 'moysklad-inventory:$inventoryId',
+      entryUid: journalUid,
       summary: documentName,
       state: 'updated',
       eventType: 'position_updated',
