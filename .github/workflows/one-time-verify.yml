@@ -37,9 +37,18 @@ jobs:
       - name: Format changed Dart files
         run: |
           dart format \
+            lib/app/app.dart \
+            lib/core/storage/app_database.dart \
+            lib/features/connectivity/data/moysklad_api_client.dart \
+            lib/features/home/presentation/home_screen.dart \
             lib/features/references/data/reference_data_repository.dart \
             lib/features/references/presentation/product_inventory_screens.dart \
+            lib/features/references/presentation/inventory_screens.dart \
             lib/features/references/presentation/reference_screens.dart \
+            test/core/storage/app_database_test.dart \
+            test/features/connectivity/moysklad_api_client_test.dart \
+            test/features/home/home_screen_test.dart \
+            test/features/home/placeholder_navigation_test.dart \
             test/features/references/reference_data_repository_test.dart
 
       - name: Commit formatting changes
@@ -47,9 +56,18 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add \
+            lib/app/app.dart \
+            lib/core/storage/app_database.dart \
+            lib/features/connectivity/data/moysklad_api_client.dart \
+            lib/features/home/presentation/home_screen.dart \
             lib/features/references/data/reference_data_repository.dart \
             lib/features/references/presentation/product_inventory_screens.dart \
+            lib/features/references/presentation/inventory_screens.dart \
             lib/features/references/presentation/reference_screens.dart \
+            test/core/storage/app_database_test.dart \
+            test/features/connectivity/moysklad_api_client_test.dart \
+            test/features/home/home_screen_test.dart \
+            test/features/home/placeholder_navigation_test.dart \
             test/features/references/reference_data_repository_test.dart
           if ! git diff --cached --quiet; then
             git commit -m "style: format warehouse stock changes"
