@@ -636,27 +636,31 @@ class ReferenceDataRepository {
 
   Future<void> resolveSkippedInventoryLines(
     int sessionId, {
-    required bool setToZero,
+    required Set<int> zeroLineIds,
   }) async {
     final db = await _db;
     await db.transaction((txn) async {
-      if (setToZero) {
+      final skipped = await txn.query(
+        'inventory_lines',
+        columns: ['id'],
+        where: 'session_id=? AND actual_quantity IS NULL',
+        whereArgs: [sessionId],
+      );
+      final skippedIds = skipped.map((row) => row['id'] as int).toSet();
+      if (zeroLineIds.difference(skippedIds).isNotEmpty) {
+        throw StateError('Список пропущенных товаров изменился. Повторите действие.');
+      }
+      for (final id in skippedIds) {
+        final zero = zeroLineIds.contains(id);
         await txn.update(
           'inventory_lines',
           {
-            'actual_quantity': 0,
-            'include_in_inventory': 1,
-            'counted_at': DateTime.now().millisecondsSinceEpoch,
+            'actual_quantity': zero ? 0 : null,
+            'include_in_inventory': zero ? 1 : 0,
+            'counted_at': zero ? DateTime.now().millisecondsSinceEpoch : null,
           },
-          where: 'session_id=? AND actual_quantity IS NULL',
-          whereArgs: [sessionId],
-        );
-      } else {
-        await txn.update(
-          'inventory_lines',
-          {'include_in_inventory': 0},
-          where: 'session_id=? AND actual_quantity IS NULL',
-          whereArgs: [sessionId],
+          where: 'id=? AND session_id=?',
+          whereArgs: [id, sessionId],
         );
       }
       await txn.update(
@@ -667,6 +671,7 @@ class ReferenceDataRepository {
       );
     });
   }
+
 
   Future<void> syncInventorySession(int sessionId) async {
     final db = await _db;
