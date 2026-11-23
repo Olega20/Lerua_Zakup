@@ -463,6 +463,7 @@ class ProductDetailScreen extends StatefulWidget {
 
 class _ProductDetailScreenState extends State<ProductDetailScreen> {
   List<Map<String, Object?>> assignments = [];
+  List<Map<String, Object?>> warehouseOverview = [];
   Map<String, Object?>? supplier;
   bool loading = true;
   late String currentStatus;
@@ -481,9 +482,13 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     final selectedSupplier = await widget.repository.productSupplier(
       widget.product['id'] as int,
     );
+    final stockOverview = await widget.repository.productWarehouseOverview([
+      widget.product['id'] as int,
+    ]);
     if (mounted) {
       setState(() {
         assignments = rows;
+        warehouseOverview = stockOverview;
         supplier = selectedSupplier;
         loading = false;
       });
@@ -568,7 +573,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
-          Text('Остаток: ${p['stock']} ${p['uom_name']}'),
+          Text('Общий остаток: ${p['stock']} ${p['uom_name']}'),
+          ProductWarehouseOverview(
+            rows: warehouseOverview,
+            unit: p['uom_name']?.toString() ?? '',
+          ),
           const SizedBox(height: 24),
           const Text(
             'Поставщик',
