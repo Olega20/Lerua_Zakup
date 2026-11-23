@@ -760,15 +760,21 @@ class ReferenceDataRepository {
           };
         }).toList();
         final baseTaskUid = 'inventory-create:$uid';
-        final previousTask = await api.taskByUid(baseTaskUid);
-        final postTaskUid = previousTask != null &&
-                {
-                  ApiTaskStatus.failed,
-                  ApiTaskStatus.uncertain,
-                  ApiTaskStatus.cancelled,
-                }.contains(previousTask.status)
+        final relatedTasks = (await api.listTasks(logicalQueue: 'inventory'))
+            .where((task) => task.uid.startsWith(baseTaskUid))
+            .toList();
+        final previousTask = relatedTasks.isEmpty ? null : relatedTasks.last;
+        final previousIsTerminalFailure = previousTask != null &&
+            {
+              ApiTaskStatus.failed,
+              ApiTaskStatus.uncertain,
+              ApiTaskStatus.cancelled,
+            }.contains(previousTask.status);
+        final postTaskUid = previousTask == null
+            ? baseTaskUid
+            : previousIsTerminalFailure
             ? '$baseTaskUid:retry:${DateTime.now().microsecondsSinceEpoch}'
-            : baseTaskUid;
+            : previousTask.uid;
         final created = await api.requestPost(
           uid: postTaskUid,
           type: 'inventory_create',
