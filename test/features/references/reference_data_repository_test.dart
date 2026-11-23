@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +28,8 @@ class _FakeDirectTransport
     implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
   int calls = 0;
   Uri? lastUri;
+  List<Map<String, dynamic>> inventoryRows = [];
+  List<Map<String, dynamic>> inventoryPositionRows = [];
 
   @override
   Future<MoySkladHttpResponse> get(
@@ -38,9 +41,21 @@ class _FakeDirectTransport
     calls++;
     lastUri = uri;
     if (uri.path.endsWith('/entity/inventory')) {
-      return const MoySkladHttpResponse(
+      return MoySkladHttpResponse(
         statusCode: 200,
-        body: '{"rows":[],"meta":{"size":0}}',
+        body: jsonEncode({
+          'rows': inventoryRows,
+          'meta': {'size': inventoryRows.length},
+        }),
+      );
+    }
+    if (uri.path.endsWith('/positions')) {
+      return MoySkladHttpResponse(
+        statusCode: 200,
+        body: jsonEncode({
+          'rows': inventoryPositionRows,
+          'meta': {'size': inventoryPositionRows.length},
+        }),
       );
     }
     return const MoySkladHttpResponse(
@@ -263,7 +278,7 @@ void main() {
   test(
     'remote MoySklad inventories are fetched live and not stored locally',
     () async {
-      api.inventoryRows = [
+      directTransport.inventoryRows = [
         {
           'id': 'remote-inventory-1',
           'name': 'Пересчёт склада',
@@ -279,7 +294,7 @@ void main() {
   );
 
   test('remote inventory position updates use PUT and are journaled', () async {
-    api.inventoryPositionRows = [
+    directTransport.inventoryPositionRows = [
       {
         'id': 'position-1',
         'quantity': 3,
