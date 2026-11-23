@@ -534,6 +534,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       setState(() => index += delta);
       _showCurrentValue();
     } catch (error) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text(error.toString())));
     }
@@ -542,6 +543,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   Future<void> _toggleListMode() async {
     await _saveQueue;
     await _persistCurrent();
+    if (!mounted) return;
     setState(() => listMode = !listMode);
     if (!listMode) _showCurrentValue();
   }
@@ -549,6 +551,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   Future<void> _selectListItem(int selected) async {
     await _saveQueue;
     await _persistCurrent();
+    if (!mounted) return;
     setState(() => index = selected);
     _showCurrentValue();
   }
@@ -556,6 +559,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   Future<void> _finish() async {
     await _saveQueue;
     await _persistCurrent();
+    if (!mounted) return;
     final skipped = lines
         .where((line) => line['actual_quantity'] == null)
         .toList();
@@ -674,8 +678,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (loading)
+    if (loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     if (session == null || lines.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: const Text('Инвентаризация')),
