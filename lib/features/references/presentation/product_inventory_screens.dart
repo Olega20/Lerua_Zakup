@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../data/reference_data_repository.dart';
 
-
 /// Compact warehouse breakdown shared by product lists and review screens.
 /// The stock value belongs to the warehouse, not to the local storage location.
 class ProductWarehouseOverview extends StatelessWidget {

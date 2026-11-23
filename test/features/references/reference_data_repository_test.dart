@@ -404,84 +404,89 @@ void main() {
     },
   );
 
-  test('warehouse overview combines stock rows and local storage-only assignments', () async {
-    final sql = await db.database;
-    final productWithStock = await sql.insert('products', {
-      'moysklad_id': 'overview-stock-product',
-      'name': 'Товар с остатком',
-      'kind': 'product',
-    });
-    final productWithAssignment = await sql.insert('products', {
-      'moysklad_id': 'overview-assigned-product',
-      'name': 'Товар только с местом',
-      'kind': 'product',
-    });
-    final warehouse1 = await sql.insert('warehouses', {
-      'moysklad_id': 'overview-w-1',
-      'name': 'Склад Остатки',
-    });
-    final warehouse2 = await sql.insert('warehouses', {
-      'moysklad_id': 'overview-w-2',
-      'name': 'Склад Без отчёта',
-    });
-    await repository.saveStorageLocation(warehouse1, 'Стеллаж А');
-    await repository.saveStorageLocation(warehouse2, 'Зона Б');
-    final location1 = (await repository.storageLocations(warehouse1)).single['id'] as int;
-    final location2 = (await repository.storageLocations(warehouse2)).single['id'] as int;
-    await sql.insert('product_warehouse_stock', {
-      'product_id': productWithStock,
-      'warehouse_moysklad_id': 'overview-w-1',
-      'warehouse_name': 'Склад Остатки',
-      'stock': 12,
-      'updated_at': DateTime.now().millisecondsSinceEpoch,
-    });
-    await repository.assignProductsToStorageLocation(
-      [productWithStock],
-      warehouse1,
-      location1,
-    );
-    await repository.assignProductsToStorageLocation(
-      [productWithAssignment],
-      warehouse2,
-      location2,
-    );
+  test(
+    'warehouse overview combines stock rows and local storage-only assignments',
+    () async {
+      final sql = await db.database;
+      final productWithStock = await sql.insert('products', {
+        'moysklad_id': 'overview-stock-product',
+        'name': 'Товар с остатком',
+        'kind': 'product',
+      });
+      final productWithAssignment = await sql.insert('products', {
+        'moysklad_id': 'overview-assigned-product',
+        'name': 'Товар только с местом',
+        'kind': 'product',
+      });
+      final warehouse1 = await sql.insert('warehouses', {
+        'moysklad_id': 'overview-w-1',
+        'name': 'Склад Остатки',
+      });
+      final warehouse2 = await sql.insert('warehouses', {
+        'moysklad_id': 'overview-w-2',
+        'name': 'Склад Без отчёта',
+      });
+      await repository.saveStorageLocation(warehouse1, 'Стеллаж А');
+      await repository.saveStorageLocation(warehouse2, 'Зона Б');
+      final location1 =
+          (await repository.storageLocations(warehouse1)).single['id'] as int;
+      final location2 =
+          (await repository.storageLocations(warehouse2)).single['id'] as int;
+      await sql.insert('product_warehouse_stock', {
+        'product_id': productWithStock,
+        'warehouse_moysklad_id': 'overview-w-1',
+        'warehouse_name': 'Склад Остатки',
+        'stock': 12,
+        'updated_at': DateTime.now().millisecondsSinceEpoch,
+      });
+      await repository.assignProductsToStorageLocation(
+        [productWithStock],
+        warehouse1,
+        location1,
+      );
+      await repository.assignProductsToStorageLocation(
+        [productWithAssignment],
+        warehouse2,
+        location2,
+      );
 
-    expect(
-      (await repository.products(warehouseMoyskladId: 'overview-w-1'))
-          .map((row) => row['id'])
-          .toList(),
-      [productWithStock],
-    );
-    expect(
-      (await repository.products(warehouseMoyskladId: 'overview-w-2'))
-          .map((row) => row['id'])
-          .toList(),
-      [productWithAssignment],
-    );
-    expect(
-      await repository.products(warehouseMoyskladId: 'unknown-warehouse'),
-      isEmpty,
-    );
+      expect(
+        (await repository.products(warehouseMoyskladId: 'overview-w-1'))
+            .map((row) => row['id'])
+            .toList(),
+        [productWithStock],
+      );
+      expect(
+        (await repository.products(warehouseMoyskladId: 'overview-w-2'))
+            .map((row) => row['id'])
+            .toList(),
+        [productWithAssignment],
+      );
+      expect(
+        await repository.products(warehouseMoyskladId: 'unknown-warehouse'),
+        isEmpty,
+      );
 
-    final overview = await repository.productWarehouseOverview([
-      productWithStock,
-      productWithAssignment,
-    ]);
-    expect(overview, hasLength(2));
-    final withStock = overview.singleWhere(
-      (row) => row['product_id'] == productWithStock,
-    );
-    expect(withStock['warehouse_name'], 'Склад Остатки');
-    expect(withStock['location_name'], 'Стеллаж А');
-    expect(withStock['stock'], 12);
-    final assignmentOnly = overview.singleWhere(
-      (row) => row['product_id'] == productWithAssignment,
-    );
-    expect(assignmentOnly['warehouse_name'], 'Склад Без отчёта');
-    expect(assignmentOnly['location_name'], 'Зона Б');
-    expect(assignmentOnly['stock'], isNull);
-    expect(await repository.productWarehouseOverview([]), isEmpty);
-  });
+      final overview = await repository.productWarehouseOverview([
+        productWithStock,
+        productWithAssignment,
+      ]);
+      expect(overview, hasLength(2));
+      final withStock = overview.singleWhere(
+        (row) => row['product_id'] == productWithStock,
+      );
+      expect(withStock['warehouse_name'], 'Склад Остатки');
+      expect(withStock['location_name'], 'Стеллаж А');
+      expect(withStock['stock'], 12);
+      final assignmentOnly = overview.singleWhere(
+        (row) => row['product_id'] == productWithAssignment,
+      );
+      expect(assignmentOnly['warehouse_name'], 'Склад Без отчёта');
+      expect(assignmentOnly['location_name'], 'Зона Б');
+      expect(assignmentOnly['stock'], isNull);
+      expect(await repository.productWarehouseOverview([]), isEmpty);
+    },
+  );
 
   test('product refresh stores per-warehouse stock and keeps the last snapshot if the report fails', () async {
     api.stockByStoreRows = [
