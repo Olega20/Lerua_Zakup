@@ -12,6 +12,7 @@ import '../../connectivity/data/api_task_dispatcher.dart';
 import '../../connectivity/domain/api_task_execution_exception.dart';
 import '../../warehouse_log/data/warehouse_log_repository.dart';
 import '../../warehouse_log/domain/warehouse_log_entry.dart';
+import '../../warehouse_journal/data/warehouse_journal_repository.dart';
 
 class ReferenceDataRepository {
   ReferenceDataRepository({
@@ -20,12 +21,14 @@ class ReferenceDataRepository {
     required this.directApiClient,
     required this.tokenStore,
     this.warehouseLog,
+    this.warehouseJournal,
   });
   final AppDatabase database;
   final ApiTaskDispatcher api;
   final MoySkladApiClient directApiClient;
   final SecureTokenStore tokenStore;
   final WarehouseLogRepository? warehouseLog;
+  final WarehouseJournalRepository? warehouseJournal;
   Future<void>? _productSyncFuture;
   Future<Database> get _db => database.database;
 
@@ -105,6 +108,7 @@ class ReferenceDataRepository {
     String type,
     String queue, {
     String? filter,
+    Map<String, String> extraQuery = const {},
   }) async {
     const limit = 100;
     var offset = 0;
@@ -112,6 +116,7 @@ class ReferenceDataRepository {
     while (true) {
       final q = <String, String>{'limit': '$limit', 'offset': '$offset'};
       if (filter != null) q['filter'] = filter;
+      q.addAll(extraQuery);
       final data = await api.requestGet(
         uid:
             '$type:${filter ?? 'all'}:$offset:${DateTime.now().microsecondsSinceEpoch}',
@@ -507,6 +512,58 @@ class ReferenceDataRepository {
     );
   }
 
+  /// Fetches live MoySklad documents without persisting their content locally.
+  Future<List<Map<String, dynamic>>> moySkladInventories() => _all(
+    '/entity/inventory',
+    'inventories',
+    'inventory',
+    extraQuery: const {'expand': 'organization,store,state'},
+  );
+
+  /// Positions are fetched on demand and are never cached in the local database.
+  Future<List<Map<String, dynamic>>> moySkladInventoryPositions(
+    String inventoryId,
+  ) => _all(
+    '/entity/inventory/$inventoryId/positions',
+    'inventory_positions',
+    'inventory',
+  );
+
+  Future<void> updateMoySkladInventoryPosition({
+    required String inventoryId,
+    required String positionId,
+    required String productName,
+    required double quantity,
+    required String documentName,
+  }) async {
+    if (!quantity.isFinite || quantity < 0) {
+      throw ArgumentError.value(quantity, 'quantity');
+    }
+    final uid =
+        'inventory-position-update:$inventoryId:$positionId:${DateTime.now().microsecondsSinceEpoch}';
+    await api.requestPut(
+      uid: uid,
+      type: 'inventory_position_update',
+      logicalQueue: 'inventory',
+      path: '/entity/inventory/$inventoryId/positions/$positionId',
+      body: {'quantity': quantity},
+      timeout: const Duration(minutes: 2),
+    );
+    await warehouseJournal?.recordInventoryEvent(
+      entryUid: 'moysklad-inventory:$inventoryId',
+      summary: documentName,
+      state: 'updated',
+      eventType: 'position_updated',
+      message: 'Изменена позиция «$productName»: фактическое количество $quantity',
+      snapshot: {
+        'moysklad_inventory_id': inventoryId,
+        'position_id': positionId,
+        'product_name': productName,
+        'quantity': quantity,
+      },
+    );
+  }
+
   Future<List<Map<String, Object?>>> inventorySessions() async {
     return (await _db).query(
       'inventory_sessions',
@@ -515,16 +572,35 @@ class ReferenceDataRepository {
   }
 
   Future<void> deleteInventoryDraft(int sessionId) async {
-    final deleted = await (await _db).delete(
+    final db = await _db;
+    final rows = await db.query(
       'inventory_sessions',
       where: "id=? AND status='draft'",
       whereArgs: [sessionId],
+      limit: 1,
     );
-    if (deleted != 1) {
+    if (rows.isEmpty) {
       throw StateError(
         'Удалить можно только локальный черновик инвентаризации.',
       );
     }
+    final session = rows.first;
+    await db.delete(
+      'inventory_sessions',
+      where: 'id=?',
+      whereArgs: [sessionId],
+    );
+    await warehouseJournal?.recordInventoryEvent(
+      entryUid: 'inventory:${session['session_uid']}',
+      summary: 'Инвентаризация • ${session['warehouse_name_snapshot']}',
+      state: 'cancelled',
+      eventType: 'draft_deleted',
+      message: 'Локальный черновик инвентаризации удалён',
+      snapshot: {
+        'organization': session['organization_name_snapshot'],
+        'warehouse': session['warehouse_name_snapshot'],
+      },
+    );
   }
 
   Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async {
@@ -627,6 +703,21 @@ class ReferenceDataRepository {
           'sort_order': i,
         });
       }
+      return sessionId;
+    }).then((sessionId) async {
+      await warehouseJournal?.recordInventoryEvent(
+        entryUid: 'inventory:$uid',
+        summary: 'Инвентаризация • ${warehouse['name']}',
+        state: 'draft',
+        eventType: 'draft_created',
+        message: 'Создан локальный черновик инвентаризации',
+        snapshot: {
+          'session_uid': uid,
+          'organization': organization['name'],
+          'warehouse': warehouse['name'],
+          'products_count': products.length,
+        },
+      );
       return sessionId;
     });
   }
@@ -842,6 +933,19 @@ class ReferenceDataRepository {
           'МойСклад не вернул идентификатор инвентаризации.',
         );
       }
+      await warehouseJournal?.recordInventoryEvent(
+        entryUid: 'inventory:$uid',
+        summary: 'Инвентаризация • ${session['warehouse_name_snapshot']}',
+        state: 'in_moysklad',
+        eventType: 'sent_to_moysklad',
+        message: 'Инвентаризация создана в МойСклад',
+        snapshot: {
+          'moysklad_inventory_id': documentId,
+          'moysklad_href': href,
+          'organization': session['organization_name_snapshot'],
+          'warehouse': session['warehouse_name_snapshot'],
+        },
+      );
       await db.update(
         'inventory_sessions',
         {
