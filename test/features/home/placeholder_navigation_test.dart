@@ -53,7 +53,7 @@ SettingsRepository _testRepository() => SettingsRepository(
 );
 
 void main() {
-  testWidgets('each business button shows the exact development message', (
+  testWidgets('placeholder business buttons show the exact development message', (
     tester,
   ) async {
     await tester.pumpWidget(const LeruaZakupApp());
@@ -62,7 +62,6 @@ void main() {
       'Закупка',
       'Заказ',
       'Перемещение',
-      'Инвентаризация',
       'Прочие действия',
     ]) {
       await tester.tap(find.text(label));
@@ -70,11 +69,6 @@ void main() {
       if (label == 'Прочие действия') {
         await tester.pumpAndSettle();
         expect(find.text('Актуальные товары МойСклад'), findsOneWidget);
-      } else if (label == 'Инвентаризация') {
-        await tester.pumpAndSettle();
-        expect(find.text('Инвентаризация'), findsOneWidget);
-        await tester.pageBack();
-        await tester.pumpAndSettle();
       } else {
         expect(
           find.text('Функция находится в разработке'),
