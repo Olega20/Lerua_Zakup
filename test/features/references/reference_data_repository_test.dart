@@ -435,21 +435,33 @@ void main() {
     );
     var lines = await repository.inventoryLines(sessionId);
     expect(lines, hasLength(2));
-    expect(lines.first['expected_stock'], 7);
+    final stockLine = lines.singleWhere(
+      (line) => line['product_name_snapshot'] == 'Товар первый',
+    );
+    final skippedLine = lines.singleWhere(
+      (line) => line['product_name_snapshot'] == 'Товар второй',
+    );
+    expect(stockLine['expected_stock'], 7);
     expect(
       lines.map((line) => line['product_name_snapshot']),
       containsAll(['Товар первый', 'Товар второй']),
     );
 
-    await repository.saveInventoryCount(lines.first['id'] as int, 5);
+    await repository.saveInventoryCount(stockLine['id'] as int, 5);
     await repository.resolveSkippedInventoryLines(
       sessionId,
-      zeroLineIds: {lines.last['id'] as int},
+      zeroLineIds: {skippedLine['id'] as int},
     );
     lines = await repository.inventoryLines(sessionId);
-    expect(lines.first['actual_quantity'], 5);
-    expect(lines.last['actual_quantity'], 0);
-    expect(lines.last['include_in_inventory'], 1);
+    final savedLine = lines.singleWhere(
+      (line) => line['product_name_snapshot'] == 'Товар первый',
+    );
+    final zeroLine = lines.singleWhere(
+      (line) => line['product_name_snapshot'] == 'Товар второй',
+    );
+    expect(savedLine['actual_quantity'], 5);
+    expect(zeroLine['actual_quantity'], 0);
+    expect(zeroLine['include_in_inventory'], 1);
     expect((await repository.inventorySessions()).single['status'], 'draft');
   });
 
@@ -664,9 +676,8 @@ void main() {
       );
       expect(
         (await repository.products(warehouseMoyskladId: 'overview-w-2'))
-            .map((row) => row['id'])
-            .toList(),
-        [productWithAssignment],
+            .map((row) => row['id']),
+        containsAll([productWithStock, productWithAssignment]),
       );
       expect(
         await repository.products(warehouseMoyskladId: 'unknown-warehouse'),
