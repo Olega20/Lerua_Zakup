@@ -28,6 +28,8 @@ class _FakeDirectTransport
     implements MoySkladHttpTransport, MoySkladHttpWriteTransport {
   int calls = 0;
   Uri? lastUri;
+  List<Map<String, dynamic>> inventoryRows = [];
+  List<Map<String, dynamic>> inventoryPositionRows = [];
 
   @override
   Future<MoySkladHttpResponse> get(
@@ -101,8 +103,6 @@ class _FakeApi extends ApiTaskDispatcher {
   int putRequests = 0;
   Map<String, Object?>? postedBody;
   Map<String, Object?>? putBody;
-  List<Map<String, dynamic>> inventoryRows = [];
-  List<Map<String, dynamic>> inventoryPositionRows = [];
 
   @override
   Future<Map<String, Object?>> requestPost({
