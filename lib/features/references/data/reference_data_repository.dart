@@ -570,7 +570,7 @@ class ReferenceDataRepository {
       throw StateError('В выбранных местах хранения нет назначенных товаров.');
     }
     final now = DateTime.now().millisecondsSinceEpoch;
-    final uid = 'inventory-${now}-${organization['moysklad_id']}-${warehouse['moysklad_id']}';
+    final uid = 'inventory-${DateTime.now().microsecondsSinceEpoch}-${organization['moysklad_id']}-${warehouse['moysklad_id']}';
     return db.transaction((txn) async {
       final sessionId = await txn.insert('inventory_sessions', {
         'session_uid': uid,
@@ -690,6 +690,9 @@ class ReferenceDataRepository {
       whereArgs: [sessionId],
       orderBy: 'sort_order',
     );
+    if (lines.isEmpty) {
+      throw StateError('Нет товаров, которые можно включить в документ инвентаризации.');
+    }
     if (lines.any((line) => line['actual_quantity'] == null)) {
       throw StateError('Сначала разрешите обработку пропущенных товаров.');
     }
