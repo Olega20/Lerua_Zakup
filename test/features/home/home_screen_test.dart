@@ -105,6 +105,28 @@ void main() {
     }
   });
 
+  testWidgets('opens the inventory flow from the home action', (tester) async {
+    var opened = false;
+    var placeholderShown = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HomeScreen(
+            now: now,
+            onOpenCalendar: () {},
+            onOpenSettings: () {},
+            onOpenInventory: () => opened = true,
+            onShowPlaceholder: (_) => placeholderShown = true,
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Инвентаризация'));
+    expect(opened, isTrue);
+    expect(placeholderShown, isFalse);
+  });
+
   testWidgets('expands the full calendar from the control below the week', (
     tester,
   ) async {
