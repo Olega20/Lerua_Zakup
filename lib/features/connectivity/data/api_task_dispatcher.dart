@@ -7,8 +7,8 @@ import '../domain/api_task_execution_exception.dart';
 import 'api_task_repository.dart';
 import 'moysklad_api_client.dart';
 
-/// Single-flight FIFO executor. Only idempotent GET requests are supported
-/// by this first dispatcher; ambiguous writes are never retried.
+/// Single-flight FIFO executor. GET requests may be retried; writes are
+/// dispatched once and ambiguous outcomes are marked uncertain, never retried.
 class ApiTaskDispatcher {
   ApiTaskDispatcher({
     required this.repository,
@@ -148,6 +148,23 @@ class ApiTaskDispatcher {
     if (_ready && _online) unawaited(pump());
   }
 
+  Future<void> enqueuePost({
+    required String uid,
+    required String type,
+    required String logicalQueue,
+    required String path,
+    required Map<String, Object?> body,
+  }) async {
+    await repository.enqueue(
+      uid: uid,
+      type: type,
+      logicalQueue: logicalQueue,
+      request: {'method': 'POST', 'path': path, 'body': body},
+      clock: _clock,
+    );
+    if (_ready && _online) unawaited(pump());
+  }
+
   Future<void> pump() async {
     if (_disposed || !_ready || !_online) return;
     if (_pumping) {
@@ -174,17 +191,20 @@ class ApiTaskDispatcher {
         _activeClaim = claim;
         final requestGeneration = tokenGeneration;
         final request = claim.task.request;
+        final method = request['method'];
         final path = request['path'];
-        if (request['method'] != 'GET' ||
+        final rawBody = request['body'];
+        if ((method != 'GET' && method != 'POST') ||
             path is! String ||
-            !path.startsWith('/')) {
+            !path.startsWith('/') ||
+            (method == 'POST' && rawBody is! Map)) {
           await repository.finishAttempt(
             taskId: claim.task.id,
             attemptNumber: claim.attemptNumber,
             status: ApiTaskStatus.failed,
             safeErrorCode: 'UNSUPPORTED_REQUEST',
             safeErrorMessage:
-                'Менеджер API получил неподдерживаемый тип запроса.',
+                'Менеджер API получил неподдерживаемый тип или формат запроса.',
             clock: _clock,
           );
           _activeClaim = null;
@@ -196,7 +216,16 @@ class ApiTaskDispatcher {
                 (key, value) => MapEntry(key.toString(), value.toString()),
               )
             : <String, String>{};
-        final result = await apiClient.getResource(token, path, query: query);
+        final ApiResourceResult result;
+        if (method == 'GET') {
+          result = await apiClient.getResource(token, path, query: query);
+        } else {
+          result = await apiClient.postResource(
+            token,
+            path,
+            Map<String, dynamic>.from(rawBody as Map),
+          );
+        }
         if (requestGeneration != _tokenGeneration) {
           await repository.finishAttempt(
             taskId: claim.task.id,
@@ -219,6 +248,35 @@ class ApiTaskDispatcher {
             clock: _clock,
           );
           _activeClaim = null;
+          continue;
+        }
+        if (method == 'POST') {
+          // Writes are never automatically retried. A timeout or server error
+          // may happen after MoySklad has created the document.
+          final ambiguous = result.statusCode == 408 || result.statusCode >= 500;
+          await repository.finishAttempt(
+            taskId: claim.task.id,
+            attemptNumber: claim.attemptNumber,
+            status: ambiguous ? ApiTaskStatus.uncertain : ApiTaskStatus.failed,
+            response: result.errorResponse ?? result.data,
+            httpStatusCode: result.statusCode,
+            safeErrorCode: ambiguous
+                ? 'WRITE_RESULT_UNCERTAIN'
+                : result.errorCode ?? 'API_REJECTED',
+            safeErrorMessage: ambiguous
+                ? 'Результат записи не подтверждён. Проверьте документ в МойСклад перед повторной отправкой.'
+                : result.errorMessage ?? _messageFor(result.statusCode),
+            clock: _clock,
+          );
+          _activeClaim = null;
+          if (result.statusCode == 401 || result.statusCode == 403) {
+            await repository.pauseAll(
+              paused: true,
+              reason: 'МойСклад отклонил доступ',
+              clock: _clock,
+            );
+            break;
+          }
           continue;
         }
         if (result.isRetryable) {
@@ -344,6 +402,52 @@ class ApiTaskDispatcher {
     }
     throw TimeoutException('API task did not complete in time');
   }
+
+  Future<Map<String, Object?>> requestPost({
+    required String uid,
+    required String type,
+    required String logicalQueue,
+    required String path,
+    required Map<String, Object?> body,
+    Duration timeout = const Duration(minutes: 3),
+  }) async {
+    await enqueuePost(
+      uid: uid,
+      type: type,
+      logicalQueue: logicalQueue,
+      path: path,
+      body: body,
+    );
+    final deadline = _clock().add(timeout);
+    while (_clock().isBefore(deadline) && !_disposed) {
+      final task = await repository.getTaskByUid(uid);
+      if (task != null) {
+        if (task.status == ApiTaskStatus.succeeded) {
+          return task.response ?? <String, Object?>{};
+        }
+        if (task.status == ApiTaskStatus.failed ||
+            task.status == ApiTaskStatus.uncertain ||
+            task.status == ApiTaskStatus.cancelled) {
+          final history = await repository.taskHistory(task.id);
+          final attempts = history['attempts'] ?? const [];
+          final lastAttempt = attempts.isEmpty ? null : attempts.last;
+          throw ApiTaskExecutionException(
+            task.status,
+            task.response,
+            taskId: task.id,
+            attemptNumber: lastAttempt?['attempt_number'] as int?,
+            httpStatusCode: lastAttempt?['http_status_code'] as int?,
+            safeErrorCode: lastAttempt?['safe_error_code'] as String?,
+            safeErrorMessage: lastAttempt?['safe_error_message'] as String?,
+          );
+        }
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 250));
+    }
+    throw TimeoutException('API write task did not complete in time');
+  }
+
+  Future<ApiTask?> taskByUid(String uid) => repository.getTaskByUid(uid);
 
   Future<void> retryFailed(int taskId) async {
     await repository.retryFailed(taskId, clock: _clock);
