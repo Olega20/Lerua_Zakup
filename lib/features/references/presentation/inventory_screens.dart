@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/quantity_keyboard.dart';
+
 import '../data/reference_data_repository.dart';
 
 class InventoryHomeScreen extends StatefulWidget {
@@ -376,12 +378,8 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   Map<String, Object?>? session;
   int index = 0;
   bool loading = true;
-  bool calculatorMode = false;
   bool listMode = false;
   bool syncing = false;
-  double? accumulator;
-  String? pendingOperator;
-  bool replaceOnNextDigit = false;
   Future<void> _saveQueue = Future<void>.value();
 
   Map<String, Object?>? get current => lines.isEmpty ? null : lines[index];
@@ -403,7 +401,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       (row) => row['id'] == widget.sessionId,
     );
     setState(() {
-      lines = values[0];
+      lines = values[0]
+          .map((line) => Map<String, Object?>.from(line))
+          .toList();
       session = found.isEmpty ? null : found.first;
       loading = false;
     });
@@ -436,35 +436,13 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     if (text.isNotEmpty && (value == null || !value.isFinite || value < 0)) {
       throw const FormatException('Введите корректное количество');
     }
-    line['actual_quantity'] = value;
     await widget.repository.saveInventoryCount(line['id'] as int, value);
-    if (mounted) setState(() {});
-  }
-
-  void _digit(String value) {
-    final text = quantityController.text;
-    if (value == '.' && text.contains('.')) return;
-    final next = replaceOnNextDigit
-        ? value
-        : text.isEmpty && value == '.'
-        ? '0.'
-        : '$text$value';
-    replaceOnNextDigit = false;
-    quantityController.text = next;
-    quantityController.selection = TextSelection.collapsed(offset: next.length);
-    _persistCurrentQuietly();
-    setState(() {});
-  }
-
-  void _backspace() {
-    final text = quantityController.text;
-    if (text.isEmpty) return;
-    quantityController.text = text.substring(0, text.length - 1);
-    quantityController.selection = TextSelection.collapsed(
-      offset: quantityController.text.length,
-    );
-    _persistCurrentQuietly();
-    setState(() {});
+    final lineIndex = lines.indexWhere((item) => item['id'] == line['id']);
+    if (mounted && lineIndex >= 0) {
+      setState(() {
+        lines[lineIndex] = {...lines[lineIndex], 'actual_quantity': value};
+      });
+    }
   }
 
   Future<void> _persistCurrentQuietly() {
@@ -472,58 +450,6 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
       // The visible value remains editable; validation is shown on navigation.
     });
     return _saveQueue;
-  }
-
-  void _clear() {
-    accumulator = null;
-    pendingOperator = null;
-    replaceOnNextDigit = false;
-    quantityController.clear();
-    _persistCurrentQuietly();
-    setState(() {});
-  }
-
-  void _calculatorOperator(String op) {
-    final value = double.tryParse(quantityController.text.replaceAll(',', '.'));
-    if (value == null) return;
-    if (accumulator != null && pendingOperator != null && !replaceOnNextDigit) {
-      _calculate();
-    }
-    accumulator =
-        double.tryParse(quantityController.text.replaceAll(',', '.')) ?? value;
-    pendingOperator = op;
-    replaceOnNextDigit = true;
-  }
-
-  void _calculate() {
-    final right = double.tryParse(quantityController.text.replaceAll(',', '.'));
-    final left = accumulator;
-    final op = pendingOperator;
-    if (right == null || left == null || op == null) return;
-    final result = switch (op) {
-      '+' => left + right,
-      '−' => left - right,
-      '×' => left * right,
-      '÷' => right == 0 ? double.nan : left / right,
-      _ => right,
-    };
-    if (!result.isFinite || result < 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Результат должен быть неотрицательным числом'),
-        ),
-      );
-      return;
-    }
-    quantityController.text = _formatQuantity(result);
-    quantityController.selection = TextSelection.collapsed(
-      offset: quantityController.text.length,
-    );
-    accumulator = null;
-    pendingOperator = null;
-    replaceOnNextDigit = true;
-    _persistCurrentQuietly();
-    setState(() {});
   }
 
   Future<void> _move(int delta) async {
@@ -788,7 +714,14 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
                     ],
                   ),
           ),
-          if (!completed) _buildKeyboard(context),
+          if (!completed)
+            QuantityKeyboard(
+              controller: quantityController,
+              enabled: !syncing,
+              onChanged: () {
+                _persistCurrentQuietly();
+              },
+            ),
           if (!completed)
             SafeArea(
               top: false,
@@ -829,80 +762,5 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     );
   }
 
-  Widget _buildKeyboard(BuildContext context) {
-    final keys = calculatorMode
-        ? [
-            '7',
-            '8',
-            '9',
-            '÷',
-            '4',
-            '5',
-            '6',
-            '×',
-            '1',
-            '2',
-            '3',
-            '−',
-            'C',
-            '0',
-            '.',
-            '+',
-            '⌫',
-            '=',
-          ]
-        : ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '.', '⌫'];
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => setState(() {
-                  calculatorMode = !calculatorMode;
-                  accumulator = null;
-                  pendingOperator = null;
-                }),
-                icon: Icon(
-                  calculatorMode ? Icons.dialpad : Icons.calculate_outlined,
-                ),
-                label: Text(calculatorMode ? 'Клавиатура' : 'Калькулятор'),
-              ),
-            ],
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 6,
-            children: keys.map((key) {
-              return SizedBox(
-                width: (MediaQuery.of(context).size.width - 64) / 4,
-                height: 42,
-                child: FilledButton.tonal(
-                  onPressed: syncing
-                      ? null
-                      : () {
-                          if (key == 'C') {
-                            _clear();
-                          } else if (key == '⌫') {
-                            _backspace();
-                          } else if (key == '=') {
-                            _calculate();
-                          } else if (['+', '−', '×', '÷'].contains(key)) {
-                            _calculatorOperator(key);
-                          } else {
-                            _digit(key);
-                          }
-                        },
-                  child: Text(key, style: const TextStyle(fontSize: 18)),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
+
 }
