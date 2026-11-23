@@ -495,7 +495,11 @@ void main() {
     expect(payload['externalCode'], isA<String>());
     expect(
       payload['syncId'],
-      matches(RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$')),
+      matches(
+        RegExp(
+          r'^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$',
+        ),
+      ),
     );
     expect(
       (payload['organization'] as Map)['meta']['href'],
