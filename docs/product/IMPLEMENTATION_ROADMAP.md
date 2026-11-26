@@ -83,3 +83,26 @@ Implementation implications and open safeguards:
 - Treat Finish as the explicit commit boundary: create only non-empty warehouse/supplier groups, and avoid partial duplicate records if persistence fails midway (transaction/idempotency behavior must be designed).
 - Obtain storage-location ordering from the source system rather than relying on arbitrary API order; sort product names alphabetically within each location.
 - Persist immutable product snapshots (at minimum the confirmed product identity/display details and unit; finalize exact snapshot fields in a later question round).
+
+## Confirmed purchase/order/transfer decisions — questionnaire round 3 (2026-11-26)
+
+- Current transfer scope is calendar-only: do not create a MoySklad transfer document and do not change warehouse balances.
+- The answer allowing negative stock is recorded for a possible future real transfer implementation; it has no current stock effect while transfers remain calendar-only.
+- For a future real transfer, the destination storage location should be selected automatically. The product owner clarified that each product can exist in only one storage location.
+- Manual additions to a transfer may include any active product, whether or not it has the Transfer flag.
+- Deletion behavior for an already-created transfer remains undecided; do not assume reversal or deletion semantics.
+- Immutable product snapshots contain product name, unit of measure, and supplier.
+- Before completion, users may edit quantities and remove draft lines.
+- If finalization fails, retain the draft and allow retry later. Retrying must be idempotent and must not duplicate calendar records already persisted.
+- On success, show a concise success message only; no detailed completion summary is needed.
+
+Implementation implications / outstanding decisions:
+
+- Keep transfer persistence within the app's calendar/operation model only for the initial release; isolate any future MoySklad posting and stock mutation behind a later, separately approved workflow.
+- Do not implement negative stock behavior in the current calendar-only transfer flow. Revisit the negative-stock decision only if actual stock posting is brought into scope.
+- Since each product has one storage location, avoid UI that asks users to choose among multiple source locations for the same product. Determine the destination location automatically according to a rule still to be confirmed.
+- Manual transfer search/add must include active catalog products regardless of the transfer flag.
+- Keep whole-record deletion disabled or gated until the unanswered deletion policy is clarified; existing round-2 permission to delete whole records should not be treated as defining reversal behavior for transfers.
+- Snapshot exactly name, unit of measure, and supplier as required historical display fields.
+- Draft editing supports quantity changes and line removal. On finalization errors, preserve the draft and persist per-group completion/idempotency state so retry cannot create duplicates.
+- Completion UI needs only a success confirmation.
