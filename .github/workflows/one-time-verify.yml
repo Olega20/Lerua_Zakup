@@ -94,7 +94,7 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Flutter tests
-        run: flutter test --timeout=30s --reporter=expanded
+        run: flutter test --timeout=30s --reporter=expanded --concurrency=1
 
       - name: Build Android debug APK
         run: flutter build apk --debug
