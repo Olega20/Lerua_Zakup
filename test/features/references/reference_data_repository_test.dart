@@ -248,12 +248,16 @@ class _InventoryUiRepository extends ReferenceDataRepository {
   final List<Map<String, Object?>> sessions;
 
   @override
-  Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async =>
-      lines.map(Map<String, Object?>.from).toList();
+  Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async {
+    print('INVENTORY_MOCK: inventoryLines called');
+    return lines.map(Map<String, Object?>.from).toList();
+  }
 
   @override
-  Future<List<Map<String, Object?>>> inventorySessions() async =>
-      sessions.map(Map<String, Object?>.from).toList();
+  Future<List<Map<String, Object?>>> inventorySessions() async {
+    print('INVENTORY_MOCK: inventorySessions called');
+    return sessions.map(Map<String, Object?>.from).toList();
+  }
 
   @override
   Future<void> saveInventoryCount(int lineId, double? quantity) async {
@@ -644,6 +648,7 @@ void main() {
       );
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1;
+      print('INVENTORY_MOCK: before pumpWidget');
       await tester.pumpWidget(
         MaterialApp(
           home: InventorySessionScreen(
@@ -652,6 +657,7 @@ void main() {
           ),
         ),
       );
+      print('INVENTORY_MOCK: after pumpWidget');
       // Do not use pumpAndSettle here: the focused read-only quantity field
       // keeps its cursor blink animation alive, so the tree never settles.
       await tester.pump();
