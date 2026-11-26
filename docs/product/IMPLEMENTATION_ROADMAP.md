@@ -106,3 +106,28 @@ Implementation implications / outstanding decisions:
 - Snapshot exactly name, unit of measure, and supplier as required historical display fields.
 - Draft editing supports quantity changes and line removal. On finalization errors, preserve the draft and persist per-group completion/idempotency state so retry cannot create duplicates.
 - Completion UI needs only a success confirmation.
+
+## Confirmed purchase/order/transfer decisions — questionnaire round 4 (2026-11-26)
+
+- Calendar operation details group products beneath supplier headings, repeating the supplier heading for each supplier group.
+- Detailed operation views show product, entered quantity, unit of measure, and current stock.
+- Operation numbers include operation-type prefix, year, and a sequence, e.g. З-2026-0001. Counters remain independent per operation type.
+- Quantity precision follows the product's unit of measure.
+- Negative purchase/order quantities are forbidden, but a warehouse stock balance may itself be negative.
+- Save draft changes when advancing to the next product.
+- Multiple drafts of the same operation type are allowed; users can manually delete drafts.
+- If an operation flag is removed from a product after it has entered a draft, keep the product in that draft.
+- Automatically use the product's single storage location in the selected warehouse.
+- Drafts expire and are automatically deleted after one week; manual deletion is also supported.
+
+Implementation implications / details still to confirm:
+
+- Render calendar operation content as supplier-group headings with their product lines, within the established operation-type + warehouse grouping.
+- Show product, operation quantity, unit, and current stock in the detail view. Preserve the immutable snapshot fields (name, unit, supplier) from round 3; current stock remains a live informational value.
+- Generate human-readable identifiers from operation type + year + per-type sequence; define collision-safe allocation and year rollover.
+- Derive numeric input precision from the unit metadata and reject negative entered purchase/order quantities while allowing negative stock values to be displayed.
+- Persist a draft when the user navigates forward to the next product; retain resumability across app restarts.
+- Support concurrent multiple drafts per operation type and manual draft deletion.
+- Draft membership is stable once captured; later reference flag changes must not silently remove draft lines.
+- Resolve the unique storage location for the product within the selected warehouse automatically. Define fallback behavior if the location is missing or ambiguous.
+- Implement seven-day expiry and manual deletion. Clarify the expiry anchor (creation time vs. last activity) and whether users receive an expiry warning before enabling cleanup.
