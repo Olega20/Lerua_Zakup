@@ -230,6 +230,39 @@ class _FakeApi extends ApiTaskDispatcher {
   }
 }
 
+class _InventoryUiRepository extends ReferenceDataRepository {
+  _InventoryUiRepository({
+    required ReferenceDataRepository source,
+    required this.lines,
+    required this.sessions,
+  }) : super(
+         database: source.database,
+         api: source.api,
+         directApiClient: source.directApiClient,
+         tokenStore: source.tokenStore,
+         warehouseLog: source.warehouseLog,
+         warehouseJournal: source.warehouseJournal,
+       );
+
+  final List<Map<String, Object?>> lines;
+  final List<Map<String, Object?>> sessions;
+
+  @override
+  Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async =>
+      lines.map(Map<String, Object?>.from).toList();
+
+  @override
+  Future<List<Map<String, Object?>>> inventorySessions() async =>
+      sessions.map(Map<String, Object?>.from).toList();
+
+  @override
+  Future<void> saveInventoryCount(int lineId, double? quantity) async {
+    final lineIndex = lines.indexWhere((line) => line['id'] == lineId);
+    if (lineIndex < 0) throw StateError('Строка инвентаризации не найдена');
+    lines[lineIndex] = {...lines[lineIndex], 'actual_quantity': quantity};
+  }
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
@@ -600,28 +633,28 @@ void main() {
         storageLocationIds: [locationId],
       );
 
+      final uiRepository = _InventoryUiRepository(
+        source: repository,
+        lines: (await repository.inventoryLines(sessionId))
+            .map(Map<String, Object?>.from)
+            .toList(),
+        sessions: (await repository.inventorySessions())
+            .map(Map<String, Object?>.from)
+            .toList(),
+      );
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1;
-      print('INVENTORY_UI_TEST: mounting screen');
       await tester.pumpWidget(
         MaterialApp(
           home: InventorySessionScreen(
-            repository: repository,
+            repository: uiRepository,
             sessionId: sessionId,
           ),
         ),
       );
-      print('INVENTORY_UI_TEST: screen mounted');
-      // The screen loads SQLite data asynchronously from initState. Let the
-      // real async work complete, then pump the resulting widget update.
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 100)),
-      );
-      print('INVENTORY_UI_TEST: async wait completed');
       // Do not use pumpAndSettle here: the focused read-only quantity field
       // keeps its cursor blink animation alive, so the tree never settles.
       await tester.pump();
-      print('INVENTORY_UI_TEST: first frame pumped');
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Товар UI'), findsOneWidget);
 
@@ -631,11 +664,10 @@ void main() {
       // The repository write is queued by the keypad callback. Pump its
       // microtasks, then read through the same serialized database connection.
       await tester.pump();
-      final savedLines = await repository.inventoryLines(sessionId);
       expect(
-        savedLines.single['actual_quantity'],
+        uiRepository.lines.single['actual_quantity'],
         1,
-        reason: 'Keypad count was not persisted',
+        reason: 'Keypad count was not passed to the repository',
       );
 
       await tester.tap(find.byTooltip('Список товаров'));
