@@ -44,3 +44,18 @@
 - After the user's answers, append them to `docs/product/requirements-log.md`.
 - Update this roadmap with the decisions and implementation consequences.
 - Ask the next batch only after recording the previous answers; avoid duplicates.
+
+## Confirmed purchase/order/transfer decisions — questionnaire round 1 (2026-11-26)
+
+- Include all active products carrying the matching operation flag, regardless of stock.
+- Process selected warehouses sequentially, completing one warehouse before moving to the next.
+- Select warehouses without restricting storage locations; include all locations under each selected warehouse.
+- Show the total stock for the selected warehouse.
+- Enter additional purchase/order quantity; current stock is informational, not subtracted from the entered quantity.
+- Products without a supplier are grouped into a separate “Без поставщика” calendar record.
+- Multiple product flags create independent operations for each selected type.
+- Create one supplier record per warehouse; list its storage locations inside that record rather than splitting by location.
+- Preserve incomplete entry as a resumable local draft.
+- Generate an independent sequential number for each operation type.
+
+Implementation implications: product filtering must be flag-driven; entry sessions must be warehouse-sequential; draft persistence must survive app restarts; calendar grouping key is operation type + warehouse + supplier (including the no-supplier bucket); sequence counters are scoped by operation type.
