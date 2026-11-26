@@ -23,11 +23,7 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Defer session data loading until the first frame has mounted. This keeps
-    // repository work from blocking the initial widget mount.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) load();
-    });
+    load();
   }
 
   Future<void> load() async {
@@ -529,7 +525,11 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   @override
   void initState() {
     super.initState();
-    load();
+    // Defer session data loading until the first frame has mounted. This keeps
+    // repository work from blocking the initial widget mount.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) load();
+    });
   }
 
   Future<void> load() async {
