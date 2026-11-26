@@ -12,7 +12,6 @@ import 'package:lerua_zakup/features/connectivity/data/moysklad_api_client.dart'
 import 'package:lerua_zakup/features/references/data/reference_data_repository.dart';
 import 'package:lerua_zakup/features/warehouse_journal/data/warehouse_journal_repository.dart';
 import 'package:lerua_zakup/features/references/presentation/reference_screens.dart';
-import 'package:lerua_zakup/features/references/presentation/inventory_screens.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class _TokenStore implements SecureTokenStore {
