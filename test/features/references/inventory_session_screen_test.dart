@@ -85,10 +85,7 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          home: InventorySessionScreen(
-            repository: repository,
-            sessionId: 42,
-          ),
+          home: InventorySessionScreen(repository: repository, sessionId: 42),
         ),
       );
       // Do not use pumpAndSettle: the focused read-only quantity field
