@@ -95,3 +95,6 @@ jobs:
 
       - name: Flutter tests
         run: flutter test --timeout=30s --reporter=expanded
+
+      - name: Build Android debug APK
+        run: flutter build apk --debug
