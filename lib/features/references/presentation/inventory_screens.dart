@@ -529,17 +529,16 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   }
 
   Future<void> load() async {
-    final values = await Future.wait([
-      widget.repository.inventoryLines(widget.sessionId),
-      widget.repository.inventorySessions(),
-    ]);
+    // Keep SQLite reads sequential. The FFI-backed test database can stall
+    // when two queries are dispatched together during the first widget frame.
+    final loadedLines = await widget.repository.inventoryLines(widget.sessionId);
+    final allSessions = await widget.repository.inventorySessions();
     if (!mounted) return;
-    final allSessions = values[1];
     final found = allSessions.cast<Map<String, Object?>>().where(
       (row) => row['id'] == widget.sessionId,
     );
     setState(() {
-      lines = values[0].map((line) => Map<String, Object?>.from(line)).toList();
+      lines = loadedLines.map((line) => Map<String, Object?>.from(line)).toList();
       session = found.isEmpty ? null : found.first;
       loading = false;
     });
