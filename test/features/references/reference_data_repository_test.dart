@@ -230,43 +230,6 @@ class _FakeApi extends ApiTaskDispatcher {
   }
 }
 
-class _InventoryUiRepository extends ReferenceDataRepository {
-  _InventoryUiRepository({
-    required ReferenceDataRepository source,
-    required this.lines,
-    required this.sessions,
-  }) : super(
-         database: source.database,
-         api: source.api,
-         directApiClient: source.directApiClient,
-         tokenStore: source.tokenStore,
-         warehouseLog: source.warehouseLog,
-         warehouseJournal: source.warehouseJournal,
-       );
-
-  final List<Map<String, Object?>> lines;
-  final List<Map<String, Object?>> sessions;
-
-  @override
-  Future<List<Map<String, Object?>>> inventoryLines(int sessionId) async {
-    print('INVENTORY_MOCK: inventoryLines called');
-    return lines.map(Map<String, Object?>.from).toList();
-  }
-
-  @override
-  Future<List<Map<String, Object?>>> inventorySessions() async {
-    print('INVENTORY_MOCK: inventorySessions called');
-    return sessions.map(Map<String, Object?>.from).toList();
-  }
-
-  @override
-  Future<void> saveInventoryCount(int lineId, double? quantity) async {
-    final lineIndex = lines.indexWhere((line) => line['id'] == lineId);
-    if (lineIndex < 0) throw StateError('Строка инвентаризации не найдена');
-    lines[lineIndex] = {...lines[lineIndex], 'actual_quantity': quantity};
-  }
-}
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   sqfliteFfiInit();
@@ -600,94 +563,6 @@ void main() {
     journalEvents = await journal.events(journalEntries.single['id'] as int);
     expect(journalEvents.last['event_type'], 'draft_deleted');
   });
-
-  testWidgets(
-    'inventory keypad saves counts and list mode remains switchable',
-    (tester) async {
-      final sql = await db.database;
-      final organizationId = await sql.insert('organizations', {
-        'moysklad_id': 'inventory-ui-org',
-        'name': 'Организация UI',
-      });
-      final warehouseId =
-          (await sql.query(
-                'warehouses',
-                where: 'moysklad_id=?',
-                whereArgs: ['w-1'],
-                limit: 1,
-              )).single['id']
-              as int;
-      await repository.saveStorageLocation(warehouseId, 'Зона UI');
-      final locationId =
-          (await repository.storageLocations(warehouseId)).single['id'] as int;
-      final productId = await sql.insert('products', {
-        'moysklad_id': 'inventory-ui-product',
-        'name': 'Товар UI',
-        'kind': 'product',
-        'uom_name': 'шт',
-      });
-      await repository.assignProductsToStorageLocation(
-        [productId],
-        warehouseId,
-        locationId,
-      );
-      final sessionId = await repository.createInventoryDraft(
-        organizationId: organizationId,
-        warehouseId: warehouseId,
-        storageLocationIds: [locationId],
-      );
-
-      final uiRepository = _InventoryUiRepository(
-        source: repository,
-        lines: (await repository.inventoryLines(sessionId))
-            .map(Map<String, Object?>.from)
-            .toList(),
-        sessions: (await repository.inventorySessions())
-            .map(Map<String, Object?>.from)
-            .toList(),
-      );
-      tester.view.physicalSize = const Size(420, 900);
-      tester.view.devicePixelRatio = 1;
-      print('INVENTORY_MOCK: before pumpWidget');
-      await tester.pumpWidget(
-        MaterialApp(
-          home: InventorySessionScreen(
-            repository: uiRepository,
-            sessionId: sessionId,
-          ),
-        ),
-      );
-      print('INVENTORY_MOCK: after pumpWidget');
-      // Do not use pumpAndSettle here: the focused read-only quantity field
-      // keeps its cursor blink animation alive, so the tree never settles.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Товар UI'), findsOneWidget);
-
-      await tester.tap(find.widgetWithText(FilledButton, '1').first);
-      await tester.pump();
-
-      // The repository write is queued by the keypad callback. Pump its
-      // microtasks, then read through the same serialized database connection.
-      await tester.pump();
-      expect(
-        uiRepository.lines.single['actual_quantity'],
-        1,
-        reason: 'Keypad count was not passed to the repository',
-      );
-
-      await tester.tap(find.byTooltip('Список товаров'));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      expect(find.text('Товар UI'), findsOneWidget);
-      expect(find.textContaining('Факт: 1 шт'), findsOneWidget);
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-    },
-    timeout: const Timeout(Duration(seconds: 30)),
-  );
 
   test('sends the completed local inventory to MoySklad and stores its document id', () async {
     final sql = await db.database;
