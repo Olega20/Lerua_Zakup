@@ -149,3 +149,54 @@ Implementation implications:
 - Implement deletion as a local calendar/operation deletion only, with an explicit confirmation dialog. Do not enqueue MoySklad API mutations.
 - Provide separate type-specific list screens/filters and show only date + formatted operation number in list rows.
 - Omit comment fields, prices, and monetary calculations from this feature scope.
+
+
+## Confirmed purchase/order/transfer decisions — questionnaire round 6 (2026-11-26)
+
+- The creation flow allows selecting multiple warehouses in one selection step. Quantities remain independent for each warehouse; the existing sequential warehouse-by-warehouse product workflow is retained.
+- For the same product at multiple warehouses, enter a separate quantity for each warehouse.
+- Purchase operations are dated today; order operations are dated tomorrow. The previously confirmed transfer date remains today.
+- New quantity fields start empty. A skipped product remains skipped when revisited until the user explicitly enters a quantity; do not auto-fill zero or restore an old quantity.
+- Capture the final product and stock snapshots at Finish, not when the draft is first created. This supersedes the earlier general snapshot timing decision.
+- Resolve supplier from the current reference data at Finish. If the supplier changed while the draft was open, use the new supplier for the final operation and supplier grouping.
+- Manual draft deletion requires a confirmation dialog. This does not change the already-confirmed silent automatic expiry cleanup at app startup.
+- Opening an operation from the calendar goes directly to its product list grouped by supplier, without an intermediate summary card.
+- The default entry mode is one product at a time with a Next button. A table/list entry mode is not approved at this stage.
+
+Implementation implications / updated priorities:
+
+1. **Creation flow and warehouse scope**
+   - Add multi-select warehouse selection to the initial step.
+   - Preserve per-warehouse quantities and per-warehouse operation grouping; never merge quantities for the same product across warehouses.
+   - Keep the agreed sequential product-entry flow for each selected warehouse, moving to the next warehouse after completing/skipping the current one.
+2. **Quantity entry**
+   - Initialize quantity inputs as empty/null, not zero.
+   - Treat an untouched/blank or skipped line as absent from the completed operation.
+   - When navigating back to a skipped product, leave its field empty until the user enters a quantity.
+   - Keep existing unit-dependent precision and non-negative purchase/order quantity validation.
+3. **Finish-time snapshots and supplier resolution**
+   - At Finish, obtain the final product name, unit, supplier, and warehouse stock snapshot from the then-current source data and persist them immutably with the operation lines.
+   - Use the current supplier reference at Finish for grouping; do not freeze the supplier when the draft is created.
+   - The historical stock shown in completed operation details is the Finish-time snapshot. This explicitly overrides round 5's earlier wording that described the snapshot as being taken at operation creation.
+   - Keep Finish atomic/idempotent: if persistence fails, retain the draft and allow retry without duplicate calendar records.
+4. **Navigation and deletion**
+   - Calendar taps open the supplier-grouped product list directly.
+   - Add a confirmation step for manual draft deletion. Keep the already agreed expiry policy: delete drafts older than seven days at next app startup without warning.
+   - Completed operation deletion remains local-only and requires confirmation as agreed in round 5.
+5. **Entry UI**
+   - Implement single-product-at-a-time entry with a Next action as the primary and only currently approved mode.
+   - Do not add a list/table mode unless the product owner approves it in a later round.
+
+### Remaining discovery before implementation
+
+The six rounds establish the core workflow. Before coding, clarify remaining edge cases and acceptance details, especially:
+- exact date/time boundary and timezone behavior for “today” and “tomorrow”;
+- how to handle supplier changes or deleted supplier references between draft creation and Finish;
+- behavior if a selected warehouse becomes unavailable or a product loses its warehouse/storage-location association while a draft is open;
+- how a user navigates between warehouses and resumes a multi-warehouse draft;
+- whether zero is a valid explicitly entered quantity or should be treated as skipped;
+- operation numbering prefix mapping for all three operation types and year rollover;
+- transfer-specific representation of source/destination in calendar records, given that transfers are calendar-only;
+- confirmation and error handling details for Finish and deletion.
+
+Do not begin feature implementation until the remaining critical decisions are recorded and a concrete implementation plan is approved.
