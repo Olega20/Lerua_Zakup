@@ -619,16 +619,15 @@ void main() {
       await tester.tap(find.widgetWithText(FilledButton, '1').first);
       await tester.pump();
 
-      // Wait for the asynchronous SQLite write without waiting for animations.
-      final saved = await tester.runAsync(() async {
-        for (var attempt = 0; attempt < 30; attempt++) {
-          final currentLines = await repository.inventoryLines(sessionId);
-          if (currentLines.single['actual_quantity'] == 1) return true;
-          await Future<void>.delayed(const Duration(milliseconds: 10));
-        }
-        return false;
-      });
-      expect(saved, isTrue, reason: 'Keypad count was not persisted');
+      // The repository write is queued by the keypad callback. Pump its
+      // microtasks, then read through the same serialized database connection.
+      await tester.pump();
+      final savedLines = await repository.inventoryLines(sessionId);
+      expect(
+        savedLines.single['actual_quantity'],
+        1,
+        reason: 'Keypad count was not persisted',
+      );
 
       await tester.tap(find.byTooltip('Список товаров'));
       await tester.pump();
