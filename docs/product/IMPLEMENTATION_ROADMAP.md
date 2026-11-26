@@ -131,3 +131,21 @@ Implementation implications / details still to confirm:
 - Draft membership is stable once captured; later reference flag changes must not silently remove draft lines.
 - Resolve the unique storage location for the product within the selected warehouse automatically. Define fallback behavior if the location is missing or ambiguous.
 - Implement seven-day expiry and manual deletion. Clarify the expiry anchor (creation time vs. last activity) and whether users receive an expiry warning before enabling cleanup.
+
+## Confirmed purchase/order/transfer decisions — questionnaire round 5 (2026-11-26)
+
+- Draft expiry is seven days after draft creation; no warning is shown. Expired drafts are removed at the next app launch.
+- Product lists are scoped to the selected warehouse: only products stored at that warehouse / its storage locations may appear. A product without a location in that selected warehouse is not a normal selectable case.
+- Completed operation details show the stock balance captured at operation creation, not a live current balance.
+- Completed operations exist only in the app calendar at this stage. Deletion removes the app's calendar record only; it does not call MoySklad. Require an irreversible-action confirmation.
+- Separate operation lists are titled “Закупки”, “Заказы”, and “Перемещения”. Each list row shows date and operation number.
+- Comments are not required.
+- Prices and monetary totals are out of scope; track quantities only.
+
+Implementation implications:
+- Set a fixed created-at timestamp on each draft and expire it after seven days. Perform cleanup during app startup without a pre-expiry notification.
+- Query/filter product candidates by selected warehouse and its storage locations; do not offer a manual storage-location fallback for products that do not belong to that warehouse.
+- Store the stock balance snapshot on each operation line and render that historical value in completed operation details.
+- Implement deletion as a local calendar/operation deletion only, with an explicit confirmation dialog. Do not enqueue MoySklad API mutations.
+- Provide separate type-specific list screens/filters and show only date + formatted operation number in list rows.
+- Omit comment fields, prices, and monetary calculations from this feature scope.
