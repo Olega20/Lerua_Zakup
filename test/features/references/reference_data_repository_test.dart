@@ -610,17 +610,29 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      // Do not use pumpAndSettle here: the focused read-only quantity field
+      // keeps its cursor blink animation alive, so the tree never settles.
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('Товар UI'), findsOneWidget);
 
       await tester.tap(find.widgetWithText(FilledButton, '1').first);
-      await tester.pumpAndSettle();
-      expect(
-        (await repository.inventoryLines(sessionId)).single['actual_quantity'],
-        1,
-      );
+      await tester.pump();
+
+      // Wait for the asynchronous SQLite write without waiting for animations.
+      final saved = await tester.runAsync(() async {
+        for (var attempt = 0; attempt < 30; attempt++) {
+          final currentLines = await repository.inventoryLines(sessionId);
+          if (currentLines.single['actual_quantity'] == 1) return true;
+          await Future<void>.delayed(const Duration(milliseconds: 10));
+        }
+        return false;
+      });
+      expect(saved, isTrue, reason: 'Keypad count was not persisted');
 
       await tester.tap(find.byTooltip('Список товаров'));
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Товар UI'), findsOneWidget);
       expect(find.textContaining('Факт: 1 шт'), findsOneWidget);
       addTearDown(() {
@@ -628,6 +640,7 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
     },
+    timeout: const Timeout(Duration(seconds: 30)),
   );
 
   test('sends the completed local inventory to MoySklad and stores its document id', () async {
