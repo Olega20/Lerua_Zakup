@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 /// Shared quantity keypad used by purchasing and inventory workflows.
 /// The calculator edits the same field as the numeric keypad; only a
@@ -232,8 +232,9 @@ class _ExpressionParser {
       if (operator != '*' && operator != '/') break;
       _index++;
       final right = _factor();
-      if (operator == '/' && right == 0)
+      if (operator == '/' && right == 0) {
         throw UnsupportedError('division by zero');
+      }
       value = operator == '*' ? value * right : value / right;
     }
     return value;

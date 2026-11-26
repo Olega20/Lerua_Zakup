@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../calendar/presentation/week_strip.dart';
 import '../../connectivity/domain/api_connection_state.dart';

@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lerua_zakup/features/connectivity/domain/api_connection_state.dart';
 import 'package:lerua_zakup/features/connectivity/presentation/connectivity_indicator.dart';
