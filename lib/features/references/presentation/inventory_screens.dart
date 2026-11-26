@@ -525,10 +525,12 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   @override
   void initState() {
     super.initState();
-    // Defer session data loading until the first frame has mounted. This keeps
-    // repository work from blocking the initial widget mount.
+    // Let the initial frame finish before starting repository work. Starting
+    // the async load from a frame callback can still hold up the first mount.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) load();
+      Future<void>.delayed(const Duration(milliseconds: 1), () {
+        if (mounted) load();
+      });
     });
   }
 
