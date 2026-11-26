@@ -669,6 +669,7 @@ void main() {
 
     expect(api.postRequests, 1);
     final payload = api.postedBody!;
+    expect(payload['name'], '');
     expect(payload['externalCode'], isA<String>());
     expect(
       payload['syncId'],
@@ -689,6 +690,11 @@ void main() {
     final positions = payload['positions'] as List;
     expect(positions, hasLength(1));
     expect(positions.single['quantity'], 4.0);
+    expect(api.putRequests, 1);
+    expect(
+      api.putBody,
+      isEmpty,
+    );
     expect(
       (await repository.inventorySessions()).single['status'],
       'completed',
