@@ -180,7 +180,7 @@ Implementation implications / updated priorities:
    - The historical stock shown in completed operation details is the Finish-time snapshot. This explicitly overrides round 5's earlier wording that described the snapshot as being taken at operation creation.
    - Keep Finish atomic/idempotent: if persistence fails, retain the draft and allow retry without duplicate calendar records.
 4. **Navigation and deletion**
-   - Calendar taps open the supplier-grouped product list directly.
+   - Calendar does not navigate to a separate operation screen. Supplier/warehouse groups and their collapsed product lists render inline in the calendar; users expand/collapse them in place.
    - Add a confirmation step for manual draft deletion. Keep the already agreed expiry policy: delete drafts older than seven days at next app startup without warning.
    - Completed operation deletion remains local-only and requires confirmation as agreed in round 5.
 5. **Entry UI**
@@ -200,3 +200,17 @@ The six rounds establish the core workflow. Before coding, clarify remaining edg
 - confirmation and error handling details for Finish and deletion.
 
 Do not begin feature implementation until the remaining critical decisions are recorded and a concrete implementation plan is approved.
+
+
+## Уточнение после раунда 6 — календарь не открывает отдельные экраны (2026-11-26)
+
+Последнее уточнение пользователя заменяет прежнюю трактовку пункта 9 раунда 6. **Не делать переход из календаря в карточку, экран операции или отдельный список товаров.** Календарь остаётся местом просмотра содержимого.
+
+- При входе в календарь автоматически выбрана сегодняшняя дата.
+- При выборе любой даты её содержимое показывается прямо в области календаря для выбранного дня.
+- Каждая группа отображается заголовком вида «Поставщик 1 на склад 1», под которым находится свёрнутый список товаров; следующая группа — «Поставщик 1 на склад 2» и так далее.
+- Раскрытие/сворачивание списка товаров происходит прямо в календаре, без навигации.
+- Группировка сохраняет согласованные измерения: тип операции, склад и актуальный поставщик; визуальный заголовок календарной группы должен явно показывать поставщика и склад.
+- Пошаговый ввод товара с кнопкой «Далее» применяется только при создании операции и не является режимом просмотра календаря.
+
+Удалить из требований и реализации прежнее поведение «нажать на операцию в календаре и открыть список товаров». Никакого отдельного экрана просмотра завершённой операции в рамках этого сценария не создавать.
