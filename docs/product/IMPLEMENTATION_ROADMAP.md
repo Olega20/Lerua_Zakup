@@ -214,3 +214,38 @@ Do not begin feature implementation until the remaining critical decisions are r
 - Пошаговый ввод товара с кнопкой «Далее» применяется только при создании операции и не является режимом просмотра календаря.
 
 Удалить из требований и реализации прежнее поведение «нажать на операцию в календаре и открыть список товаров». Никакого отдельного экрана просмотра завершённой операции в рамках этого сценария не создавать.
+
+
+## Confirmed purchase/order/transfer decisions — questionnaire round 7 (2026-11-26)
+
+- Use the device's local timezone to calculate operation dates.
+- The operation date is fixed when the draft is created; finishing after midnight does not change it.
+- If a supplier reference has been deleted or is unavailable at Finish, group the product under “Без поставщика”.
+- If a selected warehouse becomes unavailable while a draft is open, retain it and allow Finish.
+- If a product is no longer listed under the selected warehouse at Finish, use the last known product/warehouse data retained in the draft rather than silently dropping the line.
+- An explicitly entered quantity of zero is equivalent to skipping and is omitted from the completed operation.
+- Resume a multi-warehouse draft automatically at the last unfinished warehouse and product.
+- Operation number prefixes are user-defined: Закупка = ЗУП, Заказ = ЗАЗ, Перемещение = ПЕР.
+- Number sequences reset each year and are independent per operation type and year.
+- Transfers have no supplier. Calendar representation identifies only the source and destination warehouses.
+
+Implementation implications:
+- Derive “today” and “tomorrow” from the device-local date. Persist the operation date in the draft at creation so a draft crossing midnight retains its original date.
+- Resolve deleted/missing supplier references to the “Без поставщика” group at Finish.
+- Do not invalidate a draft or prevent Finish solely because a selected warehouse is currently unavailable. Preserve the selected warehouse identity and last known draft context.
+- Keep the last known product and warehouse association in draft data so Finish can still create the operation line if the live catalog no longer returns that association. Capture the agreed historical product/unit/stock snapshot at Finish from available data, falling back to the draft's last known values where live data is unavailable.
+- Normalize zero quantity to skipped/absent; no zero-quantity operation lines.
+- Persist a resumable cursor (warehouse + product) and restore it automatically.
+- Format identifiers with prefixes ЗУП, ЗАЗ, ПЕР, year, and a per-type/per-year sequence. Reset each sequence on year rollover.
+- Calendar grouping for purchase/order remains supplier + warehouse. Transfer grouping is separate and supplier-free: source warehouse → destination warehouse, with the transfer products listed beneath. Transfers remain calendar-only and do not mutate MoySklad stock.
+
+### Remaining discovery before implementation — after round 7
+
+Still to clarify:
+- whether transfer operations may include products without the Transfer flag and how manual additions are presented (flag-based + manual add was agreed in round 2/3; UI detail can be refined);
+- exact Finish transaction/idempotency behavior and user-facing retry/error states;
+- completed calendar record deletion behavior specific to transfer (whole local record deletion was agreed generally, but confirm if any transfer-specific exception is needed);
+- whether operation sequence allocation must be synchronized across devices or is device-local;
+- final acceptance criteria and approval of the concrete implementation plan.
+
+Already resolved by rounds 6–7: date timezone and date anchor, missing/deleted supplier, unavailable warehouse/product behavior, zero quantity, multi-warehouse resume point, numbering prefixes/year reset, transfer calendar grouping, and inline calendar behavior.
