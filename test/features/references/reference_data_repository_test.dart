@@ -602,14 +602,19 @@ void main() {
 
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: InventorySessionScreen(
-            repository: repository,
-            sessionId: sessionId,
+      // The screen starts asynchronous sqflite FFI reads in initState.
+      // Run the first mount in the real async zone so those reads can complete
+      // instead of blocking the widget test's fake-async zone.
+      await tester.runAsync(() async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: InventorySessionScreen(
+              repository: repository,
+              sessionId: sessionId,
+            ),
           ),
-        ),
-      );
+        );
+      });
       // Do not use pumpAndSettle here: the focused read-only quantity field
       // keeps its cursor blink animation alive, so the tree never settles.
       await tester.pump();
