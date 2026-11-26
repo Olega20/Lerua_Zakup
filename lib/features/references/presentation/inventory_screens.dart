@@ -23,7 +23,12 @@ class _InventoryHomeScreenState extends State<InventoryHomeScreen> {
   @override
   void initState() {
     super.initState();
-    load();
+    // Start repository I/O only after the first frame. This keeps the initial
+    // widget mount independent from asynchronous database work and avoids
+    // holding up the first frame while the inventory data is being loaded.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) load();
+    });
   }
 
   Future<void> load() async {
