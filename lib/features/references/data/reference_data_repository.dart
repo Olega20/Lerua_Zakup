@@ -913,8 +913,7 @@ class ReferenceDataRepository {
           path: '/entity/inventory',
           timeout: const Duration(minutes: 3),
           body: {
-            'name':
-                'Инвентаризация ${DateTime.now().toIso8601String().substring(0, 16)}',
+            'name': '',
             'externalCode': 'LZ-$uid',
             'syncId': uid,
             'organization': {
@@ -948,6 +947,17 @@ class ReferenceDataRepository {
           'МойСклад не вернул идентификатор инвентаризации.',
         );
       }
+      // MoySklad initially mirrors the entered quantity into calculatedQuantity
+      // for newly-created inventory positions. Recalculate it from stock after
+      // the document and all positions exist, just like the manual UI action.
+      await api.requestPut(
+        uid: 'inventory-recalculate:$uid:${DateTime.now().microsecondsSinceEpoch}',
+        type: 'inventory_recalculate_calculated_quantity',
+        logicalQueue: 'inventory',
+        path: '/rpc/inventory/$documentId/recalcCalculatedQuantity',
+        body: const {},
+        timeout: const Duration(minutes: 2),
+      );
       await db.update(
         'inventory_sessions',
         {
