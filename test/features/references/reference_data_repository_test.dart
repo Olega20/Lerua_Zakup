@@ -691,10 +691,7 @@ void main() {
     expect(positions, hasLength(1));
     expect(positions.single['quantity'], 4.0);
     expect(api.putRequests, 1);
-    expect(
-      api.putBody,
-      isEmpty,
-    );
+    expect(api.putBody, isEmpty);
     expect(
       (await repository.inventorySessions()).single['status'],
       'completed',

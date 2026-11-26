@@ -951,7 +951,8 @@ class ReferenceDataRepository {
       // for newly-created inventory positions. Recalculate it from stock after
       // the document and all positions exist, just like the manual UI action.
       await api.requestPut(
-        uid: 'inventory-recalculate:$uid:${DateTime.now().microsecondsSinceEpoch}',
+        uid:
+            'inventory-recalculate:$uid:${DateTime.now().microsecondsSinceEpoch}',
         type: 'inventory_recalculate_calculated_quantity',
         logicalQueue: 'inventory',
         path: '/rpc/inventory/$documentId/recalcCalculatedQuantity',
