@@ -242,10 +242,18 @@ Implementation implications:
 ### Remaining discovery before implementation — after round 7
 
 Still to clarify:
-- whether transfer operations may include products without the Transfer flag and how manual additions are presented (flag-based + manual add was agreed in round 2/3; UI detail can be refined);
+- exact presentation details for manual additions to transfer (the scope is already decided: flagged products plus manual addition of any active product);
 - exact Finish transaction/idempotency behavior and user-facing retry/error states;
 - completed calendar record deletion behavior specific to transfer (whole local record deletion was agreed generally, but confirm if any transfer-specific exception is needed);
 - whether operation sequence allocation must be synchronized across devices or is device-local;
 - final acceptance criteria and approval of the concrete implementation plan.
 
 Already resolved by rounds 6–7: date timezone and date anchor, missing/deleted supplier, unavailable warehouse/product behavior, zero quantity, multi-warehouse resume point, numbering prefixes/year reset, transfer calendar grouping, and inline calendar behavior.
+
+
+## Раунд 7 — уточнение представления перемещения в календаре (2026-11-26)
+
+- Выбран вариант C: отдельная группа с явным заголовком **«Перемещение: склад-источник → склад-получатель»**.
+- У перемещения нет поставщика. Не использовать поставщика ни как поле группировки, ни как часть заголовка.
+- Под заголовком размещать свёрнутый список товаров; раскрытие выполняется непосредственно в календаре, без перехода на отдельный экран.
+- Явное слово «Перемещение» предпочтительнее краткого заголовка только со стрелкой: оно однозначно отличает запись перемещения от закупки или заказа.
