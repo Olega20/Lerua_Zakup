@@ -525,12 +525,10 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   @override
   void initState() {
     super.initState();
-    // Let the initial frame finish before starting repository work. Starting
-    // the async load from a frame callback can still hold up the first mount.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      Future<void>.delayed(const Duration(milliseconds: 1), () {
-        if (mounted) load();
-      });
+    // Schedule repository work after the initial frame instead of starting it
+    // from initState or a post-frame callback.
+    Future<void>.delayed(const Duration(milliseconds: 1), () {
+      if (mounted) load();
     });
   }
 
