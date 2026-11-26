@@ -506,10 +506,7 @@ class InventorySessionScreen extends StatefulWidget {
   final int sessionId;
 
   @override
-  State<InventorySessionScreen> createState() {
-    debugPrint('INVENTORY_SESSION: createState');
-    return _InventorySessionScreenState();
-  }
+  State<InventorySessionScreen> createState() => _InventorySessionScreenState();
 }
 
 class _InventorySessionScreenState extends State<InventorySessionScreen> {
@@ -528,13 +525,7 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('INVENTORY_SESSION: initState entered');
-    // Schedule repository work after the initial frame instead of starting it
-    // from initState or a post-frame callback.
-    Future<void>.delayed(const Duration(milliseconds: 1), () {
-      if (mounted) load();
-    });
-    debugPrint('INVENTORY_SESSION: initState exited');
+    load();
   }
 
   Future<void> load() async {
@@ -746,12 +737,8 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('INVENTORY_SESSION: build entered, loading=$loading');
     if (loading) {
-      debugPrint('INVENTORY_SESSION: building loading placeholder');
-      return const Scaffold(
-        body: Center(child: Text('Загрузка инвентаризации...')),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (session == null || lines.isEmpty) {
       return Scaffold(
