@@ -602,22 +602,26 @@ void main() {
 
       tester.view.physicalSize = const Size(420, 900);
       tester.view.devicePixelRatio = 1;
-      // The screen starts asynchronous sqflite FFI reads in initState.
-      // Run the first mount in the real async zone so those reads can complete
-      // instead of blocking the widget test's fake-async zone.
-      await tester.runAsync(() async {
-        await tester.pumpWidget(
-          MaterialApp(
-            home: InventorySessionScreen(
-              repository: repository,
-              sessionId: sessionId,
-            ),
+      print('INVENTORY_UI_TEST: mounting screen');
+      await tester.pumpWidget(
+        MaterialApp(
+          home: InventorySessionScreen(
+            repository: repository,
+            sessionId: sessionId,
           ),
-        );
-      });
+        ),
+      );
+      print('INVENTORY_UI_TEST: screen mounted');
+      // The screen loads SQLite data asynchronously from initState. Let the
+      // real async work complete, then pump the resulting widget update.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 100)),
+      );
+      print('INVENTORY_UI_TEST: async wait completed');
       // Do not use pumpAndSettle here: the focused read-only quantity field
       // keeps its cursor blink animation alive, so the tree never settles.
       await tester.pump();
+      print('INVENTORY_UI_TEST: first frame pumped');
       await tester.pump(const Duration(milliseconds: 100));
       expect(find.text('Товар UI'), findsOneWidget);
 
