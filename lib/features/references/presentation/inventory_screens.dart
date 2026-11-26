@@ -749,7 +749,9 @@ class _InventorySessionScreenState extends State<InventorySessionScreen> {
     debugPrint('INVENTORY_SESSION: build entered, loading=$loading');
     if (loading) {
       debugPrint('INVENTORY_SESSION: building loading placeholder');
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: Text('Загрузка инвентаризации...')),
+      );
     }
     if (session == null || lines.isEmpty) {
       return Scaffold(
