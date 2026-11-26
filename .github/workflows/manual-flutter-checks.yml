@@ -9,6 +9,7 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,4 +36,4 @@ jobs:
         run: flutter analyze
 
       - name: Flutter tests
-        run: flutter test
+        run: flutter test --timeout=30s --reporter=expanded
