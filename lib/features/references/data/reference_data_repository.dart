@@ -501,10 +501,36 @@ class ReferenceDataRepository {
       args.add('%${search.trim()}%');
     }
     if (warehouseMoyskladId != null) {
-      clauses.add(
-        'EXISTS (SELECT 1 FROM product_warehouse_stock pws2 WHERE pws2.product_id=p.id AND pws2.warehouse_moysklad_id=?)',
-      );
-      args.add(warehouseMoyskladId);
+      clauses.add('''
+        (
+          EXISTS (
+            SELECT 1
+            FROM product_storage_assignments psa2
+            JOIN storage_locations sl2
+              ON sl2.id=psa2.storage_location_id AND sl2.is_active=1
+            JOIN warehouses w2 ON w2.id=psa2.warehouse_id
+            WHERE psa2.product_id=p.id AND w2.moysklad_id=?
+          )
+          OR (
+            NOT EXISTS (
+              SELECT 1
+              FROM product_storage_assignments psa3
+              JOIN storage_locations sl3
+                ON sl3.id=psa3.storage_location_id AND sl3.is_active=1
+              WHERE psa3.product_id=p.id
+            )
+            AND EXISTS (
+              SELECT 1
+              FROM product_warehouse_stock pws2
+              WHERE pws2.product_id=p.id
+                AND pws2.warehouse_moysklad_id=?
+            )
+          )
+        )
+      ''');
+      args
+        ..add(warehouseMoyskladId)
+        ..add(warehouseMoyskladId);
     }
     return (await _db).rawQuery(
       '''SELECT p.*,s.name AS supplier_name,s.phone AS supplier_phone FROM products p LEFT JOIN product_supplier_assignments psa ON psa.product_id=p.id LEFT JOIN suppliers s ON s.id=psa.supplier_id WHERE ${clauses.join(' AND ')} ORDER BY CASE p.relevance_status WHEN 'unassigned' THEN 0 WHEN 'relevant' THEN 1 ELSE 2 END,p.name COLLATE NOCASE''',
